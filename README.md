@@ -9,9 +9,9 @@ Je bestanden blijven gewone markdown in een gewone map.
 **Status:** [PRD v1.1](docs/03-prd.md) is geldig en de
 [wave-indeling](docs/07-wave-methode.md#5-voorstel-wave-indeling) is goedgekeurd — elf
 waves, als issues `#1`–`#11`. Stack: Tauri v2 · React · CodeMirror 6 · SQLite FTS5.
-Het [Goal Document voor W0](docs/waves/W0-spike/00-goal.md) is goedgekeurd; de
-[Wave Specification](docs/waves/W0-spike/01-spec.md) wacht op goedkeuring. Daarna volgt
-het testplan, en pas daarna code.
+Goal Document en Wave Specification voor W0 zijn goedgekeurd; het
+[Test & Verification Plan](docs/waves/W0-spike/02-testplan.md) wacht op goedkeuring.
+Daarna kan er gebouwd worden.
 
 ## Documenten
 
@@ -27,7 +27,8 @@ het testplan, en pas daarna code.
 | [07 – Wave-methode](docs/07-wave-methode.md) | Hoe we per brok werken | voorstel |
 | [08 – Vervolgvragen, ronde 2](docs/08-vervolgvragen.md) | Besluitenregister, met Jos' antwoorden | ✅ beantwoord |
 | [W0 – Goal Document](docs/waves/W0-spike/00-goal.md) | Spike: wil ik hierin typen? | ✅ goedgekeurd |
-| **[W0 – Wave Specification](docs/waves/W0-spike/01-spec.md)** | **Het implementatiecontract voor de spike** | ⏳ **ter goedkeuring** |
+| [W0 – Wave Specification](docs/waves/W0-spike/01-spec.md) | Het implementatiecontract voor de spike | ✅ goedgekeurd |
+| **[W0 – Test & Verification Plan](docs/waves/W0-spike/02-testplan.md)** | **Wat er bewezen moet worden vóór er code is** | ⏳ **ter goedkeuring** |
 
 ## Werkwijze
 

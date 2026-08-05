@@ -251,5 +251,6 @@ staat, lopen ze uit elkaar en is het bord schadelijk in plaats van nuttig.
 | Wave-issues aangemaakt | ✅ `#1`–`#11` |
 | Bord aangemaakt in GitHub Projects | ⬜ handmatig, zie §8 |
 | Goal Document W0 | ✅ [goedgekeurd](waves/W0-spike/00-goal.md) |
-| **Wave Specification W0** | ⏳ [geschreven, wacht op goedkeuring](waves/W0-spike/01-spec.md) |
-| Test & Verification Plan W0 | ⬜ vóór de eerste regel code |
+| Wave Specification W0 | ✅ [goedgekeurd](waves/W0-spike/01-spec.md) |
+| **Test & Verification Plan W0** | ⏳ [geschreven, wacht op goedkeuring](waves/W0-spike/02-testplan.md) |
+| Implementatie W0 | ⬜ na goedkeuring, en na antwoord op de CRLF-vraag |
