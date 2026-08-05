@@ -1,8 +1,8 @@
 # 07 – De wave-methode toegepast op Lapis
 
-**Status:** voorstel voor werkwijze. Nog niet in gebruik — we zijn nog in diamant 1 en er
-is nog geen goedgekeurde scope om waves uit te snijden. Openstaande vragen hierover:
-[G1 t/m G6](05-open-vragen.md#g-proces-waves-backlog-verificatie).
+**Status:** werkwijze vastgesteld (G1 t/m G6 beantwoord). De wave-indeling in §5 is een
+voorstel dat nog goedgekeurd moet worden; daarna kan het eerste Goal Document geschreven
+worden.
 
 ---
 
@@ -69,7 +69,9 @@ testen tegen fixture-vaults.
 ### 4.2 Wat "browser-bewijs" hier betekent
 
 De gids eist een browser-happy-flow bij elke UI-wave. Voor een desktop-app zijn er drie
-niveaus, en welk niveau we aanhouden is open vraag [G4](05-open-vragen.md#g4--hoe-streng-wordt-de-verificatie):
+niveaus. G4 legt de technische verificatie bij mij en de UX/UI-beoordeling bij Jos, dus
+de keuze hieronder is binnen die afspraak de mijne — hij staat hier zodat je hem kunt
+bekritiseren, wat expliciet jouw rol is:
 
 | Niveau | Wat het is | Kosten |
 |---|---|---|
@@ -77,25 +79,26 @@ niveaus, en welk niveau we aanhouden is open vraag [G4](05-open-vragen.md#g4--ho
 | **B** | End-to-end tegen de echte app (WebDriver via `tauri-driver`, of Playwright tegen Electron). Test wat de gebruiker werkelijk doet. | Middel–hoog, en broos |
 | **C** | Handmatig, met een screenshot als bewijs. | Vrijwel nul |
 
-**Mijn voorstel, als voorstel:** niveau A vanaf de eerste UI-wave, niveau B pas als de
-app stabiel is, niveau C toegestaan voor puur visuele waves — met de reden erbij, zoals
-de gids voorschrijft.
+**Aanpak:** niveau A vanaf de eerste UI-wave, niveau B pas als de app stabiel is, niveau
+C alleen voor puur visuele waves — altijd met de reden erbij, zoals de gids voorschrijft.
 
 ### 4.3 Onze eigen isolatiecheck
 
 De verboden-termenlijst uit de gids (`mcb`, `mortgage`, `workitem` enzovoort) hoort bij
 een ander project. De onderliggende gedachte is wel bruikbaar: *zoek geautomatiseerd naar
-dingen die er principieel niet in horen.* Voor Lapis zou dat kunnen zijn:
+dingen die er principieel niet in horen.* Voor Lapis controleert elke wave op:
 
-- Geen hardgecodeerde paden of gebruikersnamen in de kern (het "werkt ook voor anderen"-
-  principe uit vraag A6).
-- Geen schrijfacties naar de vault buiten de ene toegestane schrijffunctie — te
-  controleren met een zoekopdracht op schrijf-API's.
-- Geen netwerk-aanroepen in de kern, als het antwoord op D8 "geen netwerkverkeer" is.
-- Geen bestandsnamen of extensies buiten de toegestane lijst.
+| Check | Waarom | Herkomst |
+|---|---|---|
+| Geen hardgecodeerde paden of gebruikersnamen in de kern | Lapis moet ook voor anderen werken | A6, principe uit [PRD §2](03-prd.md#2-gebruiker) |
+| Geen schrijfacties naar de vault buiten de ene toegestane schrijffunctie | Eén poort naar de schijf houdt de veiligheidsgaranties controleerbaar | C9, [PRD F3](03-prd.md#4-scope-v1) |
+| Geen bestand geschreven in de vault dat geen markdown of bijlage is | De vault blijft schoon en Obsidian-compatibel | C9, principe 1 |
+| Geen netwerk-aanroepen in de kern | Geen telemetrie, geen update-check, volledig offline | D8, [PRD §8](03-prd.md#8-randvoorwaarden) |
+| Geen aannames over mapnamen of vaultstructuur | Zelfde reden als de eerste regel | A6 |
 
-Dit is een voorstel. Wat de lijst wordt, hangt af van welke principes je in sectie C
-bevestigt.
+Dit is een concrete, uitvoerbare lijst geworden nu de principes in de PRD vaststaan. Hij
+groeit mee: elke keer dat er een principe bijkomt dat automatisch te controleren is, komt
+er een regel bij.
 
 ### 4.4 De verantwoordelijkheidsgrens
 
@@ -110,27 +113,54 @@ dataverlies leidt.
 
 ## 5. Voorstel wave-indeling
 
-**Nadrukkelijk een voorstel — open vraag [G1](05-open-vragen.md#g1--hoe-groot-is-een-wave).**
-De indeling kan pas echt gemaakt worden als sectie C beantwoord is, want de scope bepaalt
-de waves.
+Afgeleid uit F1 t/m F7 van [PRD v1.1](03-prd.md#4-scope-v1), klein gesneden zoals
+afgesproken in G1, en afgestemd op uitvoering door agents. **Voorstel — nog niet
+goedgekeurd.**
 
-| Wave | Naam | Capability | Waarom deze grens |
+| Wave | Capability | Levert | Afhankelijk van |
 |---|---|---|---|
-| **W0** | Spike | Niet meer dan: map openen, één bestand in live preview bewerken en opslaan. Wegwerpcode. | Beantwoordt "wil ik hierin typen?" en levert een echt getal voor de schatting |
-| **W1** | Vault lezen | Een map openen, de boom tonen, een bestand openen en lezen. Nog niet schrijven. | Lezen is risicoloos; schrijven niet. Ze scheiden houdt W1 klein en W2 scherp |
-| **W2** | Vault schrijven | Bewerken, opslaan, externe wijzigingen detecteren, conflicten afhandelen | De gevaarlijkste wave. Verdient een eigen, streng testplan |
-| **W3** | Vinden | Index, quick switcher, full-text search | Onafhankelijk van W2, kan parallel ontworpen worden |
-| **W4** | Ordenen | Frontmatter, tags, tag-overzicht | Afhankelijk van W3's index |
-| **W5** | Bestandsbeheer | Nieuw, hernoemen, verwijderen, verplaatsen | Raakt weer de bestandslaag; na W2 omdat het diezelfde garanties nodig heeft |
-| **W6** | Vorm | Typografie, licht/donker, lege staten, instellingen | Als eigen wave, niet als restpost. Anders verdwijnt het product zelf in de afwerking |
+| **W0** | **Spike** — wegwerpcode: map openen, één bestand in live preview bewerken en opslaan | Een antwoord op "wil ik hierin typen?" | — |
+| **W1** | **Vault openen en tonen** — map kiezen en onthouden, mapboom, sidebar verbergen, verborgen mappen negeren | F1 | W0 |
+| **W2** | **Notitie lezen** — een bestand openen en tonen in live preview. Alleen-lezen, nog niet opslaan | F2 (leeskant) | W1 |
+| **W3** | **Notitie schrijven** — bewerken, autosave, `⌘S`, atomair schrijven | F2 + F3 (schrijfkant) | W2 |
+| **W4** | **Het focusmodel** — opslaan en loslaten bij focusverlies, herladen bij terugkeer, en het ene conflictgeval | F3 (veiligheidskant) | W3 |
+| **W5** | **Quick switcher** — `⌘K`, fuzzy over paden in het geheugen. Nog geen index | F4 (helft) | W1 |
+| **W6** | **Full-text search** — SQLite FTS5, `⌘⇧F`, incrementeel bijwerken | F4 (helft) | W3, W5 |
+| **W7** | **Bestandsbeheer** — nieuw, hernoemen, verplaatsen, prullenbak, naam uit kopregel bij eerste opslag | F5 (bestanden) | W3 |
+| **W8** | **Bijlagen** — inline afbeeldingen, plakken, de map-per-notitie-regel | F5 (bijlagen) | W7 |
+| **W9** | **Vaste eerste pagina** | F7 | W1 |
+| **W10** | **De vorm** — typografie, licht/donker, lege staten, instellingenscherm | F6 | Ontwerp van Jos |
 
-Twee dingen aan deze indeling die bewust zijn:
+Vijf keuzes in deze indeling die bewust zijn en die je kunt terugdraaien:
 
-- **W0 is wegwerpcode.** De gids zou eisen dat een wave bewijsbaar af is; voor een spike
-  is het bewijs jouw oordeel, niet een test. Dat is een geldige afwijking, mits
-  opgeschreven.
-- **W6 staat als volwaardige wave op de lijst**, omdat het bij dit product de kern is en
-  niet de afwerking.
+**Lezen en schrijven zijn gescheiden (W2 en W3).** Lezen kan niets kapotmaken, schrijven
+wel. Door ze te splitsen kun je W2 met een gerust hart tegen je echte vault draaien,
+terwijl W3 tot het einde in een fixture-vault blijft (ronde 2, V6b).
+
+**Het focusmodel is een eigen wave (W4).** Het had bij W3 gekund, maar het is het
+onderdeel met de meeste manieren om subtiel fout te gaan, en het verdient een eigen
+testplan in plaats van een paar losse gevallen aan het eind van een grotere wave.
+
+**Zoeken is in tweeën geknipt (W5 en W6).** De quick switcher heeft geen index nodig en
+kan direct na W1 — daarmee is Lapis al vroeg bruikbaar om rond te navigeren. Full-text
+brengt SQLite mee en hoort in een eigen wave.
+
+**Bijlagen staan los van bestandsbeheer (W8 na W7).** De map-per-notitie-regel raakt
+dezelfde bestandslaag als hernoemen, en die moet eerst bewezen zijn. Met ~168 MB aan
+bijlagen in de echte vault is dit bovendien geen kleine wave.
+
+**De vorm is een volwaardige wave (W10), geen restpost.** Volgens principe 7 is het
+ontwerp het onderscheidend vermogen. Zou W10 wegvallen omdat de tijd op is, dan is het
+project mislukt, ook al werkt alles.
+
+**Volgorde-advies.** W0 → W1 → W2 → W5 geeft je binnen een paar waves iets waarmee je je
+eigen vault kunt doorbladeren en lezen, zonder enig schrijfrisico. Dat is het moment om
+te beginnen met het echte ontwerp, want dan is er iets om op te reageren. W3 en W4 daarna,
+in een fixture-vault, tot ze hun testsuite doorstaan.
+
+**Afwijking van de gids bij W0.** Een spike is per definitie niet "bewijsbaar af" met
+tests; het bewijs is jouw oordeel. Dat is een bewuste afwijking en geen slordigheid, en
+staat als zodanig in het Goal Document van W0.
 
 ## 6. Werkafspraak per wave
 

@@ -1,13 +1,17 @@
-# 03 – PRD: Lapis v1.0
+# 03 – PRD: Lapis
 
 | | |
 |---|---|
-| **Versie** | 1.0 |
+| **Versie** | 1.1 |
 | **Datum** | augustus 2026 |
 | **Eigenaar** | Jos |
-| **Status** | Geldig. Herschreven op basis van de antwoorden in [05](05-open-vragen.md) en [08](08-vervolgvragen.md) |
+| **Status** | Geldig. Gebaseerd op de antwoorden in [05](05-open-vragen.md), [08](08-vervolgvragen.md) en ronde 3 |
 | **Platform** | macOS (Apple Silicon). Mobiel later, Windows/Linux misschien |
-| **Open besluiten** | Vijf, zie [§10](#10-open-besluiten--ronde-3) — geen ervan blokkeert de eerste waves |
+| **Open besluiten** | Drie, zie [§10](#10-open-besluiten) — geen ervan blokkeert de eerste waves |
+
+**Wijzigingen in 1.1:** todo's als vaste eerste pagina zijn in scope (F7); het
+focusmodel voor opslaan en herladen is vastgesteld (F3); frontmatter-gedrag bevestigd;
+vaultomvang ingevuld op 402 notities.
 
 > Deze versie vervangt het concept uit ronde 1 volledig. Elke uitspraak hieronder is
 > herleidbaar naar een antwoord van Jos; waar ik interpreteer staat dat erbij.
@@ -56,8 +60,8 @@ lost dit probleem niet op.
 **Primair: n = 1.** Jos. Vault in `~/Documents`, **402 notities**, ~170 MB totaal,
 georganiseerd in mappen zonder tags. Die twee getallen samen zeggen iets belangrijks:
 402 markdown-bestanden zijn hooguit een paar MB, dus vrijwel de gehele 170 MB bestaat uit
-bijlagen. Lapis is dus meer een bijlagenbeheerder dan het aantal notities doet vermoeden. Dagelijkse handelingen: schrijven, zoeken, terugvinden (B6) — en todo's bijhouden,
-dat pas in ronde 2 bovenkwam en nog niet is uitgewerkt (zie [§10](#10-open-besluiten--ronde-3)).
+bijlagen. Lapis is dus meer een bijlagenbeheerder dan het aantal notities doet vermoeden.
+Dagelijkse handelingen: schrijven, zoeken, terugvinden (B6) en todo's bijhouden (F7).
 Bewerkt notities soms buiten de editor om, via Claude Code en een MCP-server (B5, B10).
 
 **Secundair, expliciet meegenomen:** Jos is UX-designer en wil "een tool voor mijzelf
@@ -129,14 +133,22 @@ opent daarna in Obsidian byte-voor-byte gelijk buiten de bewerking.
 - Autosave, met `⌘S` als expliciet extra (C3).
 - Atomair schrijven: naar een tijdelijk bestand, `fsync`, dan `rename()` over het
   origineel. Halve bestanden bestaan niet.
-- Externe wijzigingen worden opgemerkt. Is het document schoon, dan mag Lapis herladen.
-  Is er een conflict, dan meldt Lapis dat en blokkeert het document — nooit stil
-  overschrijven. (C4; de precieze vorm is [open besluit 3](#10-open-besluiten--ronde-3))
+- **Het focusmodel** (C4, ronde 3 besluit 3): verlaat je Lapis, dan wordt opgeslagen en
+  het bestand losgelaten. Kom je terug, dan wordt het opnieuw van schijf geladen. Lapis
+  houdt een bestand dus alleen vast terwijl je er actief in typt.
 - Geen back-upmechanisme in de app voor de MVP (D7).
 
-**Acceptatie:** `echo "test" >> notitie.md` in de terminal is binnen een seconde
-zichtbaar. Een gelijktijdige externe schrijfactie leidt nooit tot verlies van getypte
-tekst zonder dat de gebruiker een keuze heeft gemaakt.
+**Waarom het focusmodel de belangrijkste beslissing in F3 is.** Het lost het
+conflictprobleem niet op door het beter af te handelen, maar door het grotendeels weg te
+ontwerpen. Een editor die een bestand vasthoudt terwijl je koffie haalt, bouwt
+conflictkansen op; Lapis doet dat niet. Wat overblijft is één geval — er wordt extern
+geschreven terwijl jij typt — en dat is zeldzaam genoeg om er een expliciete melding voor
+te mogen tonen in plaats van een automatisme. De precieze vorm daarvan is
+[open besluit 1](#10-open-besluiten) en wordt in de betreffende wave vastgelegd.
+
+**Acceptatie:** `echo "test" >> notitie.md` in de terminal, terwijl Lapis op de
+achtergrond staat, levert bij terugkeer de nieuwe inhoud. Getypte tekst gaat nooit
+verloren zonder dat de gebruiker een keuze heeft gemaakt.
 
 ### F4 · Vinden
 
@@ -187,12 +199,29 @@ Geen afwerking maar het product (principe 7).
 **Acceptatie:** Jos beoordeelt dit; er is geen automatische test die "genoeg ontworpen"
 meet.
 
-### F7 · Todo's — kandidaat, nog niet in scope
+### F7 · De vaste eerste pagina
 
-In ronde 2 kwam naar voren dat Obsidian ook gebruikt wordt om todo's bij te houden, met
-het idee van "een vaste eerste pagina". Dat is een dagelijkse handeling die niet in B6
-stond en dus niet in de scope zat. Uitwerking en opties in
-[§10, besluit 1](#10-open-besluiten--ronde-3). **Tot dat besluit valt, is dit geen scope.**
+Eén notitie in de vault wordt aangewezen als startpagina. Die opent wanneer Lapis start,
+en is altijd met één sneltoets bereikbaar.
+
+- Aanwijzen gebeurt via de bestandsboom (rechtermuisknop → "als startpagina instellen").
+  Welke notitie het is, wordt buiten de vault opgeslagen (principe 1).
+- Is er geen startpagina ingesteld, dan opent Lapis leeg. Geen dialoog, geen suggestie.
+- Verdwijnt de aangewezen notitie, dan vervalt de instelling stilzwijgend.
+
+**Wat dit expliciet niet is:** een todo-systeem. Er komt geen datamodel, geen
+verzamelscherm en geen statusbeheer. Todo's zijn gewone `- [ ]`-regels in gewone
+markdown, en die vinkjes zijn in F2 al klikbaar. Wat F7 toevoegt is uitsluitend
+*een vaste plek die altijd openstaat.*
+
+**Herkomst:** Jos gebruikt Obsidian ook voor todo's — een dagelijkse handeling die niet
+in B6 stond en pas in ronde 2 bovenkwam. Van de vier uitgewerkte opties is dit de
+kleinste die de behoefte echt beantwoordt. Een verzamelscherm van alle `- [ ]` in de
+vault is afgewezen, omdat dat een query-systeem is in vermomming — en query's staan in
+de anti-scope.
+
+**Acceptatie:** Lapis starten opent de aangewezen notitie. De sneltoets brengt je er
+altijd naartoe, ongeacht waar je bent.
 
 ## 5. Anti-scope
 
@@ -240,7 +269,7 @@ lakmoesproef die er is: je sluit Obsidian pas als je erop vertrouwt dat je niets
 
 | Meetpunt | Norm | Hoe |
 |---|---|---|
-| Dataverlies-incidenten | **0** — harde eis, elk incident is een stopper | Elke keer dat het gebeurt vastleggen |
+| Dataverlies-incidenten | **0** — harde eis, elk incident is een stopper | Elke keer dat het gebeurt vastleggen. Vangnet zolang er geen back-ups zijn: `git init` in de vault, door Jos zelf gezet (ronde 3 besluit 4) |
 | Snelheid | "Moet niet traag voelen" (D6) | Per wave beoordeeld; harde getallen pas als er iets te meten valt |
 | Schaal | Goed blijven werken bij 5.000+ notities, terwijl de echte vault er 402 heeft | Fixture-vault met 5.000–10.000 notities in de testsuite |
 | Terugval naar Obsidian | Noteren wát er gemist werd | Notitie in de vault zelf |
@@ -263,11 +292,16 @@ Je landt op de juiste regel, niet bovenaan het document.
 Bear werkte en in Apple Notes en iA Writer ontbrak — hij verdient evenveel aandacht als
 zoeken.
 
+**Even je todo's bekijken.** Lapis openen — de startpagina staat er al. Of vanuit een
+andere notitie: één sneltoets terug. Vinkje aanzetten met een klik.
+
 **Een screenshot in een notitie plakken.** Plakken → de afbeelding verschijnt inline →
 de notitie krijgt haar eigen map met de afbeelding erin.
 
-**Claude Code wijzigt een bestand dat openstaat.** Lapis merkt het en handelt volgens F3;
-getypte tekst verdwijnt nooit zonder dat er een keuze is gemaakt.
+**Claude Code wijzigt een bestand dat openstaat.** Sta je op dat moment niet in Lapis,
+dan is het bestand losgelaten en zie je bij terugkeer gewoon de nieuwe inhoud — geen
+melding, geen keuze, want er valt niets te kiezen. Zit je er wél in te typen, dan meldt
+Lapis het en verdwijnt jouw tekst nooit zonder dat je hebt gekozen.
 
 ## 8. Randvoorwaarden
 
@@ -296,110 +330,46 @@ Bewust, om te voorkomen dat dit document weer besluiten bevat die elders horen:
 - **Concrete prestatiegetallen** → pas als er iets te meten valt (D6).
 - **Het visuele ontwerp** → Jos, na de spike.
 
-## 10. Open besluiten — ronde 3
+## 10. Open besluiten
 
-Vijf punten. Geen ervan blokkeert het schrijven van het eerste Goal Document.
+Drie punten. Geen ervan blokkeert het bouwen; elk heeft een aangewezen moment.
 
-### 1. Todo's: wat wordt F7? 🔴 *raakt de scope*
+### 1. Wat gebeurt er als er wordt geschreven terwijl jij typt? 🟡 *voor de schrijfwave*
 
-Je schreef bij V1: *"wat wel een feature kan zijn, en waar ik Obsidian wel voor gebruik,
-is het bijhouden van todo's. Wellicht een vaste eerste pagina?"*
+Het focusmodel (F3) haalt de meeste conflicten weg: Lapis houdt een bestand alleen vast
+zolang jij er actief in typt. Eén geval blijft over — Claude Code of de MCP-server
+schrijft precies op het moment dat jij in dat bestand aan het werk bent.
 
-Dat is belangrijk om twee redenen. Ten eerste is het een dagelijkse handeling die niet in
-B6 stond — de vraag is dus of er nóg meer buiten die lijst valt. Ten tweede is het de
-eerste test van de regel uit §5: wat mag er in ruil weg?
+Voorstel als vertrekpunt, vast te leggen in het Goal Document van de schrijfwave:
 
-| | Optie | Wat het kost | Wat het risico is |
-|---|---|---|---|
-| **a** | **Niets bouwen.** Markdown heeft `- [ ]` al, en die vinkjes zijn in F2 al klikbaar. Je maakt `Todo.md` en opent hem met `⌘K` | Nul | Je moet elke keer navigeren |
-| **b** | **Vaste eerste pagina.** Eén aangewezen notitie die opent bij het starten van Lapis, altijd bereikbaar met één sneltoets. Geen todo-systeem — een gepinde notitie | Klein, geen datamodel | Vrijwel geen |
-| **c** | **Todo-overzicht.** Lapis verzamelt alle `- [ ]` uit de hele vault in één lijst | Middel | Dit is een query-systeem in vermomming — precies wat je in V1 als anti-scope hebt aangekruist |
-| **d** | **Echt todo-systeem** met datums, prioriteiten, herhaling | Groot | Ander product |
+- Lapis toont een balk boven het document: *"Dit bestand is zojuist buiten Lapis
+  gewijzigd."*
+- Jouw getypte tekst blijft in beeld en gaat nergens heen.
+- Drie keuzes: **mijn versie behouden** · **hun versie laden** (met bevestiging) ·
+  **beide bewaren** (jouw versie als kopie ernaast).
+- Er is geen standaardkeuze en er verloopt geen timer. De situatie blijft staan tot je
+  kiest.
 
-**Mijn advies, als advies:** b. Het beantwoordt de echte behoefte ("een vaste plek die ik
-altijd kan openen") zonder een nieuw concept te introduceren, en het is met principe 2
-verenigbaar. Optie c raad ik af omdat je hem in V1 zelf hebt uitgesloten.
+Akkoord, of wil je iets anders? Dit is de enige plek in het hele product waar tekst
+verloren kán gaan, dus het is de moeite waard om er precies over te zijn.
 
-**Vervolgvraag die hier los van staat:** staan er nog meer dagelijkse handelingen buiten
-je B6-lijstje?
+### 2. Waar staan je bijlagen nu? 🟡 *voor de bijlagenwave*
 
-### 2. Frontmatter — je gaf aan het niet helemaal te snappen 🟡
-
-Terecht, want ik heb het nergens uitgelegd. Frontmatter is het blokje dat sommige
-markdown-bestanden bovenaan hebben, tussen twee regels met drie streepjes:
-
-```markdown
----
-title: Mijn notitie
-tags: [werk, project]
-created: 2026-08-05
----
-
-# Mijn notitie
-
-De eigenlijke tekst begint hier.
-```
-
-Obsidian noemt dit "properties". Het is bedoeld om gegevens over de notitie op te slaan
-zodat software erop kan filteren. Jij gebruikt het niet — maar het kán in je bestanden
-staan, gezet door een sjabloon, door de MCP-server of door Claude Code.
-
-**Mijn lezing van je antwoorden (C6 + V2), ter bevestiging:** Lapis bouwt niets voor
-frontmatter. Staat het er, dan wordt het gewoon getoond zoals het in het bestand staat en
-blijft het onaangeraakt. Staat het er niet, dan gebeurt er niets. Geen invulformulier,
-geen inklappen, geen tag-koppeling.
-
-Klopt dat, of wil je het juist verbergen als het er staat?
-
-### 3. Wat betekent "dicht" precies? 🟡 *raakt de veiligste laag*
-
-Je antwoord op V4 was: *"het document gaat 'dicht' zoals bij Snapchat wanneer je weg
-tabt."* Dat kan ik op twee manieren lezen, en het verschil is groot:
-
-- **Lezing A — bij focusverlies:** verlaat je Lapis, dan wordt opgeslagen en het bestand
-  losgelaten; kom je terug, dan wordt het opnieuw geladen. Elegant gevolg: er is bijna
-  geen conflict meer mogelijk, want Lapis houdt een bestand alleen vast terwijl jij er
-  actief in typt.
-- **Lezing B — bij een conflict:** wijzigt een bestand extern, dan sluit Lapis het
-  document. De vraag die dan openstaat: waar gaat de tekst heen die jij net had getypt en
-  die nog niet was opgeslagen?
-
-**Mijn lezing:** je bedoelt A, en A is ook het betere model — het lost het probleem op
-door de conflictsituatie grotendeels weg te ontwerpen in plaats van hem af te handelen.
-Maar A dekt niet alles: er blijft één geval over, namelijk dat er iets schrijft terwijl
-jij aan het typen bent. Wat wil je dat er dán gebeurt?
-
-### 4. V6 — je antwoord was `o` 🟡
-
-Vermoedelijk "ok", maar ik ga hier niets aannemen, want het gaat over jouw notities.
-Twee losse punten:
-
-- **b) Schrijftests draaien uitsluitend tegen een fixture-vault**, nooit tegen
-  `~/Documents`, tot de bestandslaag zijn testsuite doorstaat. Dit staat wat mij betreft
-  vast tenzij je bezwaar maakt.
-- **a) `git init` in de vault** als vangnet zolang er geen back-ups zijn. Kost je niets en
-  geeft volledige geschiedenis, maar zet een `.git`-map in je vault. Jouw keuze.
-
-### 5. Waar staan je bijlagen nu? 🟡 *nieuw, volgt uit de telling*
-
-Beantwoord: **402 notities**, doelwaarde 5.000+. Daaruit volgt een vraag die er eerder
-niet was.
-
-402 notities zijn hooguit een paar MB markdown. De overige ~168 MB zijn bijlagen — een
-verhouding van ruwweg 400 bijlage-MB per MB tekst. Dat maakt de mapafspraak uit F5
-zwaarder dan hij op papier leek.
+402 notities zijn hooguit een paar MB markdown. De overige ~168 MB zijn bijlagen — ruwweg
+400 MB bijlage per MB tekst. Dat maakt de mapafspraak uit F5 zwaarder dan hij op papier
+leek.
 
 De vraag: **waar staan die bijlagen op dit moment?** Obsidian gebruikt standaard één
-centrale map (vaak `attachments/` of `_resources/`) voor alles wat je plakt. Als dat bij
-jou zo is, dan introduceert F5 een tweede patroon náást het bestaande:
+centrale map (vaak `attachments/` of `_resources/`). Is dat bij jou zo, dan introduceert
+F5 een tweede patroon náást het bestaande:
 
 - oude bijlagen: centraal in één map
 - nieuwe bijlagen: per notitie in een eigen map
 
 Twee patronen naast elkaar in dezelfde vault is precies het soort onopgeloste weging
-waar §1 over gaat. Opties: laten zoals het is en accepteren dat oud en nieuw verschillen;
-of F5 aanpassen naar wat je nu al doet; of eenmalig migreren (dat laatste raad ik af — het
-verplaatst honderden bestanden voor cosmetiek).
+waar §1 over gaat. Opties: laten zoals het is en het verschil accepteren; F5 aanpassen
+naar wat je nu al doet; of eenmalig migreren — dat laatste raad ik af, het verplaatst
+honderden bestanden voor cosmetiek.
 
 Uitzoeken met:
 
@@ -407,17 +377,25 @@ Uitzoeken met:
 find ~/Documents -type d \( -iname 'attachment*' -o -iname '*resource*' -o -iname 'assets' \)
 ```
 
----
+### 3. Staan er nog meer dagelijkse handelingen buiten B6? 🟢 *doorlopend*
+
+Todo's kwamen pas in ronde 2 boven, terwijl B6 als compleet bedoeld was. Dat is geen
+verwijt — het is normaal dat je je eigen gewoontes pas ziet als er iets naast wordt
+gelegd. Maar het betekent wel dat de functielijst mogelijk nog een gat heeft.
+
+Deze vraag hoeft niet nu beantwoord te worden. Het antwoord komt vanzelf tijdens het
+gebruik van de eerste versies: elke keer dat je Obsidian toch opent, staat er iets op de
+lijst dat we gemist hebben (§6).
 
 ## 11. Volgende stappen
 
-1. **Wave-indeling** — klein gesneden (G1), afgestemd op uitvoering door agents, op basis
-   van F1 t/m F6.
+1. **Wave-indeling goedkeuren** — voorstel staat in
+   [07 §5](07-wave-methode.md#5-voorstel-wave-indeling): elf kleine waves, afgeleid uit
+   F1 t/m F7 en afgestemd op uitvoering door agents.
 2. **GitHub Projects inrichten** op `josbez/lapis` — één kaart per taak, kolommen volgens
    de wave-cyclus (G2, G3).
 3. **Goal Document voor W0** (de spike): een map openen, één bestand in live preview
    bewerken en opslaan. Beantwoordt de enige vraag die er nu toe doet — wil je hierin
    typen?
 
-Open besluit 1 (todo's) hoeft niet vóór W0 beantwoord te zijn, maar wel vóór de
-wave-indeling definitief wordt.
+Geen van de drie open besluiten uit §10 blokkeert stap 1 of 3.

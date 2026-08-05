@@ -6,10 +6,11 @@ Lapis doet wat Obsidian doet op de dag dat je gewoon wilt schrijven en terugvind
 en verder niets. Geen graph view, geen plugin-store, geen ribbon met twaalf iconen.
 Je bestanden blijven gewone markdown in een gewone map.
 
-**Status:** de eerste diamant is gesloten. **[PRD v1.0](docs/03-prd.md) is geldig** —
+**Status:** de eerste diamant is gesloten. **[PRD v1.1](docs/03-prd.md) is geldig** —
 probleem, scope, anti-scope en succescriteria staan vast. Stack: Tauri v2 · React ·
-CodeMirror 6 · SQLite FTS5. Vijf open besluiten staan in §10 van de PRD; geen ervan
-blokkeert de eerste wave. Volgende stap: wave-indeling en het Goal Document voor W0.
+CodeMirror 6 · SQLite FTS5. Er ligt een [wave-indeling](docs/07-wave-methode.md#5-voorstel-wave-indeling)
+van elf kleine waves ter goedkeuring. Daarna: GitHub Projects inrichten en het Goal
+Document voor W0.
 
 ## Documenten
 
@@ -18,7 +19,7 @@ blokkeert de eerste wave. Volgende stap: wave-indeling en het Goal Document voor
 | [00 – Aanpak](docs/00-aanpak-pm.md) | Rolverdeling, human in the lead, waar we staan | actueel |
 | [01 – Concurrentieonderzoek](docs/01-concurrentieonderzoek.md) | Wie doet dit al, en waar zit het gat | onderzoek, feitelijk |
 | [02 – Haalbaarheidsonderzoek](docs/02-haalbaarheidsonderzoek.md) | Kan dit gebouwd worden, en tegen welke prijs | onderzoek, met open keuzes |
-| **[03 – PRD v1.0](docs/03-prd.md)** | **Probleem, scope, anti-scope, succescriteria** | ✅ **geldig** |
+| **[03 – PRD v1.1](docs/03-prd.md)** | **Probleem, scope, anti-scope, succescriteria** | ✅ **geldig** |
 | [04 – Technische optieverkenning](docs/04-technische-spec.md) | Achtergrond bij de stackkeuzes | achtergrond |
 | [05 – Open vragen, ronde 1](docs/05-open-vragen.md) | Alle keuzes, met Jos' antwoorden | ✅ beantwoord |
 | [06 – Beslisinput techniek](docs/06-beslisinput-techniek.md) | Electron vs Tauri, mobiel, sync, urenopbouw | ✅ input voor 05 |
