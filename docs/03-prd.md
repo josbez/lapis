@@ -53,8 +53,10 @@ lost dit probleem niet op.
 
 ## 2. Gebruiker
 
-**Primair: n = 1.** Jos. Vault in `~/Documents`, ~170 MB, georganiseerd in mappen zonder
-tags. Dagelijkse handelingen: schrijven, zoeken, terugvinden (B6) — en todo's bijhouden,
+**Primair: n = 1.** Jos. Vault in `~/Documents`, **402 notities**, ~170 MB totaal,
+georganiseerd in mappen zonder tags. Die twee getallen samen zeggen iets belangrijks:
+402 markdown-bestanden zijn hooguit een paar MB, dus vrijwel de gehele 170 MB bestaat uit
+bijlagen. Lapis is dus meer een bijlagenbeheerder dan het aantal notities doet vermoeden. Dagelijkse handelingen: schrijven, zoeken, terugvinden (B6) — en todo's bijhouden,
 dat pas in ronde 2 bovenkwam en nog niet is uitgewerkt (zie [§10](#10-open-besluiten--ronde-3)).
 Bewerkt notities soms buiten de editor om, via Claude Code en een MCP-server (B5, B10).
 
@@ -240,7 +242,7 @@ lakmoesproef die er is: je sluit Obsidian pas als je erop vertrouwt dat je niets
 |---|---|---|
 | Dataverlies-incidenten | **0** — harde eis, elk incident is een stopper | Elke keer dat het gebeurt vastleggen |
 | Snelheid | "Moet niet traag voelen" (D6) | Per wave beoordeeld; harde getallen pas als er iets te meten valt |
-| Schaal | Goed blijven werken bij 5.000+ notities | Fixture-vault in de testsuite |
+| Schaal | Goed blijven werken bij 5.000+ notities, terwijl de echte vault er 402 heeft | Fixture-vault met 5.000–10.000 notities in de testsuite |
 | Terugval naar Obsidian | Noteren wát er gemist werd | Notitie in de vault zelf |
 | Aantal instellingen | Zo laag mogelijk, geen vast getal | Tellen bij elke release |
 
@@ -279,7 +281,11 @@ getypte tekst verdwijnt nooit zonder dat er een keuze is gemaakt.
 - **Sync:** v1 wordt gebouwd tegen gewone lokale bestanden. De keuze tussen git,
   Syncthing en Drive volgt als mobiel aan de beurt is; we bouwen nu niets dat een van die
   drie onmogelijk maakt. (V5)
-- **Schaal:** ontwerpen voor 5.000+ notities (B1, ronde 2).
+- **Schaal:** ontwerpen voor 5.000+ notities, terwijl de huidige vault er 402 heeft. Dat
+  verschil van een factor twaalf is bewust: de app moet vanaf dag één onmiddellijk
+  aanvoelen en dat blijven doen als de vault meegroeit. Praktisch gevolg: bouwen zonder
+  voorbarige optimalisatie, maar testen tegen een fixture-vault van 5.000–10.000
+  notities, zodat traagheid in de testsuite opduikt en niet in dagelijks gebruik.
 
 ## 9. Wat deze PRD niet vastlegt
 
@@ -374,20 +380,31 @@ Twee losse punten:
 - **a) `git init` in de vault** als vangnet zolang er geen back-ups zijn. Kost je niets en
   geeft volledige geschiedenis, maar zet een `.git`-map in je vault. Jouw keuze.
 
-### 5. Hoeveel notities heb je nu? 🟢
+### 5. Waar staan je bijlagen nu? 🟡 *nieuw, volgt uit de telling*
 
-De doelwaarde is duidelijk (5.000+). Het huidige aantal ontbreekt nog, en dat bepaalt
-waar de fixture-vault op wordt gebouwd:
+Beantwoord: **402 notities**, doelwaarde 5.000+. Daaruit volgt een vraag die er eerder
+niet was.
+
+402 notities zijn hooguit een paar MB markdown. De overige ~168 MB zijn bijlagen — een
+verhouding van ruwweg 400 bijlage-MB per MB tekst. Dat maakt de mapafspraak uit F5
+zwaarder dan hij op papier leek.
+
+De vraag: **waar staan die bijlagen op dit moment?** Obsidian gebruikt standaard één
+centrale map (vaak `attachments/` of `_resources/`) voor alles wat je plakt. Als dat bij
+jou zo is, dan introduceert F5 een tweede patroon náást het bestaande:
+
+- oude bijlagen: centraal in één map
+- nieuwe bijlagen: per notitie in een eigen map
+
+Twee patronen naast elkaar in dezelfde vault is precies het soort onopgeloste weging
+waar §1 over gaat. Opties: laten zoals het is en accepteren dat oud en nieuw verschillen;
+of F5 aanpassen naar wat je nu al doet; of eenmalig migreren (dat laatste raad ik af — het
+verplaatst honderden bestanden voor cosmetiek).
+
+Uitzoeken met:
 
 ```bash
-# waar ligt de vault-root?
-find ~/Documents -maxdepth 3 -name '.obsidian' -type d
-
-# aantal notities
-find ~/Documents -name '*.md' | wc -l
-
-# hoeveel van de 170 MB is markdown
-find ~/Documents -name '*.md' -exec du -ch {} + | tail -1
+find ~/Documents -type d \( -iname 'attachment*' -o -iname '*resource*' -o -iname 'assets' \)
 ```
 
 ---
