@@ -6,9 +6,9 @@ Lapis doet wat Obsidian doet op de dag dat je gewoon wilt schrijven en terugvind
 en verder niets. Geen graph view, geen plugin-store, geen ribbon met twaalf iconen.
 Je bestanden blijven gewone markdown in een gewone map.
 
-**Status:** eerste diamant, nog niet gesloten. Er is geen code, geen goedgekeurde scope en
-geen techniekkeuze. **Het dossier wacht op antwoorden in
-[05 – Open vragen](docs/05-open-vragen.md).**
+**Status:** ronde 1 van de open vragen is beantwoord. De stack staat vast (Tauri v2 ·
+React · CodeMirror 6 · SQLite FTS5), de scope nog niet. **Drie vragen blokkeren de PRD:
+zie [08 – Vervolgvragen](docs/08-vervolgvragen.md).**
 
 ## Documenten
 
@@ -19,9 +19,10 @@ geen techniekkeuze. **Het dossier wacht op antwoorden in
 | [02 – Haalbaarheidsonderzoek](docs/02-haalbaarheidsonderzoek.md) | Kan dit gebouwd worden, en tegen welke prijs | onderzoek, met open keuzes |
 | [03 – PRD](docs/03-prd.md) | Scope en succescriteria | ⚠️ concept, niet geldig |
 | [04 – Technische optieverkenning](docs/04-technische-spec.md) | Eén uitgewerkte technische route | ⚠️ geen besluit |
-| **[05 – Open vragen](docs/05-open-vragen.md)** | **Alles wat Jos moet beslissen** | ⏳ **in te vullen** |
-| [06 – Beslisinput techniek](docs/06-beslisinput-techniek.md) | Electron vs Tauri, mobiel, sync, urenopbouw | ✅ ter voorbereiding op 05 |
+| [05 – Open vragen, ronde 1](docs/05-open-vragen.md) | Alle keuzes, met Jos' antwoorden | ✅ beantwoord |
+| [06 – Beslisinput techniek](docs/06-beslisinput-techniek.md) | Electron vs Tauri, mobiel, sync, urenopbouw | ✅ input voor 05 |
 | [07 – Wave-methode](docs/07-wave-methode.md) | Hoe we straks per brok werken | voorstel |
+| **[08 – Vervolgvragen, ronde 2](docs/08-vervolgvragen.md)** | **Besluitenregister + wat nog blokkeert** | ⏳ **3 open** |
 
 ## Werkwijze
 
