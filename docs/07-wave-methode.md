@@ -213,27 +213,43 @@ Het bewijsdocument (`03-bewijs.md`) staat niet in de gidsen als apart bestand, m
 gids eist wel een acceptatieverslag met commando's, uitkomsten en eerlijke vermelding van
 wat níét getest is. Als los bestand blijft dat terugvindbaar; in een commit-bericht niet.
 
-## 8. Verhouding tot de kanban
+## 8. De kanban
 
-Open vragen [G2 en G3](05-open-vragen.md#g2--waar-komt-de-backlog-te-staan). Voorstel:
-de wave-documenten in de repo zijn de inhoud, het bord toont alleen de stand. Eén kaart
-per wave, kolommen die de cyclus uit §6 volgen:
+**Stand van zaken:** de elf wave-issues staan op
+[josbez/lapis](https://github.com/josbez/lapis/issues) — `#1` t/m `#11`, in volgorde
+W0 t/m W10.
+
+**Wat ik niet kon doen.** Het bord zelf — GitHub Projects v2 — is niet via de beschikbare
+tools aan te maken. Dat is één handeling in de browser: op de repo → tab *Projects* →
+*New project* → *Board*. Daarna kun je de elf issues er in één keer aan toevoegen.
+
+**Voorstel voor de kolommen**, die de cyclus uit §6 volgen:
 
 ```
-Open vragen │ Goal concept │ Goal akkoord │ Spec akkoord │ Testplan │ In uitvoering │ Bewijs │ Geaccepteerd
+Goal concept │ Goal akkoord │ Spec akkoord │ Testplan │ In uitvoering │ Bewijs │ Geaccepteerd
 ```
 
-Het bord dupliceert dan niets. Zodra kaarten inhoud gaan bevatten die niet in de
-documenten staat, lopen ze uit elkaar en is het bord schadelijk in plaats van nuttig.
+**Twee niveaus op het bord.** G3 vraagt om één kaart per taak. Dat kan pas zodra er taken
+zijn, en taken komen uit de Wave Specification. De opzet is daarom:
 
-## 9. Wanneer we hiermee beginnen
+- **Wave-issues** (`#1`–`#11`) zijn er nu en tonen de stand van de wave.
+- **Taak-issues** worden per wave aangemaakt als de Wave Specification is goedgekeurd, en
+  gekoppeld als sub-issue van het wave-issue.
 
-Niet nu. De volgorde is:
+Zo bevat het bord nooit taken die uit een nog niet bestaand document zijn verzonnen.
 
-1. Sectie A van [05](05-open-vragen.md) beantwoord → de eerste diamant is gesloten, we
-   weten welk probleem we oplossen.
-2. Sectie C en D beantwoord → er is scope en een stack, dus er valt een wave te snijden.
-3. Dan pas: Goal Document voor W0 of W1.
+**De regel die het bord bruikbaar houdt:** de documenten in de repo zijn de inhoud, het
+bord toont alleen de stand. Zodra kaarten inhoud gaan bevatten die niet in de documenten
+staat, lopen ze uit elkaar en is het bord schadelijk in plaats van nuttig.
 
-Een Goal Document schrijven vóór stap 1 en 2 zou hetzelfde zijn als wat er in ronde 1
-misging: het document zou de antwoorden bevatten die jij nog moet geven.
+## 9. Waar we staan
+
+| Stap | Stand |
+|---|---|
+| Probleem, scope en stack vastgesteld | ✅ [PRD v1.1](03-prd.md) |
+| Wave-indeling goedgekeurd | ✅ elf waves, §5 |
+| Wave-issues aangemaakt | ✅ `#1`–`#11` |
+| Bord aangemaakt in GitHub Projects | ⬜ handmatig, zie §8 |
+| **Goal Document W0** | ⏳ [geschreven, wacht op goedkeuring](waves/W0-spike/00-goal.md) |
+| Wave Specification W0 | ⬜ na goedkeuring van de Goal |
+| Test & Verification Plan W0 | ⬜ vóór de eerste regel code |
