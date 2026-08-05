@@ -6,9 +6,10 @@ Lapis doet wat Obsidian doet op de dag dat je gewoon wilt schrijven en terugvind
 en verder niets. Geen graph view, geen plugin-store, geen ribbon met twaalf iconen.
 Je bestanden blijven gewone markdown in een gewone map.
 
-**Status:** ronde 1 van de open vragen is beantwoord. De stack staat vast (Tauri v2 ·
-React · CodeMirror 6 · SQLite FTS5), de scope nog niet. **Drie vragen blokkeren de PRD:
-zie [08 – Vervolgvragen](docs/08-vervolgvragen.md).**
+**Status:** de eerste diamant is gesloten. **[PRD v1.0](docs/03-prd.md) is geldig** —
+probleem, scope, anti-scope en succescriteria staan vast. Stack: Tauri v2 · React ·
+CodeMirror 6 · SQLite FTS5. Vijf open besluiten staan in §10 van de PRD; geen ervan
+blokkeert de eerste wave. Volgende stap: wave-indeling en het Goal Document voor W0.
 
 ## Documenten
 
@@ -17,12 +18,12 @@ zie [08 – Vervolgvragen](docs/08-vervolgvragen.md).**
 | [00 – Aanpak](docs/00-aanpak-pm.md) | Rolverdeling, human in the lead, waar we staan | actueel |
 | [01 – Concurrentieonderzoek](docs/01-concurrentieonderzoek.md) | Wie doet dit al, en waar zit het gat | onderzoek, feitelijk |
 | [02 – Haalbaarheidsonderzoek](docs/02-haalbaarheidsonderzoek.md) | Kan dit gebouwd worden, en tegen welke prijs | onderzoek, met open keuzes |
-| [03 – PRD](docs/03-prd.md) | Scope en succescriteria | ⚠️ concept, niet geldig |
-| [04 – Technische optieverkenning](docs/04-technische-spec.md) | Eén uitgewerkte technische route | ⚠️ geen besluit |
+| **[03 – PRD v1.0](docs/03-prd.md)** | **Probleem, scope, anti-scope, succescriteria** | ✅ **geldig** |
+| [04 – Technische optieverkenning](docs/04-technische-spec.md) | Achtergrond bij de stackkeuzes | achtergrond |
 | [05 – Open vragen, ronde 1](docs/05-open-vragen.md) | Alle keuzes, met Jos' antwoorden | ✅ beantwoord |
 | [06 – Beslisinput techniek](docs/06-beslisinput-techniek.md) | Electron vs Tauri, mobiel, sync, urenopbouw | ✅ input voor 05 |
-| [07 – Wave-methode](docs/07-wave-methode.md) | Hoe we straks per brok werken | voorstel |
-| **[08 – Vervolgvragen, ronde 2](docs/08-vervolgvragen.md)** | **Besluitenregister + wat nog blokkeert** | ⏳ **3 open** |
+| [07 – Wave-methode](docs/07-wave-methode.md) | Hoe we per brok werken | voorstel |
+| [08 – Vervolgvragen, ronde 2](docs/08-vervolgvragen.md) | Besluitenregister, met Jos' antwoorden | ✅ beantwoord |
 
 ## Werkwijze
 

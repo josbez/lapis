@@ -80,9 +80,9 @@ vooruitgelopen op die sluiting en is daarom gedegradeerd tot materiaal.
 | Discover | Bestaat dit al? | [01 Concurrentieonderzoek](01-concurrentieonderzoek.md) | ✅ |
 | Discover | Kan dit gebouwd worden? | [02 Haalbaarheidsonderzoek](02-haalbaarheidsonderzoek.md) | ✅ |
 | Discover | Wat moet Jos weten om te kiezen? | [06 Beslisinput techniek](06-beslisinput-techniek.md) | ✅ |
-| **Define** | **Welk probleem, welke scope, welke stack?** | [05 Open vragen](05-open-vragen.md) | ⏳ **bij Jos** |
-| Define | Wat bouwen we, wat niet? | PRD — [03](03-prd.md) herschrijven na 05 | ⬜ |
-| Develop | Per brok: doel, spec, bewijs | [07 Wave-methode](07-wave-methode.md) → `docs/waves/` | ⬜ |
+| Define | Welk probleem, welke scope, welke stack? | [05](05-open-vragen.md) + [08](08-vervolgvragen.md) | ✅ beantwoord |
+| Define | Wat bouwen we, wat niet? | [03 PRD v1.0](03-prd.md) | ✅ geldig |
+| **Develop** | **Per brok: doel, spec, bewijs** | [07 Wave-methode](07-wave-methode.md) → `docs/waves/` | ◄── **hier** |
 | Deliver | Gebruik ik het? | Dagelijks gebruik | ⬜ |
 | Deliver | Doorgaan of stoppen? | Beslispunt, criterium volgt uit A3/A4 | ⬜ |
 

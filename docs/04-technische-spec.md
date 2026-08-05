@@ -13,7 +13,9 @@
 > - Een echte specificatie ontstaat later per wave, volgens
 >   [07 – Wave-methode](07-wave-methode.md), en niet voor het hele product tegelijk.
 
-Hoort bij [PRD-concept v0.1](03-prd.md).
+De vastgestelde scope staat in [PRD v1.0](03-prd.md); daar zijn de stackkeuzes
+inmiddels ook beantwoord (Tauri v2 · React · CodeMirror 6 via `atomic-editor` ·
+SQLite FTS5). Dit document blijft staan als achtergrond bij die keuzes.
 
 ---
 
