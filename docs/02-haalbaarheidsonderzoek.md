@@ -3,10 +3,21 @@
 **Vraag:** kan één persoon dit bouwen tot een niveau waarop het Obsidian vervangt voor
 dagelijks gebruik? Zo ja, wat kost het en waar gaat het mis?
 
-**Conclusie vooraf: ja, haalbaar.** De MVP is ongeveer 6–9 weken avondwerk. Het zwaarste
-onderdeel — de live-preview editor — hoef je niet zelf te schrijven; daar bestaat
-volwassen open source voor. Het grootste risico is niet technisch maar
-scope-gerelateerd, met dataveiligheid als enige echte technische hobbel.
+**Conclusie vooraf: ja, haalbaar.** Het zwaarste onderdeel — de live-preview editor —
+hoef je niet zelf te schrijven; daar bestaat volwassen open source voor. Het grootste
+risico is niet technisch maar scope-gerelateerd, met dataveiligheid als enige echte
+technische hobbel.
+
+> ⚠️ **Twee correcties op de eerste versie van dit document.**
+>
+> 1. Hier stond "de MVP is ongeveer 6–9 weken avondwerk". Dat getal bevatte een
+>    onuitgesproken aanname van 13–15 werkuren per week, en het is gebaseerd op een
+>    functielijst die ik zelf had opgesteld. Volledige opbouw en herziening in
+>    [06 §7](06-beslisinput-techniek.md#7-waar-de-69-weken-vandaan-kwam-en-waarom-het-getal-nog-niets-waard-is).
+> 2. §4 hieronder presenteerde Tauri als gekozen. Dat besluit is niet genomen en ligt
+>    terug bij [vraag D1](05-open-vragen.md#d1--electron-tauri-v2-of-native-macos); de
+>    ontbrekende argumenten vóór Electron staan in
+>    [06 §1](06-beslisinput-techniek.md#1-electron-versus-tauri-v2--de-feitelijke-vergelijking).
 
 ---
 
@@ -66,15 +77,22 @@ en witruimte dan op de zoekfunctie. Plan er expliciet tijd voor in (M4 in de
 [technische spec](04-technische-spec.md#8-milestones)) in plaats van te hopen dat het
 vanzelf goed komt.
 
-## 4. Technologiekeuze — kort onderbouwd
+## 4. Technologiekeuze — open
 
-Uitgebreid in de [technische spec](04-technische-spec.md#2-stackkeuze). Samengevat:
+**Deze keuze is niet gemaakt.** Zie [06 §1](06-beslisinput-techniek.md#1-electron-versus-tauri-v2--de-feitelijke-vergelijking)
+voor de volledige vergelijking met voorbeelden, en
+[vraag D1](05-open-vragen.md#d1--electron-tauri-v2-of-native-macos) om hem te beantwoorden.
 
-| Optie | Voor | Tegen | Oordeel |
-|---|---|---|---|
-| **Tauri v2** (Rust + webview) | ~10 MB pakket, ~40 MB RAM idle, snelle koude start; CodeMirror direct bruikbaar | Rust leren voor de backend; WebKit-webview heeft eigen eigenaardigheden | ✅ **Gekozen** |
-| Electron | Wat Obsidian gebruikt; meeste voorbeelden; voorspelbare Chromium-rendering | ~85 MB pakket, ~170 MB RAM idle | ❌ Je bouwt dit ómdat het huidige te zwaar is |
-| Swift / SwiftUI | Beste macOS-gevoel, geen webview | Live preview in NSTextView is maanden werk; hele CodeMirror-ecosysteem valt weg | ❌ Verliest juist op het moeilijkste onderdeel |
+| Optie | Voor | Tegen |
+|---|---|---|
+| **Tauri v2** (Rust + webview) | ~10 MB pakket, ~40 MB RAM idle, snelle koude start; CodeMirror direct bruikbaar; **enige pad naar mobiel** | Rust erbij leren; WebKit-webview heeft eigen eigenaardigheden; kleiner ecosysteem |
+| **Electron** | Wat Obsidian zelf gebruikt; verreweg de meeste voorbeelden; één taal voor het hele project; voorspelbare Chromium-rendering; volwassen bestands- en distributieketen | ~85 MB pakket, ~170 MB RAM idle; geen mobiel pad |
+| **Swift / SwiftUI** | Beste macOS-gevoel, kleinste app, geen webview | Live preview in NSTextView is maanden werk; hele CodeMirror-ecosysteem valt weg |
+| **Hybride** (Swift-schil + CodeMirror in WKWebView) | macOS-gevoel én CodeMirror | Je bouwt zelf wat Tauri cadeau doet; minst betreden route |
+
+Het feit dat hier het meest van afhangt: **Electron ondersteunt geen mobiel.** Zolang
+[vraag E2](05-open-vragen.md#e2--komt-er-een-mobiele-versie--grootste-vraag-van-dit-document)
+open staat, kan D1 niet beantwoord worden.
 
 Benchmarks (augustus 2026) geven Tauri ~96% kleinere pakketten en ~75% minder
 geheugengebruik dan Electron, met koude start 380 ms tegen 1.420 ms. Voor een product
@@ -89,7 +107,7 @@ draait.
 
 | Post | Bedrag | Wanneer |
 |---|---|---|
-| Ontwikkeltijd MVP | 6–9 weken avondwerk (~80–120 uur) | Nu |
+| Ontwikkeltijd MVP | ~105–120 uur, doorlooptijd afhankelijk van [G5](05-open-vragen.md#g5--hoeveel-tijd-heb-je-werkelijk) — opbouw in [06 §7](06-beslisinput-techniek.md#7-waar-de-69-weken-vandaan-kwam-en-waarom-het-getal-nog-niets-waard-is) | Nu |
 | Apple Developer Program | $99/jaar | Alleen bij distributie buiten je eigen Mac |
 | Infrastructuur | €0 | — |
 | Afhankelijkheden | €0 (MIT) | — |

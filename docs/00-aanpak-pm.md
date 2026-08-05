@@ -31,24 +31,81 @@ Bij een persoonlijk project is de verleiding om nooit te evalueren. De PRD zet e
 harde vraag onder: *open ik Lapis in plaats van Obsidian, vier weken achter elkaar?*
 Zo niet, dan is het project mislukt — en dat is prima, zolang je het merkt.
 
+## Human in the lead — en waar dat in ronde 1 misging
+
+Dit project werkt met de mens in de lead, niet in de loop. Het verschil is niet
+cosmetisch:
+
+- **Human in the loop** = ik beslis, jij mag ingrijpen. Zwijgen betekent instemmen.
+- **Human in the lead** = jij beslist, ik lever materiaal, opties en een aanbeveling.
+  Zwijgen betekent dat er niets besloten is.
+
+In ronde 1 werkte ik feitelijk in de loop-modus: ik koos de techniek, de scope, de
+anti-scope, de succescriteria en de planning, en presenteerde dat als besluiten. Zelfs
+waar je een expliciete voorkeur had uitgesproken (wikilinks geen must-have) heb ik daar
+eigenmachtig van afgeweken.
+
+Wat we daarvan overhouden als werkregels:
+
+1. **Alles wat een keuze is, gaat als open vraag naar jou** — niet als voorstel met een
+   vinkje erbij. [Document 05](05-open-vragen.md) is die lijst.
+2. **Een aanbeveling is gemarkeerd als aanbeveling** en staat nooit in de kaderende tekst
+   van een spec.
+3. **Bij een informatiegat stop ik en vraag.** De wave-gids zegt het zo: *"Do not
+   silently fill important gaps with assumptions."*
+4. **Onderzoeksfeiten en meningen worden gescheiden.** Marktcijfers en
+   bibliotheekbeschikbaarheid zijn controleerbaar en mogen zonder poort; alles daarna is
+   jouw call.
+
+## Waar we staan: double diamond
+
+```
+   DISCOVER                 DEFINE              DEVELOP           DELIVER
+ ┌───────────────┐    ┌───────────────┐   ┌──────────────┐  ┌──────────────┐
+ │ 01 concurrentie│    │ 05 open vragen│   │ waves W0…W6  │  │ dagelijks    │
+ │ 02 haalbaarheid│    │ → herschreven │   │ per wave 3   │  │ gebruik +    │
+ │ 06 beslisinput │    │   PRD         │   │ documenten   │  │ evaluatie    │
+ └───────────────┘    └───────────────┘   └──────────────┘  └──────────────┘
+        ✅                 ◄── HIER            ⬜                 ⬜
+```
+
+De eerste diamant sluit pas als sectie A van [05](05-open-vragen.md) beantwoord is: dan
+is er een gedeelde probleemdefinitie. Wat er nu in documenten 03 en 04 staat, is
+vooruitgelopen op die sluiting en is daarom gedegradeerd tot materiaal.
+
 ## De volgorde die we aanhouden
 
 | Fase | Vraag | Artefact | Status |
 |---|---|---|---|
-| Discovery | Bestaat dit al? | Concurrentieonderzoek | ✅ |
-| Discovery | Kan ik dit? | Haalbaarheidsonderzoek | ✅ |
-| Definitie | Wat bouwen we, wat niet? | PRD | ✅ |
-| Definitie | Hoe? | Technische spec | ✅ |
-| Bouwen | Werkt het kernidee? | Spike (M0) | ⬜ |
-| Bouwen | Gebruik ik het? | v0.1 → dagelijks gebruik | ⬜ |
-| Evaluatie | Doorgaan of stoppen? | Beslispunt na 4 weken | ⬜ |
+| Discover | Bestaat dit al? | [01 Concurrentieonderzoek](01-concurrentieonderzoek.md) | ✅ |
+| Discover | Kan dit gebouwd worden? | [02 Haalbaarheidsonderzoek](02-haalbaarheidsonderzoek.md) | ✅ |
+| Discover | Wat moet Jos weten om te kiezen? | [06 Beslisinput techniek](06-beslisinput-techniek.md) | ✅ |
+| **Define** | **Welk probleem, welke scope, welke stack?** | [05 Open vragen](05-open-vragen.md) | ⏳ **bij Jos** |
+| Define | Wat bouwen we, wat niet? | PRD — [03](03-prd.md) herschrijven na 05 | ⬜ |
+| Develop | Per brok: doel, spec, bewijs | [07 Wave-methode](07-wave-methode.md) → `docs/waves/` | ⬜ |
+| Deliver | Gebruik ik het? | Dagelijks gebruik | ⬜ |
+| Deliver | Doorgaan of stoppen? | Beslispunt, criterium volgt uit A3/A4 | ⬜ |
+
+Documenten 03 en 04 staan bewust nog in de repo, met een waarschuwing bovenaan: ze
+bevatten bruikbaar denkwerk, maar geen enkele afspraak.
+
+## Hoe de wave-methode hierin past
+
+Vanaf de Develop-fase werken we per wave met drie documenten — Goal, Specification, Test
+& Verification Plan — in die gezagsvolgorde. De uitwerking, inclusief wat er voor een
+lokale desktop-app níét van toepassing is, staat in [07](07-wave-methode.md).
+
+Belangrijk voor de rolverdeling: die methode bevat drie momenten waarop jij expliciet
+goedkeurt (Goal, Spec, acceptatie). Dat is precies het mechanisme dat in ronde 1
+ontbrak.
 
 ## Wat een PO doet dat een PM niet doet
 
-In een team knipt de PO dit door naar user stories, prioriteert de backlog per sprint
-en accepteert werk. Hier val je met beide rollen samen, dus de praktische vertaling is:
-de PRD is je backlog, de milestones in de technische spec zijn je sprints, en de
-acceptatiecriteria per functie in de PRD zijn wat je "af" noemt. Meer ceremonie dan dat
+In een team knipt de PO het werk door naar kleinere brokken, prioriteert, en accepteert
+opgeleverd werk. Hier zit die rol bij jou, en de wave-methode geeft er de vorm aan: een
+wave is de brok, het Goal Document is de prioritering ("dit wel, dat niet"), en het
+acceptatiemoment na het bewijsverslag is het moment waarop jij "af" zegt. Het bord op
+GitHub toont alleen de stand — de inhoud staat in de documenten. Meer ceremonie dan dat
 heeft bij één ontwikkelaar negatieve waarde.
 
 ## Het advies dat een eerlijke PM erbij geeft
@@ -56,7 +113,7 @@ heeft bij één ontwikkelaar negatieve waarde.
 Zelf bouwen is de duurste manier om dit probleem op te lossen. Voordat je begint, is
 het redelijk om één avond te besteden aan de goedkope varianten: Obsidian met een kaal
 thema en alle UI-elementen uit, of Typora / iA Writer op dezelfde map. Zie
-[het concurrentieonderzoek](01-concurrentieonderzoek.md#de-nulmeting-eerst-het-goedkope-alternatief).
+[het concurrentieonderzoek](01-concurrentieonderzoek.md#6-de-nulmeting-eerst-het-goedkope-alternatief).
 
 Als die avond je niet overtuigt, weet je bovendien véél preciezer wat er dan wél mis is
 — en dat is de beste input voor het ontwerp van Lapis die er bestaat.

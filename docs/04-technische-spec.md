@@ -1,7 +1,19 @@
-# 04 – Technische spec: Lapis v1
+# 04 – Technische optieverkenning · GEEN SPEC
 
-Hoort bij [PRD v0.1](03-prd.md). Doel: de beslissingen vastleggen die later duur zijn om
-terug te draaien, en niet meer dan dat.
+> ⚠️ **Dit heet geen spec meer, want het is er geen.**
+>
+> Ik heb hier keuzes vastgelegd die aan Jos zijn: Tauri boven Electron, Svelte, SQLite
+> FTS5, autosave, de conflictafhandeling, de prestatiegetallen, het testbeleid en de
+> milestone-indeling. Lees het als *uitgewerkte optie*, niet als besluit.
+>
+> - De keuzes liggen terug als open vragen in [05, sectie D en E](05-open-vragen.md#d-techniek).
+> - De onderbouwing om die vragen te kunnen beantwoorden — inclusief de argumenten vóór
+>   Electron die hier ontbreken — staat in
+>   [06 – Beslisinput techniek](06-beslisinput-techniek.md).
+> - Een echte specificatie ontstaat later per wave, volgens
+>   [07 – Wave-methode](07-wave-methode.md), en niet voor het hele product tegelijk.
+
+Hoort bij [PRD-concept v0.1](03-prd.md).
 
 ---
 
@@ -50,7 +62,7 @@ PRD, in code afgedwongen door één schrijfpad (§5) dat weigert buiten `.md` te
 
 **Afgewezen:** Electron (te zwaar — het probleem dat we oplossen), SwiftUI (verliest het
 CodeMirror-ecosysteem op precies het moeilijkste onderdeel). Onderbouwing in
-[haalbaarheid §4](02-haalbaarheidsonderzoek.md#4-technologiekeuze--kort-onderbouwd).
+[haalbaarheid §4](02-haalbaarheidsonderzoek.md#4-technologiekeuze--open).
 
 **Sandboxing:** v1 draait niet in de App Sandbox en wordt buiten de Mac App Store
 gedistribueerd. Daarmee is directe toegang tot een gekozen map mogelijk zonder

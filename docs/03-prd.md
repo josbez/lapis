@@ -1,11 +1,25 @@
-# 03 – PRD: Lapis v1
+# 03 – PRD: Lapis v1 · CONCEPT, NIET GELDIG
+
+> ⚠️ **Dit document is gedegradeerd tot materiaal.**
+>
+> Het bevat tientallen keuzes die ik zelf heb gemaakt zonder ze aan Jos voor te leggen:
+> de scope, de anti-scope, de ontwerpprincipes, de succescriteria en de indeling van het
+> probleem. Die keuzes zijn niet van mij.
+>
+> Elke keuze uit dit document staat als open vraag in
+> [05 – Open vragen](05-open-vragen.md); de volledige inventaris staat in
+> [sectie H](05-open-vragen.md#h-inventaris-alles-wat-ik-zelf-heb-ingevuld).
+>
+> Lees dit document als *voorstel en denkmateriaal*, niet als afspraak. Het wordt pas
+> een geldige PRD nadat sectie A en C van document 05 beantwoord zijn en dit document op
+> basis daarvan is herschreven.
 
 | | |
 |---|---|
-| **Versie** | 0.1 (concept) |
+| **Versie** | 0.1 (concept, niet goedgekeurd) |
 | **Datum** | augustus 2026 |
 | **Eigenaar** | Jos |
-| **Status** | Ter besluit — klaar voor M0-spike |
+| **Status** | Geblokkeerd — wacht op antwoorden in [05](05-open-vragen.md) |
 | **Platform** | macOS (Apple Silicon), alleen |
 | **Ambitie** | Eerst voor eigen gebruik; architectuur blijft open voor latere productisering |
 
