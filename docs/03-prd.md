@@ -380,7 +380,14 @@ De doelwaarde is duidelijk (5.000+). Het huidige aantal ontbreekt nog, en dat be
 waar de fixture-vault op wordt gebouwd:
 
 ```bash
-find ~/Documents/<vault> -name '*.md' | wc -l
+# waar ligt de vault-root?
+find ~/Documents -maxdepth 3 -name '.obsidian' -type d
+
+# aantal notities
+find ~/Documents -name '*.md' | wc -l
+
+# hoeveel van de 170 MB is markdown
+find ~/Documents -name '*.md' -exec du -ch {} + | tail -1
 ```
 
 ---
