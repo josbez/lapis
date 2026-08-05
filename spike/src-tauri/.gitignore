@@ -1,0 +1,6 @@
+node_modules/
+dist/
+target/
+vault-core/target/
+src-tauri/target/
+src-tauri/gen/

@@ -1,0 +1,9 @@
+[package]
+name = "vault-core"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Bewust geen afhankelijkheden. Deze crate bevat alleen bestandslogica en moet
+# overal te testen zijn, ook zonder de macOS- of webview-toolchain.
+[dependencies]

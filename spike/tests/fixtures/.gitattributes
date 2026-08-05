@@ -1,0 +1,3 @@
+# Geen enkele regeleinde-conversie op fixtures: crlf.md moet CRLF blijven,
+# anders bewijst BE-01 niets meer op een andere machine.
+* -text

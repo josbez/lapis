@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Wat de spike mag: een map kiezen. Bestands-I/O loopt via eigen commands in Rust, niet via de fs-plugin.",
+  "windows": ["main"],
+  "permissions": ["core:default", "dialog:allow-open"]
+}
