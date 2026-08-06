@@ -1,6 +1,3 @@
-node_modules/
-dist/
-target/
-vault-core/target/
-src-tauri/target/
-src-tauri/gen/
+# Buildartefacten van deze crate. De rest staat in de .gitignore van de repo.
+/target/
+/gen/

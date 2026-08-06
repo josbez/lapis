@@ -13,6 +13,7 @@
 use std::fmt;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
+use std::sync::Mutex;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FileEntry {
@@ -26,6 +27,9 @@ pub enum VaultError {
     /// Het pad wijst buiten de gekozen map. Dit is de enige
     /// veiligheidsgarantie van de spike.
     OutsideRoot,
+    /// Er is nog geen map gekozen. Een bestandsoperatie vóór de mapkeuze is
+    /// geen fout van de gebruiker maar van de aanroeper.
+    NoVaultSelected,
     NotFound,
     NotADirectory,
     InvalidUtf8,
@@ -36,6 +40,7 @@ impl fmt::Display for VaultError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             VaultError::OutsideRoot => write!(f, "pad valt buiten de gekozen map"),
+            VaultError::NoVaultSelected => write!(f, "er is nog geen map gekozen"),
             VaultError::NotFound => write!(f, "bestand of map niet gevonden"),
             VaultError::NotADirectory => write!(f, "pad is geen map"),
             VaultError::InvalidUtf8 => write!(f, "bestand is geen geldige UTF-8"),
@@ -149,14 +154,68 @@ pub fn write_note(root: &Path, rel: &str, content: &str) -> Result<(), VaultErro
     fs::write(&path, content.as_bytes()).map_err(io)
 }
 
+/// De gekozen map, bewaard aan deze kant van de IPC-grens.
+///
+/// Waarom dit type bestaat: zonder dit gaf de frontend bij elke aanroep zelf de
+/// root mee, en dan is de rel-padcontrole waterdicht terwijl de root dat niet
+/// is — een bug of een gecompromitteerde webview kiest dan gewoon een andere
+/// map. [07 §4.4](../../docs/07-wave-methode.md) zegt dat de frontend nooit
+/// beslist of een pad geldig is; dit type maakt dat waar. De frontend kan de
+/// root alleen nog *kiezen* via `open`, niet meer *meegeven*.
+///
+/// Bewust níét: sessie-persistentie, meerdere vaults tegelijk, herstel na een
+/// verplaatste map. Eén map, in het geheugen, tot de app afsluit.
+#[derive(Default)]
+pub struct Session {
+    root: Mutex<Option<PathBuf>>,
+}
+
+impl Session {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Kiest een map als vault en geeft het canonieke pad terug voor in beeld.
+    pub fn open(&self, picked: &Path) -> Result<String, VaultError> {
+        let root = resolve_root(picked)?;
+        let display = root.to_string_lossy().into_owned();
+        *self.lock() = Some(root);
+        Ok(display)
+    }
+
+    pub fn list_markdown(&self) -> Result<Vec<FileEntry>, VaultError> {
+        list_markdown(&self.root()?)
+    }
+
+    pub fn read_note(&self, rel: &str) -> Result<String, VaultError> {
+        read_note(&self.root()?, rel)
+    }
+
+    pub fn write_note(&self, rel: &str, content: &str) -> Result<(), VaultError> {
+        write_note(&self.root()?, rel, content)
+    }
+
+    fn root(&self) -> Result<PathBuf, VaultError> {
+        self.lock().clone().ok_or(VaultError::NoVaultSelected)
+    }
+
+    /// Een vergiftigde lock betekent dat een andere thread paniekte terwijl hij
+    /// de root vasthield. De waarde zelf is een `Option<PathBuf>` en kan niet
+    /// half-geschreven zijn, dus doorgaan is hier veiliger dan paniek erbovenop.
+    fn lock(&self) -> std::sync::MutexGuard<'_, Option<PathBuf>> {
+        self.root.lock().unwrap_or_else(|e| e.into_inner())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
-    const FIXTURES: [&str; 6] = [
+    const FIXTURES: [&str; 7] = [
         "simpel.md",
         "crlf.md",
+        "lone-cr.md",
         "geen-eind-newline.md",
         "emoji-en-accenten.md",
         "frontmatter.md",
@@ -180,6 +239,16 @@ mod tests {
         dir
     }
 
+    /// Voor tests die bewust nét buiten de vault schrijven: de vault krijgt een
+    /// eigen bovenliggende map, zodat dat artefact binnen de opruimbare
+    /// testmap van díé test valt en niet ernaast in `target/test-tmp/`.
+    fn temp_dir_met_ouder(label: &str) -> (PathBuf, PathBuf) {
+        let parent = temp_dir(label);
+        let dir = parent.join("vault");
+        fs::create_dir_all(&dir).expect("kon vault-map niet aanmaken");
+        (parent, dir)
+    }
+
     fn copy_fixture(into: &Path, name: &str) -> PathBuf {
         let target = into.join(name);
         fs::copy(fixture_dir().join(name), &target).expect("kon fixture niet kopiëren");
@@ -198,7 +267,10 @@ mod tests {
             write_note(&dir, name, &content).unwrap();
 
             let after = fs::read(&path).unwrap();
-            assert_eq!(before, after, "fixture {name} is niet byte-identiek gebleven");
+            assert_eq!(
+                before, after,
+                "fixture {name} is niet byte-identiek gebleven"
+            );
         }
     }
 
@@ -285,8 +357,8 @@ mod tests {
     // NE-01
     #[test]
     fn ne_01_read_buiten_root_faalt() {
-        let dir = temp_dir("ne01");
-        fs::write(dir.join("../buiten-de-map.md"), "geheim").unwrap();
+        let (ouder, dir) = temp_dir_met_ouder("ne01");
+        fs::write(ouder.join("buiten-de-map.md"), "geheim").unwrap();
 
         assert_eq!(
             read_note(&dir, "../buiten-de-map.md"),
@@ -297,9 +369,8 @@ mod tests {
     // NE-02
     #[test]
     fn ne_02_write_buiten_root_maakt_geen_bestand() {
-        let dir = temp_dir("ne02");
-        let doelwit = dir.join("../mag-niet-bestaan.md");
-        let _ = fs::remove_file(&doelwit);
+        let (ouder, dir) = temp_dir_met_ouder("ne02");
+        let doelwit = ouder.join("mag-niet-bestaan.md");
 
         assert_eq!(
             write_note(&dir, "../mag-niet-bestaan.md", "x"),
@@ -325,7 +396,10 @@ mod tests {
     #[test]
     fn ne_04_read_niet_bestaand_bestand_geeft_nette_fout() {
         let dir = temp_dir("ne04");
-        assert_eq!(read_note(&dir, "bestaat-niet.md"), Err(VaultError::NotFound));
+        assert_eq!(
+            read_note(&dir, "bestaat-niet.md"),
+            Err(VaultError::NotFound)
+        );
     }
 
     // NE-05
@@ -340,6 +414,104 @@ mod tests {
     fn ne_06_niet_bestaande_map_geeft_nette_fout() {
         let dir = temp_dir("ne06").join("bestaat-niet");
         assert_eq!(list_markdown(&dir), Err(VaultError::NotFound));
+    }
+
+    // BE-06 — de fixture bewaakt zichzelf, zoals be_01b dat voor CRLF doet.
+    #[test]
+    fn be_06_lone_cr_fixture_bevat_losse_cr_en_geen_lf() {
+        let bytes = fs::read(fixture_dir().join("lone-cr.md")).unwrap();
+        assert!(
+            bytes.contains(&b'\r'),
+            "lone-cr.md bevat geen CR meer; de test zou niets bewijzen"
+        );
+        assert!(
+            !bytes.contains(&b'\n'),
+            "lone-cr.md bevat een LF; dan is het geen klassiek-Mac-bestand meer"
+        );
+    }
+
+    // BE-07 — de sessie is de enige plek waar de root vandaan komt.
+    #[test]
+    fn be_07_sessie_werkt_op_de_gekozen_map() {
+        let dir = temp_dir("be07");
+        copy_fixture(&dir, "simpel.md");
+
+        let sessie = Session::new();
+        let getoond = sessie.open(&dir).unwrap();
+        assert_eq!(getoond, fs::canonicalize(&dir).unwrap().to_string_lossy());
+
+        assert_eq!(
+            sessie.list_markdown().unwrap(),
+            vec![FileEntry {
+                path: "simpel.md".into(),
+                name: "simpel.md".into(),
+            }]
+        );
+
+        let inhoud = sessie.read_note("simpel.md").unwrap();
+        sessie.write_note("simpel.md", &inhoud).unwrap();
+        assert_eq!(fs::read_to_string(dir.join("simpel.md")).unwrap(), inhoud);
+    }
+
+    // BE-08 — een tweede mapkeuze vervangt de eerste volledig.
+    #[test]
+    fn be_08_sessie_wisselt_van_map() {
+        let eerste = temp_dir("be08-a");
+        copy_fixture(&eerste, "simpel.md");
+        let tweede = temp_dir("be08-b");
+
+        let sessie = Session::new();
+        sessie.open(&eerste).unwrap();
+        sessie.open(&tweede).unwrap();
+
+        assert_eq!(sessie.list_markdown().unwrap(), vec![]);
+        assert_eq!(sessie.read_note("simpel.md"), Err(VaultError::NotFound));
+    }
+
+    // NE-08 — de kern van B1: zonder mapkeuze is er geen pad om te raken.
+    #[test]
+    fn ne_08_operatie_voor_mapkeuze_faalt_netjes() {
+        let sessie = Session::new();
+
+        assert_eq!(sessie.list_markdown(), Err(VaultError::NoVaultSelected));
+        assert_eq!(
+            sessie.read_note("simpel.md"),
+            Err(VaultError::NoVaultSelected)
+        );
+        assert_eq!(
+            sessie.write_note("nieuw.md", "x"),
+            Err(VaultError::NoVaultSelected)
+        );
+    }
+
+    // NE-09 — de sessie neemt de rel-padcontrole niet weg, hij vult hem aan.
+    #[test]
+    fn ne_09_sessie_weigert_paden_buiten_de_gekozen_map() {
+        let (ouder, dir) = temp_dir_met_ouder("ne09");
+        let doelwit = ouder.join("mag-niet-bestaan.md");
+
+        let sessie = Session::new();
+        sessie.open(&dir).unwrap();
+
+        assert_eq!(
+            sessie.read_note("../buiten-de-map.md"),
+            Err(VaultError::OutsideRoot)
+        );
+        assert_eq!(
+            sessie.write_note("../mag-niet-bestaan.md", "x"),
+            Err(VaultError::OutsideRoot)
+        );
+        assert!(!doelwit.exists(), "er is tóch een bestand aangemaakt");
+    }
+
+    // NE-10 — een niet-bestaande map wordt geen sessie.
+    #[test]
+    fn ne_10_sessie_open_op_niet_bestaande_map_faalt_en_laat_geen_root_achter() {
+        let dir = temp_dir("ne10").join("bestaat-niet");
+        let sessie = Session::new();
+
+        assert_eq!(sessie.open(&dir), Err(VaultError::NotFound));
+        assert_eq!(sessie.list_markdown(), Err(VaultError::NoVaultSelected));
     }
 
     // NE-07 — een padcontrole die vóór het volgen van symlinks gebeurt is te

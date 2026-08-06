@@ -1,0 +1,1 @@
+# Klassiek MacDit bestand gebruikt losse CR als regeleinde, zoals Mac OS 9.Lapis raakt CR nooit aan: er wordt niet op gesplitst en niet naar geconverteerd.- eerste- tweede

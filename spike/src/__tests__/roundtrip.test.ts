@@ -28,6 +28,7 @@ import { applyLineEnding, detectLineEnding, lineSeparatorExtension } from '../li
 const FIXTURES = [
   'simpel.md',
   'crlf.md',
+  'lone-cr.md',
   'geen-eind-newline.md',
   'emoji-en-accenten.md',
   'frontmatter.md',
@@ -85,6 +86,18 @@ describe('regeleindes — de bevinding uit testplan §4.2', () => {
     const metFacet = EditorState.create({ doc, extensions: extensionsFor(doc) })
     expect(metFacet.doc.toString()).toBe(doc.replace(/\r\n/g, '\n'))
     expect(metFacet.lineBreak).toBe('\r\n')
+  })
+
+  it('losse CR (klassiek Mac) blijft ongemoeid', () => {
+    // Bevinding B13: `detectLineEnding` noemt dit een LF-bestand, en dat is
+    // hier geen bug maar precies de bedoeling — CR wordt nooit aangeraakt, niet
+    // bij splitsen en niet bij serialiseren. Onbewezen was het wel; dit legt
+    // het vast, inclusief de zelfbewaking van de fixture.
+    const doc = fixture('lone-cr.md')
+    expect(doc).toContain('\r')
+    expect(doc).not.toContain('\n')
+    expect(detectLineEnding(doc)).toBe('\n')
+    expect(roundTrip(doc)).toBe(doc)
   })
 
   it('een LF-bestand blijft LF', () => {
