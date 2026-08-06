@@ -6,6 +6,10 @@ Dit document borgt de bevindingen als backlog: epics → sprints → taken, met 
 taak een advies over de uitvoerende agent (Opus 5.0 of Sonnet 5.0) en de
 bijbehorende valkuil.
 
+**Stand:** sprint 1 en 2 zijn uitgevoerd, sprint 3 wacht op de W1- en W3-documenten.
+Zie [§7](#7-stand-van-uitvoering) — inclusief één bevinding die de analyse niet kón
+zien (B21).
+
 **Verhouding tot de wave-methode.** Dit plan vervangt de waves niet. W0 is
 uitdrukkelijk wegwerpcode; veel bevindingen horen daarom niet als fix in de
 spike thuis, maar als *eis in de spec van een latere wave*. Elke taak hieronder
@@ -205,3 +209,59 @@ worden de bevindingen daar opnieuw ontdekt.
 Wat dit plan bewust *niet* doet: de spike oppoetsen tot productie-code. B3,
 B4, B5, B17 worden in W1 gebouwd, niet in W0 teruggeplakt — wegwerpcode blijft
 wegwerpcode, conform het Goal Document.
+
+---
+
+## 7. Stand van uitvoering
+
+*Bijgewerkt bij het verwerken van dit plan. Sprint 1 en 2 zijn uitgevoerd; sprint 3
+wacht op documenten die nog niet bestaan.*
+
+| Taak | Stand | Waar het landde |
+|---|---|---|
+| **T1** (B8) | ✅ | `src/requestGate.ts` + FE-02 in `src/__tests__/requestGate.test.ts` |
+| **T2** (B1) | ✅ | `vault_core::Session`, `main.rs` als managed state, `ipc.ts` zonder root |
+| **T3** (B10, B11, B12) | ✅ | `App.tsx` — statusregel bij fouten, state pas na volledig succes, `⌘S` case-insensitief |
+| **T4** (B9) | ✅ | Besluit van Jos: `confirm` bij wegnavigeren. Uitgevoerd in `App.tsx` |
+| **T5** (B15) | ✅ | `.github/workflows/ci.yml` |
+| **T6** (B16) | ✅ | `scripts/isolatie-check.sh`, acht checks, met `--zelftest` |
+| **T7** (B18) | ✅ | `spike/Cargo.toml` als workspace, één gecommitte `Cargo.lock` |
+| **T8** (B19) | ✅ | clippy `-D warnings`, `rustfmt --check`, ESLint met `exhaustive-deps` als error |
+| **T9** (B6, B13) | ✅ | Testartefacten binnen hun eigen map; fixture `lone-cr.md` met zelfbewaking |
+| **T10** (B2) | ⏳ | Wacht op de W3-spec — die bestaat nog niet |
+| **T11** (B9, B14) | ⏳ | Beslisvragen voor het W3-goal; hetzelfde |
+| **T12** (B17, B1) | 🟡 deels | De isolatiecheck-regel voor root-autoriteit staat er (twee checks); de CSP-eis wacht op de W1-spec |
+| **T13** (B3, B4, B5) | ⏳ | Drie productbesluiten voor Jos, bij het schrijven van W1 |
+
+**Besluit bij T4 (B9).** Jos kiest voor een `confirm` bij wegnavigeren met onopgeslagen
+werk, in de spike zelf. Reden om het niet tot W3 te laten liggen: stil verlies tijdens
+de doorloop kost vertrouwen in het oordeel waar de hele wave om draait. De vergelijking
+loopt via dezelfde serialisatiestap als het opslaan, zodat een puur regeleinde-verschil
+niet als wijziging telt.
+
+### Wat er bijkwam: B21
+
+**B21 🔴 — de Tauri-schil compileerde niet.** `src-tauri/icons/` ontbrak volledig, en
+`tauri::generate_context!` stopt de build op een ontbrekend `icons/icon.png`. De spike
+had op geen enkele machine kunnen starten, ook niet op die van Jos.
+
+Deze bevinding staat niet in §2 omdat een code-analyse code léést. Alleen een compiler
+ziet dit — wat het argument voor B15 (er is geen CI) op de dag van invoering meteen
+bewijst. Opgelost met vier effen PNG's in `src-tauri/icons/`; plaatsvervangers tot W10.
+Uitgebreider in [W0-bewijs §12](waves/W0-spike/03-bewijs.md#12-naschrift-na-de-code-analyse).
+
+### Wat bewust níét is gedaan
+
+B3, B4, B5 en B17 zijn niet in de spike teruggeplakt — §6 van dit plan zegt dat ze in W1
+gebouwd worden, en wegwerpcode blijft wegwerpcode. B7 (`windows_subsystem`) en B20
+(bundelomvang) stonden als observatie zonder taak en zijn ongemoeid gelaten.
+
+### De poort staat
+
+```
+cargo fmt --check · clippy -D warnings · cargo test (20) · eslint
+tsc --noEmit · vitest (15) · vite build · isolatie-check (8, met zelftest)
+```
+
+Alles groen op Linux, inclusief — voor het eerst — het compileren van de Tauri-schil.
+Wat de poort niet vervangt: `npm run tauri dev` en de doorloop op de Mac.

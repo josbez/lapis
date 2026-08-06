@@ -1,0 +1,9 @@
+# Eén workspace voor de twee crates van de spike.
+#
+# Bevinding B18 uit de code-analyse: los van elkaar hadden ze los van elkaar
+# afhankelijkheden kunnen oplossen, en alleen `vault-core` had een `Cargo.lock`.
+# Eén workspace met één gecommitte lock maakt de build reproduceerbaar — voor
+# CI, en voor de volgende agent die deze map aanraakt.
+[workspace]
+resolver = "2"
+members = ["vault-core", "src-tauri"]
