@@ -230,8 +230,8 @@ wacht op documenten die nog niet bestaan.*
 | **T9** (B6, B13) | ✅ | Testartefacten binnen hun eigen map; fixture `lone-cr.md` met zelfbewaking |
 | **T10** (B2) | ⏳ | Wacht op de W3-spec — die bestaat nog niet |
 | **T11** (B9, B14) | ⏳ | Beslisvragen voor het W3-goal; hetzelfde |
-| **T12** (B17, B1) | 🟡 deels | De isolatiecheck-regel voor root-autoriteit staat er (twee checks); de CSP-eis wacht op de W1-spec |
-| **T13** (B3, B4, B5) | ⏳ | Drie productbesluiten voor Jos, bij het schrijven van W1 |
+| **T12** (B17, B1) | ✅ | Root-autoriteit als twee isolatiechecks; CSP-eis en de schrijfvrij-check in [W1-goal §9 en §11](waves/W1-vault-lezen/00-goal.md) |
+| **T13** (B3, B4, B5) | 🟡 voorgelegd | Als V1, V2 en V3 in [W1-goal §0](waves/W1-vault-lezen/00-goal.md#0-open-vragen-die-blokkeren) — wacht op Jos |
 
 **Besluit bij T4 (B9).** Jos kiest voor een `confirm` bij wegnavigeren met onopgeslagen
 werk, in de spike zelf. Reden om het niet tot W3 te laten liggen: stil verlies tijdens
