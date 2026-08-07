@@ -99,6 +99,13 @@ fn rescan_vault(session: State<'_, Session>) -> Result<VaultViewDto, String> {
         .map_err(|e| e.to_string())
 }
 
+/// Leest een notitie relatief aan de huidige vault (W2, alleen-lezen — er is
+/// nog geen command dat schrijft, dat is W3).
+#[tauri::command]
+fn read_note(path: String, session: State<'_, Session>) -> Result<String, String> {
+    session.read_note(&path).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn get_sidebar_visible() -> Result<bool, String> {
     Ok(store().load().sidebar_visible)
@@ -119,6 +126,7 @@ fn main() {
             open_vault,
             restore_vault,
             rescan_vault,
+            read_note,
             get_sidebar_visible,
             set_sidebar_visible
         ])

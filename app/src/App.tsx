@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { EmptyState } from './EmptyState'
+import { NoteView } from './NoteView'
 import { Tree } from './Tree'
 import { createRequestGate } from './requestGate'
 import {
   getSidebarVisible,
   openVault,
+  readNote,
   rescanVault,
   restoreVault,
   setSidebarVisible,
@@ -12,20 +14,24 @@ import {
 } from './ipc'
 
 /**
- * De hele UI van W1: lege staat of boom, sidebar verbergen/tonen, een
- * bestand selecteren zonder het te openen. Openen en lezen is W2 (Goal §6).
+ * De hele UI van W1+W2: lege staat of boom, sidebar verbergen/tonen, en een
+ * notitie openen in alleen-lezen weergave. Opslaan is W3 — er is geen
+ * schrijfpad in deze component.
  */
 export default function App() {
   const [view, setView] = useState<VaultView | null>(null)
   const [sidebarVisible, setSidebarVisibleState] = useState(true)
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
+  const [noteContent, setNoteContent] = useState<string | null>(null)
   const [status, setStatus] = useState('')
   const [ready, setReady] = useState(false)
 
-  // Bewaakt het wisselen van vault (bevinding B8): een tweede mapkeuze die
-  // vóór het antwoord op de eerste terugkomt, mag niet verliezen van een
-  // trage eerste read. In-/uitklappen heeft dit niet nodig — dat gebeurt
-  // zonder IPC-aanroep (Spec §5.6).
+  // Bewaakt zowel het wisselen van vault als het openen van een notitie
+  // (bevinding B8): een tweede actie die vóór het antwoord op de eerste
+  // terugkomt, mag niet verliezen van een trage eerste read. Eén gate voor
+  // beide, want een mapwissel maakt een notitie-read die nog onderweg is óók
+  // ongeldig — hetzelfde patroon als W0's App.tsx. In-/uitklappen heeft dit
+  // niet nodig — dat gebeurt zonder IPC-aanroep (Spec W1 §5.6).
   const gate = useRef(createRequestGate())
 
   useEffect(() => {
@@ -53,10 +59,29 @@ export default function App() {
         if (!isLatest()) return
         setView(opened)
         setSelectedPath(null)
+        setNoteContent(null)
         setStatus('')
       } catch (e) {
         if (!isLatest()) return
         setStatus(`map openen mislukt: ${e}`)
+      }
+    })()
+  }, [])
+
+  const openNote = useCallback((relPath: string) => {
+    const isLatest = gate.current.start()
+    setSelectedPath(relPath)
+    setNoteContent(null)
+    void (async () => {
+      try {
+        const content = await readNote(relPath)
+        if (!isLatest()) return
+        setNoteContent(content)
+        setStatus('')
+      } catch (e) {
+        if (!isLatest()) return
+        setNoteContent(null)
+        setStatus(`notitie openen mislukt: ${e}`)
       }
     })()
   }, [])
@@ -110,14 +135,16 @@ export default function App() {
       <div style={{ display: 'flex' }}>
         {sidebarVisible && (
           <nav aria-label="Vault">
-            <Tree root={view.tree} selectedPath={selectedPath} onSelectFile={setSelectedPath} />
+            <Tree root={view.tree} selectedPath={selectedPath} onSelectFile={openNote} />
           </nav>
         )}
         <main>
-          {selectedPath ? (
-            <p>{selectedPath}</p>
+          {selectedPath === null ? (
+            <p>Kies een notitie in de boom.</p>
+          ) : noteContent !== null ? (
+            <NoteView documentId={`${view.rootDisplay}::${selectedPath}`} markdownSource={noteContent} />
           ) : (
-            <p>Kies een notitie in de boom. Openen en lezen volgt in een latere wave.</p>
+            <p>{status || 'laden…'}</p>
           )}
         </main>
       </div>
