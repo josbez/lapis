@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Wat Lapis mag: een map kiezen. Alle bestands-I/O loopt via eigen commands in Rust (vault-core, app-state), niet via de fs-plugin.",
+  "windows": ["main"],
+  "permissions": ["core:default", "dialog:allow-open"]
+}

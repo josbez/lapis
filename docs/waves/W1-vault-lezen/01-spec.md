@@ -76,8 +76,10 @@ app/
    └─ fixtures/                 # boomstructuur t.b.v. §14
 ```
 
-`Cargo.toml` op repo-niveau krijgt een workspace met `app/vault-core` en `app/app-state`
-naast het bestaande `spike/vault-core`, zodat `cargo test --workspace` beide dekt.
+`app/Cargo.toml` is een eigen workspace (`members = ["vault-core", "app-state",
+"src-tauri"]`), naar het patroon van `spike/Cargo.toml` (bevinding B18) — een apart
+workspace per project, niet één workspace voor de hele repo, zodat `spike/` en `app/`
+elkaars afhankelijkheden niet kunnen laten conflicteren.
 
 ### 5.2 Afhankelijkheden
 
@@ -91,6 +93,13 @@ naast het bestaande `spike/vault-core`, zodat `cargo test --workspace` beide dek
 Geen editor-afhankelijkheden (CodeMirror, `atomic-editor`) — die horen bij W2.
 
 ### 5.3 De kern: `vault-core`
+
+**Waar de tests van deze crate staan, en waarom niet inline:** de isolatiecheck uit §14.7
+scant `app/vault-core/src` als platte tekst op schrijfaanroepen (Goal §11) en kan een
+`#[cfg(test)] mod tests` daarbinnen niet onderscheiden van productiecode — een testfixture
+die `fs::write` gebruikt zou de eigen crate dan valselijk laten falen. De tests staan
+daarom in `app/vault-core/tests/vault_core.rs`, als Rust-integratietest tegen de publieke
+API, buiten `src/` en dus buiten het bereik van die check.
 
 ```rust
 pub enum NodeKind { Dir, File }
@@ -215,9 +224,14 @@ alle volgende aanroepen werken op de `Session` die aan de Rust-kant leeft.
   bestand opent (Goal §4: "hooguit iets in de selectie van de boom").
 - Sidebar-toggle roept `set_sidebar_visible` aan en verbergt/toont met CSS — geen
   her-render van de boom nodig.
-- Bij het wisselen van vault of het uitklappen van een traag ladende map: een
-  volgordenummer per aanroep, de UI verwerkt alleen het antwoord met het hoogste nummer
-  (Goal §12, bevinding B8 — hetzelfde patroon als W0's `requestGate.ts`, hergebruikt).
+- **Eén keuze die hier vastligt:** de boom wordt in zijn geheel opgehaald bij het openen of
+  herstellen van een vault (`scan_tree` is niet lui per map — zie §5.3), niet per map bij
+  het uitklappen. In-/uitklappen is dus een zuiver lokale, synchrone weergavewissel zonder
+  IPC-aanroep, en heeft geen volgordebewaking nodig. Wat wél dezelfde toestand kan zetten
+  vanuit twee kanten is het *wisselen van vault* (`open_vault` gevolgd door een snelle
+  tweede keuze) — daar geldt bevinding B8 onverkort: een volgordenummer per aanroep, de UI
+  verwerkt alleen het antwoord met het hoogste nummer (hetzelfde patroon als W0's
+  `requestGate.ts`, hergebruikt).
 
 ## 6. Out of Scope
 

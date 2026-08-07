@@ -7,6 +7,12 @@
 # Bewust níét: matrix-builds, cache-optimalisatie, een macOS-runner. Het
 # doelplatform is macOS, maar de Linux-runner compileert dezelfde code en is
 # gratis; een macOS-runner komt pas als er iets te bundelen valt.
+#
+# Sinds W1 zijn er twee projecten: spike/ (wegwerpcode, W0) en app/ (het
+# blijvende product, W1 en verder). Ze draaien als losse jobs, zodat een
+# falende app/-build de al goedgekeurde spike/-poort niet met zich meesleept
+# en andersom. De isolatiechecks bestrijken beide projecten in één job, want
+# ze hebben geen toolchain van een van beide nodig om te draaien.
 
 name: CI
 
@@ -16,7 +22,7 @@ on:
   pull_request:
 
 jobs:
-  controle:
+  controle-spike:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -66,10 +72,65 @@ jobs:
       - name: Frontend bouwen
         run: npm run build
 
-      # De isolatiechecks uit 07 §4.3. De zelftest gaat eraan vooraf: een check
-      # die zijn eigen proef-overtreding niet ziet, bewaakt niets.
+  controle-app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Systeembibliotheken voor Tauri
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
+            libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
+
+      - name: Rust-componenten
+        run: rustup component add clippy rustfmt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Afhankelijkheden installeren
+        run: npm ci
+
+      - name: Opmaak (rustfmt)
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # Dekt vault-core (tests/vault_core.rs) en app-state — het schrijfvrij-
+      # bewijs en de V1-V4-tests uit Testplan W1 §9 lopen hier.
+      - name: Rust-tests
+        run: cargo test --workspace
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Frontend-tests
+        run: npm test
+
+      - name: Frontend bouwen
+        run: npm run build
+
+  isolatiechecks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # De isolatiechecks uit 07 §4.3, sinds W1 uitgebreid met app/ (Goal W1
+      # §11). De zelftest gaat eraan vooraf: een check die zijn eigen
+      # proef-overtreding niet ziet, bewaakt niets.
       - name: Isolatiechecks
-        working-directory: .
         run: |
           ./scripts/isolatie-check.sh --zelftest
           ./scripts/isolatie-check.sh
