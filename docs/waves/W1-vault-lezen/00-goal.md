@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Ter goedkeuring door Jos |
+| **Status** | ✅ Goedgekeurd — akkoord met [07 §4.1](../../07-wave-methode.md#41-wat-backend-bewijs-hier-betekent) en [07 §4.4](../../07-wave-methode.md#44-de-verantwoordelijkheidsgrens), V1–V4 hieronder beantwoord |
 | **Gezag** | Dit document beheerst uitkomst, scope, grenzen en stopcondities van W1 |
 | **Bron** | [PRD v1.1 §F1](../../03-prd.md#f1--vault-openen-en-navigeren) · [Wave-methode](../../07-wave-methode.md) · [Code-analyse](../../09-code-analyse-en-verbeterplan.md) |
 
@@ -27,7 +27,7 @@ paden aan, en een bug daarin moet netjes stranden.
 | b. Behandelen als "niets geselecteerd" | Stiller in beeld, maar het verschil tussen "nog niets open" en "kapot pad" verdwijnt |
 | c. Laten zoals het is | De gebruiker krijgt ooit een Engelse OS-foutmelding te zien |
 
-**Antwoord:** `____________________________________________`
+**Antwoord:** a. Harde weigering — eigen foutsoort `InvalidPath`.
 
 ### V2 · Wat doet Lapis met symlinks die buiten de vault wijzen?
 
@@ -40,7 +40,7 @@ is de veilige kant van inconsistent: je ziet iets dat je niet kunt openen.
 | b. Tonen, maar gemarkeerd en niet te openen | Eerlijker, kost een visuele toestand in de boom — en die is er in W1 nog niet |
 | c. Volgen, ook buiten de vault | Comfortabel, maar dan is "alles blijft binnen de gekozen map" geen garantie meer. Ik raad dit af |
 
-**Antwoord:** `____________________________________________`
+**Antwoord:** a. Niet tonen.
 
 ### V3 · Telt `notitie.MD` als markdown?
 
@@ -53,7 +53,7 @@ zichtbaar in Obsidian.
 | **a. Hoofdletter-ongevoelig** — `.md`, `.MD`, `.Md` tellen allemaal | Sluit aan bij Obsidian en bij hoe macOS zich gedraagt |
 | b. Alleen kleine letters | Voorspelbaar, maar bestanden uit oude exports blijven onzichtbaar |
 
-**Antwoord:** `____________________________________________`
+**Antwoord:** a. Hoofdletter-ongevoelig.
 
 ### V4 · Waar bewaart Lapis welke map je open had?
 
@@ -69,7 +69,9 @@ En de vervolgvraag die er los van staat: **wat gebeurt er als die map bij de sta
 of hernoemd?** Mijn voorstel is een lege staat met de mapkiezer en één regel uitleg — niet
 stilzwijgend de vorige inhoud tonen. Dat mag je terugdraaien.
 
-**Antwoord:** `____________________________________________`
+**Antwoord:** a. `~/Library/Application Support/Lapis/`. Bij een ontbrekende of hernoemde
+map: het voorgestelde gedrag staat — lege staat met mapkiezer en één regel uitleg, niets
+stilzwijgend tonen.
 
 ---
 
@@ -298,10 +300,8 @@ doel zo niet gehaald kan worden, en wat er van Jos nodig is.
 
 ## 16. Goal Coach Readiness Judgment
 
-**Status: Not ready — vier open vragen in §0.**
-
-Zodra V1 t/m V4 beantwoord zijn, is dit document klaar voor de Wave Specification. Er
-zitten geen andere gaten in; deze vier zijn bewust niet ingevuld.
+**Status: Ready — V1 t/m V4 beantwoord, Jos akkoord met §4.1 en §4.4 van de
+wave-methode. Klaar voor de Wave Specification.**
 
 **Aannames die ik wél heb gedaan, en die je mag terugdraaien:**
 
