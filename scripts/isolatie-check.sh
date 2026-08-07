@@ -13,8 +13,13 @@
 # Sinds W1 dekt dit script twee projecten: spike/ (wegwerpcode, blijft
 # ongewijzigd) en app/ (het blijvende product). Elke bestaande regel loopt
 # daarom twee keer — één keer per project — als aparte, los benoemde checks,
-# zodat een fout in het ene project het andere niet verbergt. Eén regel is
-# nieuw voor W1: geen schrijfaanroep in app/vault-core (Goal W1 §11).
+# zodat een fout in het ene project het andere niet verbergt.
+#
+# W1 voegde hier tijdelijk een regel toe die app/vault-core elke
+# schrijfaanroep verbood (Goal W1 §11), met de aankondiging dat hij in W3
+# weer zou verdwijnen zodra de kern zelf ging schrijven. Dat moment is nu:
+# de regel is ingetrokken, bewust en zichtbaar, hier in de geschiedenis —
+# niet stilzwijgend vervangen.
 #
 # Gebruik:
 #   scripts/isolatie-check.sh              controleer deze repo
@@ -129,13 +134,6 @@ draai_checks() {
   scan "de fs-plugin staat niet in de capabilities (app)" \
     '"fs:' \
     app/src-tauri/capabilities
-
-  # Goal W1 §11 — nieuw sinds deze wave: vault-core mag niets schrijven.
-  # Persistentie loopt via app-state (Spec W1 §2), dat hier bewust NIET
-  # gescand wordt — schrijven is precies waar die crate voor bestaat.
-  scan "geen schrijfaanroep in de kern (app/vault-core)" \
-    'fs::write|File::create|remove_file|rename' \
-    app/vault-core/src
 }
 
 # Bouwt een miniatuur-repo waarin élke check overtreden wordt, en controleert
@@ -169,8 +167,6 @@ zelftest() {
   # niets — de vault-core-fixture hierboven levert de hardgecodeerd-pad- en
   # netwerktreffers voor de (app)-varianten al.
   echo '// niets bijzonders' >"$tmp/app/app-state/src/lib.rs"
-  # De W1-regel: vault-core zelf schrijft ook.
-  echo 'fn schrijf() { fs::write("x", "y"); }' >>"$tmp/app/vault-core/src/lib.rs"
 
   local echte_basis="$BASIS"
   BASIS="$tmp"
@@ -179,7 +175,7 @@ zelftest() {
   stil=0
   BASIS="$echte_basis"
 
-  local verwacht=17
+  local verwacht=16
   if [[ $fouten -eq $verwacht ]]; then
     echo "✓ zelftest: alle ${verwacht} checks vangen hun proef-overtreding"
     return 0

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { EmptyState } from './EmptyState'
-import { NoteView } from './NoteView'
+import { NoteEditor } from './NoteEditor'
 import { Tree } from './Tree'
 import { createRequestGate } from './requestGate'
 import {
@@ -10,19 +10,21 @@ import {
   rescanVault,
   restoreVault,
   setSidebarVisible,
+  type NoteContent,
   type VaultView,
 } from './ipc'
 
 /**
- * De hele UI van W1+W2: lege staat of boom, sidebar verbergen/tonen, en een
- * notitie openen in alleen-lezen weergave. Opslaan is W3 — er is geen
- * schrijfpad in deze component.
+ * De hele UI van W1+W2+W3: lege staat of boom, sidebar verbergen/tonen, en
+ * een notitie openen en bewerken. Het bewerken zelf — autosave, ⌘S,
+ * conflicten — zit in NoteEditor/useNoteEditor; deze component regelt
+ * alleen welke notitie open is.
  */
 export default function App() {
   const [view, setView] = useState<VaultView | null>(null)
   const [sidebarVisible, setSidebarVisibleState] = useState(true)
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
-  const [noteContent, setNoteContent] = useState<string | null>(null)
+  const [noteContent, setNoteContent] = useState<NoteContent | null>(null)
   const [status, setStatus] = useState('')
   const [ready, setReady] = useState(false)
 
@@ -142,7 +144,12 @@ export default function App() {
           {selectedPath === null ? (
             <p>Kies een notitie in de boom.</p>
           ) : noteContent !== null ? (
-            <NoteView documentId={`${view.rootDisplay}::${selectedPath}`} markdownSource={noteContent} />
+            <NoteEditor
+              relPath={selectedPath}
+              initial={noteContent}
+              onStatus={setStatus}
+              onCopySaved={refresh}
+            />
           ) : (
             <p>{status || 'laden…'}</p>
           )}

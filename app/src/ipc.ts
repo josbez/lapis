@@ -37,11 +37,40 @@ export const restoreVault = (): Promise<VaultView | null> => invoke('restore_vau
 /** Handmatig verversen van de huidige sessie. */
 export const rescanVault = (): Promise<VaultView> => invoke('rescan_vault')
 
+export interface NoteContent {
+  content: string
+  modifiedMs: number
+}
+
 /**
- * Leest een notitie relatief aan de huidige vault (W2, alleen-lezen). Er is
- * geen `writeNote` — opslaan is W3.
+ * Leest een notitie relatief aan de huidige vault, mét wijzigingstijd. De
+ * tijd is nodig om vóór het schrijven te kunnen zien of iets buiten Lapis
+ * is veranderd (W3, PRD F3/C4).
  */
-export const readNote = (relPath: string): Promise<string> => invoke('read_note', { path: relPath })
+export const readNote = (relPath: string): Promise<NoteContent> => invoke('read_note', { path: relPath })
+
+export type WriteOutcome = { kind: 'saved'; modifiedMs: number } | { kind: 'conflict' }
+
+/**
+ * Schrijft een notitie atomair (W3). `expectedModifiedMs` is de laatst
+ * bekende wijzigingstijd; wijkt de tijd op schijf daarvan af, dan komt er
+ * `{ kind: 'conflict' }` terug in plaats van dat er iets overschreven wordt
+ * — geen foutmelding, dit is een verwachte uitkomst (PRD §10, besluit 1).
+ * Geef `null` om die controle bewust te omzeilen ("mijn versie behouden").
+ */
+export const writeNote = (
+  relPath: string,
+  content: string,
+  expectedModifiedMs: number | null,
+): Promise<WriteOutcome> =>
+  invoke('write_note', { path: relPath, content, expectedModifiedMs })
+
+/**
+ * Slaat `content` op als nieuwe kopie naast `relPath` — "beide bewaren" bij
+ * een conflict. Geeft het relatieve pad van de nieuwe kopie terug.
+ */
+export const writeNoteAsCopy = (relPath: string, content: string): Promise<string> =>
+  invoke('write_note_as_copy', { path: relPath, content })
 
 export const getSidebarVisible = (): Promise<boolean> => invoke('get_sidebar_visible')
 

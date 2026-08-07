@@ -86,11 +86,15 @@ describe('App', () => {
     await waitFor(() => expect(screen.getByText('Kies map')).toBeTruthy())
   })
 
-  // W2 — een notitie selecteren opent 'm in alleen-lezen weergave.
-  it('een notitie selecteren leest de inhoud en toont die alleen-lezen', async () => {
+  // W3 — een notitie selecteren opent 'm bewerkbaar (W2 was nog alleen-lezen;
+  // alleen-lezen is sinds W3 voorbehouden aan een actief conflict).
+  it('een notitie selecteren leest de inhoud en toont die bewerkbaar', async () => {
     mockedIpc.restoreVault.mockResolvedValue(eenBoom)
     mockedIpc.getSidebarVisible.mockResolvedValue(true)
-    mockedIpc.readNote.mockResolvedValue('# Titel\n\nDe inhoud van de notitie.')
+    mockedIpc.readNote.mockResolvedValue({
+      content: '# Titel\n\nDe inhoud van de notitie.',
+      modifiedMs: 1000,
+    })
 
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
@@ -101,7 +105,7 @@ describe('App', () => {
     expect(mockedIpc.readNote).toHaveBeenCalledWith('notitie.md')
 
     const content = document.querySelector('.cm-content')
-    expect(content?.getAttribute('contenteditable')).toBe('false')
+    expect(content?.getAttribute('contenteditable')).toBe('true')
   })
 
   it('een mislukte read toont een foutmelding, geen editor', async () => {
@@ -139,8 +143,8 @@ describe('App', () => {
     })
     mockedIpc.getSidebarVisible.mockResolvedValue(true)
 
-    let resolveA!: (v: string) => void
-    let resolveB!: (v: string) => void
+    let resolveA!: (v: ipc.NoteContent) => void
+    let resolveB!: (v: ipc.NoteContent) => void
     mockedIpc.readNote.mockImplementation((relPath: string) => {
       if (relPath === 'a.md') return new Promise((r) => (resolveA = r))
       return new Promise((r) => (resolveB = r))
@@ -153,10 +157,10 @@ describe('App', () => {
     fireEvent.click(screen.getByText(/a\.md/))
     fireEvent.click(screen.getByText(/b\.md/))
 
-    resolveB('inhoud van B')
+    resolveB({ content: 'inhoud van B', modifiedMs: 1000 })
     await waitFor(() => expect(screen.getByText(/inhoud van B/)).toBeTruthy())
 
-    resolveA('inhoud van A')
+    resolveA({ content: 'inhoud van A', modifiedMs: 1000 })
     await new Promise((r) => setTimeout(r, 0))
     expect(screen.queryByText(/inhoud van A/)).toBeNull()
     expect(screen.getByText(/inhoud van B/)).toBeTruthy()

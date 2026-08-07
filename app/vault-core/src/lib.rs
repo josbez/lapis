@@ -1,4 +1,5 @@
-//! Bestandslogica voor de vault-boom en het lezen van notities (W1, W2).
+//! Bestandslogica voor de vault-boom, lezen en schrijven van notities
+//! (W1, W2, W3).
 //!
 //! Deze crate bevat geen Tauri-afhankelijkheid, zodat de tests overal draaien —
 //! ook op een machine zonder de macOS- of webview-toolchain. De app in
@@ -6,23 +7,32 @@
 //! aanbiedt. De tests staan in `../tests/vault_core.rs`, niet hier — zie de
 //! uitleg bovenaan dat bestand.
 //!
-//! **Deze crate schrijft nergens naartoe** (Goal W1 §11): er staat geen
-//! enkele functie in die een bestand aanmaakt, overschrijft, verwijdert of
-//! hernoemt — alleen lezen. Persistentie van het vault-pad en de
-//! sidebar-status loopt via de aparte `app-state`-crate, die nooit binnen een
-//! vault-pad schrijft.
+//! **Schrijven is beperkt tot bewerken van bestaande notities** — geen nieuw
+//! bestand aanmaken (dat is F5, een latere wave), en altijd atomair: naar
+//! een tijdelijk bestand in dezelfde map, `fsync`, dan `rename()` over het
+//! origineel (PRD F3). Tot en met W1 mocht deze crate helemaal niets
+//! schrijven (Goal W1 §11); die beperking is hier bewust en zichtbaar
+//! opgeheven, precies zoals daar aangekondigd. Persistentie van het
+//! vault-pad en de sidebar-status blijft apart lopen via `app-state`, dat
+//! nooit binnen een vault-pad schrijft.
 //!
 //! Wat deze code bewust NIET doet:
-//! - schrijven (dat is W3) — `read_note` (W2) leest, zonder de inhoud ooit te
-//!   normaliseren: geen regeleindes omzetten, geen trailing newline
-//!   toevoegen, geen witruimte opruimen
+//! - de inhoud ooit normaliseren: geen regeleindes omzetten, geen trailing
+//!   newline toevoegen, geen witruimte opruimen — noch bij lezen, noch bij
+//!   schrijven
 //! - symlinks naar mappen volgen, ook niet binnen de vault (voorkomt
 //!   oneindige recursie via een cyclische symlink; zie Spec W1 §5.3)
+//! - stilzwijgend overschrijven wat buiten Lapis is gewijzigd: `write_note`
+//!   weigert met `WriteOutcome::Conflict` zodra de wijzigingstijd op schijf
+//!   afwijkt van wat er verwacht werd (PRD F3/C4, §10 besluit 1)
 
 use std::fmt;
 use std::fs;
+use std::io::Write as _;
 use std::path::{Component, Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeKind {
@@ -286,12 +296,137 @@ fn scan_children(root: &Path, dir_abs: &Path) -> Result<Vec<TreeNode>, VaultErro
 /// Leest een notitie als UTF-8, zonder enige normalisatie (W2, alleen-lezen).
 ///
 /// Regeleindes, trailing newlines en witruimte blijven precies zoals ze op
-/// schijf staan — er is in W2 nog geen schrijfpad om iets te laten afwijken,
-/// maar het contract is hetzelfde als W3 straks nodig heeft.
+/// schijf staan.
 pub fn read_note(root: &Path, rel: &str) -> Result<String, VaultError> {
     let path = resolve_in_root(root, rel)?;
     let bytes = fs::read(&path).map_err(io)?;
     String::from_utf8(bytes).map_err(|_| VaultError::InvalidUtf8)
+}
+
+/// Wat `read_note_with_mtime` teruggeeft: de inhoud plús de wijzigingstijd
+/// op het moment van lezen, nodig om vóór het schrijven te kunnen zien of
+/// iets buiten Lapis is veranderd (W3, PRD F3/C4).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NoteContent {
+    pub content: String,
+    pub modified: SystemTime,
+}
+
+pub fn read_note_with_mtime(root: &Path, rel: &str) -> Result<NoteContent, VaultError> {
+    let path = resolve_in_root(root, rel)?;
+    let modified = fs::metadata(&path).map_err(io)?.modified().map_err(io)?;
+    let bytes = fs::read(&path).map_err(io)?;
+    let content = String::from_utf8(bytes).map_err(|_| VaultError::InvalidUtf8)?;
+    Ok(NoteContent { content, modified })
+}
+
+/// Wat `write_note` teruggeeft.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WriteOutcome {
+    Saved(SystemTime),
+    /// Het bestand is op schijf gewijzigd sinds `expected` — er is niets
+    /// overschreven. Geen fout: dit is een verwacht, af te handelen geval
+    /// (PRD §10, besluit 1), geen programmeerfout.
+    Conflict,
+}
+
+/// Schrijft een notitie atomair: naar een tijdelijk bestand in dezelfde map,
+/// `fsync`, dan `rename()` over het origineel. Halve bestanden bestaan niet
+/// (PRD F3).
+///
+/// Bewerkt een bestaand bestand — een nieuw bestand aanmaken is geen
+/// W3-scope (dat is F5) en geeft `NotFound`.
+///
+/// `expected` is de laatst bekende wijzigingstijd (bijvoorbeeld uit
+/// `read_note_with_mtime`, of uit een eerdere geslaagde `write_note`). Wijkt
+/// de huidige tijd op schijf daarvan af, dan is het bestand buiten Lapis
+/// gewijzigd sinds het voor het laatst gezien werd: `WriteOutcome::Conflict`,
+/// zonder dat er iets overschreven wordt. Geef `None` om die controle bewust
+/// te omzeilen ("mijn versie behouden" na een conflict).
+pub fn write_note(
+    root: &Path,
+    rel: &str,
+    content: &str,
+    expected: Option<SystemTime>,
+) -> Result<WriteOutcome, VaultError> {
+    let path = resolve_in_root(root, rel)?;
+    if !path.is_file() {
+        return Err(VaultError::NotFound);
+    }
+    if let Some(expected) = expected {
+        let current = fs::metadata(&path).map_err(io)?.modified().map_err(io)?;
+        if current != expected {
+            return Ok(WriteOutcome::Conflict);
+        }
+    }
+
+    let tmp_path = temp_sibling(&path)?;
+    write_atomically(&tmp_path, &path, content)?;
+
+    let modified = fs::metadata(&path).map_err(io)?.modified().map_err(io)?;
+    Ok(WriteOutcome::Saved(modified))
+}
+
+/// Slaat `content` op als een nieuwe, niet-bestaande kopie naast `rel` —
+/// `notitie (conflict).md`, of met een oplopend nummer bij een
+/// naamsbotsing. Voor de "beide bewaren"-keuze bij een conflict (PRD §10);
+/// het bestand waar `rel` naar wijst wordt hierbij niet aangeraakt.
+pub fn write_note_as_copy(root: &Path, rel: &str, content: &str) -> Result<String, VaultError> {
+    let path = resolve_in_root(root, rel)?;
+    let parent = path.parent().ok_or(VaultError::OutsideRoot)?;
+    let stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("notitie");
+    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("md");
+
+    let mut candidate = parent.join(format!("{stem} (conflict).{ext}"));
+    let mut n = 2;
+    while candidate.exists() {
+        candidate = parent.join(format!("{stem} (conflict {n}).{ext}"));
+        n += 1;
+    }
+
+    let tmp_path = temp_sibling(&candidate)?;
+    write_atomically(&tmp_path, &candidate, content)?;
+
+    Ok(rel_path_str(root, &candidate))
+}
+
+/// Een verborgen, gegarandeerd unieke naam náást `path` — dezelfde map, zodat
+/// de latere `rename()` binnen één bestandssysteem blijft (vereist voor
+/// atomiciteit). Het punt vooraan laat `scan_tree` hem overslaan, mocht een
+/// crash hem ooit achterlaten.
+fn temp_sibling(path: &Path) -> Result<PathBuf, VaultError> {
+    let parent = path.parent().ok_or(VaultError::OutsideRoot)?;
+    let name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or(VaultError::OutsideRoot)?;
+
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    Ok(parent.join(format!(".lapis-tmp-{name}-{nanos}-{n}")))
+}
+
+/// Schrijft `content` naar `tmp_path`, `fsync`, en hernoemt dan over
+/// `target`. Ruimt `tmp_path` op als de hernoeming zelf mislukt, zodat er
+/// geen zwervend tijdelijk bestand achterblijft.
+fn write_atomically(tmp_path: &Path, target: &Path, content: &str) -> Result<(), VaultError> {
+    let mut file = fs::File::create(tmp_path).map_err(io)?;
+    file.write_all(content.as_bytes()).map_err(io)?;
+    file.sync_all().map_err(io)?;
+    drop(file);
+
+    let result = fs::rename(tmp_path, target).map_err(io);
+    if result.is_err() {
+        let _ = fs::remove_file(tmp_path);
+    }
+    result
 }
 
 /// Wat de Tauri-schil na een geslaagde scan aan de frontend geeft.
@@ -354,6 +489,27 @@ impl Session {
     /// Leest een notitie relatief aan de huidige vault (W2).
     pub fn read_note(&self, rel: &str) -> Result<String, VaultError> {
         read_note(&self.root()?, rel)
+    }
+
+    /// Leest een notitie mét wijzigingstijd, relatief aan de huidige vault (W3).
+    pub fn read_note_with_mtime(&self, rel: &str) -> Result<NoteContent, VaultError> {
+        read_note_with_mtime(&self.root()?, rel)
+    }
+
+    /// Schrijft een notitie atomair binnen de huidige vault (W3).
+    pub fn write_note(
+        &self,
+        rel: &str,
+        content: &str,
+        expected: Option<SystemTime>,
+    ) -> Result<WriteOutcome, VaultError> {
+        write_note(&self.root()?, rel, content, expected)
+    }
+
+    /// Slaat `content` op als nieuwe kopie naast `rel`, binnen de huidige
+    /// vault (W3, "beide bewaren" bij een conflict).
+    pub fn write_note_as_copy(&self, rel: &str, content: &str) -> Result<String, VaultError> {
+        write_note_as_copy(&self.root()?, rel, content)
     }
 
     fn root(&self) -> Result<PathBuf, VaultError> {

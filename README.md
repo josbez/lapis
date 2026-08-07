@@ -15,12 +15,22 @@ De W0-spike staat er, met een [CI-poort](.github/workflows/ci.yml) eromheen; wat
 ontbreekt is de doorloop op de Mac. Voor W1 zijn Goal Document, Wave Specification en
 Test & Verification Plan alle drie goedgekeurd — de vier beslisvragen uit het Goal
 Document zijn beantwoord, en `app/` opent een vault-map, scant recursief, toont de
-boom, en onthoudt de keuze bij herstart. W2 (notitie lezen) is **bewust zonder de
-drie wave-documenten gebouwd** — op expliciet verzoek van Jos, een afwijking van de
-normale werkwijze in plaats van een vergissing. Een notitie selecteren in de boom
-leest 'm nu en toont 'm alleen-lezen (`app/src/NoteView.tsx`, met `readOnly` uit
-atomic-editor); opslaan is W3. Alle geautomatiseerde verificatie voor W1 en W2 is
-groen; wat nog ontbreekt is de handmatige doorloop op Jos' eigen vault op de Mac.
+boom, en onthoudt de keuze bij herstart. W2 (notitie lezen) en W3 (notitie schrijven)
+zijn **bewust zonder de drie wave-documenten gebouwd** — op expliciet verzoek van Jos,
+een afwijking van de normale werkwijze in plaats van een vergissing. Eén beslissing uit
+W3 is wél apart aan Jos voorgelegd omdat de PRD daar zelf expliciet om vroeg: bij een
+conflict (extern gewijzigd terwijl je zelf aan het typen bent) toont Lapis een balk met
+drie keuzes — mijn versie behouden · hun versie laden · beide bewaren (PRD §10,
+besluit 1) — in plaats van het eenvoudiger "sluit als Snapchat" uit een eerdere
+antwoordronde. Een notitie is nu bewerkbaar met autosave (500ms na de laatste toets,
+plus `⌘S`) en atomair schrijven (tijdelijk bestand, `fsync`, `rename()`); alleen-lezen
+is sinds W3 voorbehouden aan een actief conflict. Alle geautomatiseerde verificatie
+voor W1, W2 en W3 is groen; wat nog ontbreekt is de handmatige doorloop op Jos' eigen
+vault op de Mac. **Voor die doorloop geldt afspraak V6a/V6b uit
+[08-vervolgvragen.md](docs/08-vervolgvragen.md#-v6--geen-back-ups-agents-die-schrijven-en-een-geblokkeerd-document):**
+alle schrijftests in dit project draaien uitsluitend tegen tijdelijke fixture-vaults,
+nooit tegen `~/Documents` — en vóór Jos zelf tegen zijn echte vault test, hoort daar een
+`git init` + commit aan vooraf te gaan, als vangnet.
 
 ## Documenten
 

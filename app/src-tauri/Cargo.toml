@@ -16,3 +16,6 @@ serde = { version = "1", features = ["derive"] }
 # (07 §4.3): geen fs::, geen File::create, geen OpenOptions hier.
 vault-core = { path = "../vault-core" }
 app-state = { path = "../app-state" }
+
+[dev-dependencies]
+serde_json = "1"
