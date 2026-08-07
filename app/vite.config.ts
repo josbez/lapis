@@ -10,5 +10,10 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
+    // @atomic-editor/editor@0.6.2 gebruikt extensieloze relatieve imports in
+    // zijn ESM-build. Bundlers lossen dat op, Node's ESM-resolver niet. Door
+    // het pakket te inlinen loopt het door Vite heen, net als in de app
+    // (zelfde regel als spike/vite.config.ts).
+    server: { deps: { inline: ['@atomic-editor/editor'] } },
   },
 })

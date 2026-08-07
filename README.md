@@ -14,11 +14,13 @@ Goal Document en Wave Specification voor W0 zijn goedgekeurd; het
 De W0-spike staat er, met een [CI-poort](.github/workflows/ci.yml) eromheen; wat nog
 ontbreekt is de doorloop op de Mac. Voor W1 zijn Goal Document, Wave Specification en
 Test & Verification Plan alle drie goedgekeurd — de vier beslisvragen uit het Goal
-Document zijn beantwoord. Het blijvende project staat in [`app/`](app/): een
-vault-map kiezen, recursief scannen, tonen als boom, en onthouden bij herstart — nog
-zonder een notitie te kunnen openen (dat is W2). Alle geautomatiseerde verificatie uit
-het testplan is groen; wat nog ontbreekt is de handmatige doorloop op Jos' eigen vault
-op de Mac.
+Document zijn beantwoord, en `app/` opent een vault-map, scant recursief, toont de
+boom, en onthoudt de keuze bij herstart. W2 (notitie lezen) is **bewust zonder de
+drie wave-documenten gebouwd** — op expliciet verzoek van Jos, een afwijking van de
+normale werkwijze in plaats van een vergissing. Een notitie selecteren in de boom
+leest 'm nu en toont 'm alleen-lezen (`app/src/NoteView.tsx`, met `readOnly` uit
+atomic-editor); opslaan is W3. Alle geautomatiseerde verificatie voor W1 en W2 is
+groen; wat nog ontbreekt is de handmatige doorloop op Jos' eigen vault op de Mac.
 
 ## Documenten
 

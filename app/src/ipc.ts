@@ -37,6 +37,12 @@ export const restoreVault = (): Promise<VaultView | null> => invoke('restore_vau
 /** Handmatig verversen van de huidige sessie. */
 export const rescanVault = (): Promise<VaultView> => invoke('rescan_vault')
 
+/**
+ * Leest een notitie relatief aan de huidige vault (W2, alleen-lezen). Er is
+ * geen `writeNote` — opslaan is W3.
+ */
+export const readNote = (relPath: string): Promise<string> => invoke('read_note', { path: relPath })
+
 export const getSidebarVisible = (): Promise<boolean> => invoke('get_sidebar_visible')
 
 export const setSidebarVisible = (visible: boolean): Promise<void> =>

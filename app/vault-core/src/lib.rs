@@ -1,4 +1,4 @@
-//! Bestandslogica voor de vault-boom (W1).
+//! Bestandslogica voor de vault-boom en het lezen van notities (W1, W2).
 //!
 //! Deze crate bevat geen Tauri-afhankelijkheid, zodat de tests overal draaien —
 //! ook op een machine zonder de macOS- of webview-toolchain. De app in
@@ -13,7 +13,9 @@
 //! vault-pad schrijft.
 //!
 //! Wat deze code bewust NIET doet:
-//! - geen bestand lezen of schrijven (dat is W2/W3) — alleen de boomstructuur
+//! - schrijven (dat is W3) — `read_note` (W2) leest, zonder de inhoud ooit te
+//!   normaliseren: geen regeleindes omzetten, geen trailing newline
+//!   toevoegen, geen witruimte opruimen
 //! - symlinks naar mappen volgen, ook niet binnen de vault (voorkomt
 //!   oneindige recursie via een cyclische symlink; zie Spec W1 §5.3)
 
@@ -58,6 +60,9 @@ pub enum VaultError {
     /// latere waves, ook al doet W1 er zelf weinig mee.
     PermissionDenied,
     AlreadyExists,
+    /// Het bestand is geen geldige UTF-8. `.md`-bestanden horen dat te zijn,
+    /// maar de kern gaat niet uit van een schone vault (W2).
+    InvalidUtf8,
     Io(String),
 }
 
@@ -71,6 +76,7 @@ impl fmt::Display for VaultError {
             VaultError::NotADirectory => write!(f, "pad is geen map"),
             VaultError::PermissionDenied => write!(f, "geen leesrechten"),
             VaultError::AlreadyExists => write!(f, "bestaat al"),
+            VaultError::InvalidUtf8 => write!(f, "bestand is geen geldige UTF-8"),
             VaultError::Io(m) => write!(f, "bestandsfout: {m}"),
         }
     }
@@ -277,6 +283,17 @@ fn scan_children(root: &Path, dir_abs: &Path) -> Result<Vec<TreeNode>, VaultErro
     Ok(out)
 }
 
+/// Leest een notitie als UTF-8, zonder enige normalisatie (W2, alleen-lezen).
+///
+/// Regeleindes, trailing newlines en witruimte blijven precies zoals ze op
+/// schijf staan — er is in W2 nog geen schrijfpad om iets te laten afwijken,
+/// maar het contract is hetzelfde als W3 straks nodig heeft.
+pub fn read_note(root: &Path, rel: &str) -> Result<String, VaultError> {
+    let path = resolve_in_root(root, rel)?;
+    let bytes = fs::read(&path).map_err(io)?;
+    String::from_utf8(bytes).map_err(|_| VaultError::InvalidUtf8)
+}
+
 /// Wat de Tauri-schil na een geslaagde scan aan de frontend geeft.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TreeView {
@@ -332,6 +349,11 @@ impl Session {
             Err(VaultError::NotFound) | Err(VaultError::NotADirectory) => Ok(None),
             Err(e) => Err(e),
         }
+    }
+
+    /// Leest een notitie relatief aan de huidige vault (W2).
+    pub fn read_note(&self, rel: &str) -> Result<String, VaultError> {
+        read_note(&self.root()?, rel)
     }
 
     fn root(&self) -> Result<PathBuf, VaultError> {

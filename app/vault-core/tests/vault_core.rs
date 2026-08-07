@@ -52,6 +52,27 @@ fn find<'a>(nodes: &'a [TreeNode], name: &str) -> &'a TreeNode {
         .unwrap_or_else(|| panic!("knooppunt {name} niet gevonden"))
 }
 
+// W2 — read_note. Dezelfde randgevallen als W0's BE-01, nu voor lezen.
+fn fixture_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures")
+}
+
+fn copy_fixture(into: &Path, name: &str) -> PathBuf {
+    let target = into.join(name);
+    fs::copy(fixture_dir().join(name), &target).expect("kon fixture niet kopiëren");
+    target
+}
+
+const FIXTURES: [&str; 7] = [
+    "simpel.md",
+    "crlf.md",
+    "lone-cr.md",
+    "geen-eind-newline.md",
+    "emoji-en-accenten.md",
+    "frontmatter.md",
+    "tabellen-en-code.md",
+];
+
 // Bewijst dat het Display-contract voor alle varianten intact is, ook
 // voor gevallen die W1 zelf niet produceert maar die Goal §9 als
 // onderscheidbaar eist voor latere waves.
@@ -448,4 +469,116 @@ fn prestatie_5000_notities_onder_500ms() {
         duur.as_millis() < 500,
         "scan duurde {duur:?}, budget is 500ms (Goal W1 §9)"
     );
+}
+
+// W2 — read_note geeft de inhoud terug precies zoals ze op schijf staat,
+// voor elke fixture die een bekende manier is om tekst stilletjes te
+// beschadigen (dezelfde randgevallen als W0's BE-01/BE-03).
+#[test]
+fn w2_read_note_geeft_inhoud_byte_voor_byte_als_string() {
+    for name in FIXTURES {
+        let dir = temp_dir("w2-lezen");
+        let path = copy_fixture(&dir, name);
+        let op_schijf = fs::read(&path).unwrap();
+
+        let gelezen = read_note(&dir, name).unwrap();
+
+        assert_eq!(
+            gelezen.as_bytes(),
+            op_schijf.as_slice(),
+            "fixture {name} is niet byte-identiek uit read_note gekomen"
+        );
+    }
+}
+
+#[test]
+fn w2_read_note_normaliseert_regeleindes_niet() {
+    let dir = temp_dir("w2-regeleindes");
+    copy_fixture(&dir, "crlf.md");
+    copy_fixture(&dir, "geen-eind-newline.md");
+    copy_fixture(&dir, "lone-cr.md");
+
+    let crlf = read_note(&dir, "crlf.md").unwrap();
+    assert!(crlf.contains("\r\n"), "regeleindes zijn omgezet");
+
+    let geen_newline = read_note(&dir, "geen-eind-newline.md").unwrap();
+    assert!(
+        !geen_newline.ends_with('\n'),
+        "er is een newline toegevoegd aan het eind"
+    );
+
+    let lone_cr = read_note(&dir, "lone-cr.md").unwrap();
+    assert!(lone_cr.contains('\r'), "de losse CR is verdwenen");
+    assert!(!lone_cr.contains('\n'), "er is een LF bijgekomen");
+}
+
+#[test]
+fn w2_read_note_op_niet_bestaand_bestand_geeft_nette_fout() {
+    let dir = temp_dir("w2-ontbreekt");
+    assert_eq!(
+        read_note(&dir, "bestaat-niet.md"),
+        Err(VaultError::NotFound)
+    );
+}
+
+#[test]
+fn w2_read_note_buiten_root_faalt() {
+    let (ouder, dir) = temp_dir_met_ouder("w2-buiten");
+    write(&ouder, "geheim.md", "geheim");
+    assert_eq!(
+        read_note(&dir, "../geheim.md"),
+        Err(VaultError::OutsideRoot)
+    );
+}
+
+// V1 geldt ook voor read_note, via dezelfde resolve_in_root.
+#[test]
+fn w2_read_note_op_leeg_pad_geeft_invalid_path() {
+    let dir = temp_dir("w2-leeg-pad");
+    assert_eq!(read_note(&dir, ""), Err(VaultError::InvalidPath));
+}
+
+#[test]
+fn w2_read_note_op_ongeldige_utf8_geeft_nette_fout() {
+    let dir = temp_dir("w2-utf8");
+    fs::write(dir.join("kapot.md"), [0x66, 0x6f, 0xff, 0x6f]).unwrap();
+    assert_eq!(read_note(&dir, "kapot.md"), Err(VaultError::InvalidUtf8));
+}
+
+#[test]
+fn w2_sessie_read_note_werkt_op_de_geopende_vault() {
+    let dir = temp_dir("w2-sessie");
+    write(&dir, "notitie.md", "inhoud van de notitie");
+
+    let sessie = Session::new();
+    sessie.open(&dir).unwrap();
+
+    assert_eq!(
+        sessie.read_note("notitie.md").unwrap(),
+        "inhoud van de notitie"
+    );
+}
+
+#[test]
+fn w2_sessie_read_note_vereist_geopende_sessie() {
+    let sessie = Session::new();
+    assert_eq!(
+        sessie.read_note("notitie.md"),
+        Err(VaultError::NoVaultSelected)
+    );
+}
+
+// Zelfbewaking van de fixtures, zoals W0's be_01b/be_06 dat deden — anders
+// zou een test kunnen slagen op een fixture die zijn kenmerk al kwijt is.
+#[test]
+fn w2_crlf_fixture_bevat_daadwerkelijk_crlf() {
+    let bytes = fs::read(fixture_dir().join("crlf.md")).unwrap();
+    assert!(bytes.windows(2).any(|w| w == b"\r\n"));
+}
+
+#[test]
+fn w2_lone_cr_fixture_bevat_losse_cr_en_geen_lf() {
+    let bytes = fs::read(fixture_dir().join("lone-cr.md")).unwrap();
+    assert!(bytes.contains(&b'\r'));
+    assert!(!bytes.contains(&b'\n'));
 }

@@ -85,4 +85,80 @@ describe('App', () => {
 
     await waitFor(() => expect(screen.getByText('Kies map')).toBeTruthy())
   })
+
+  // W2 — een notitie selecteren opent 'm in alleen-lezen weergave.
+  it('een notitie selecteren leest de inhoud en toont die alleen-lezen', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.readNote.mockResolvedValue('# Titel\n\nDe inhoud van de notitie.')
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.click(screen.getByText(/notitie\.md/))
+
+    await waitFor(() => expect(screen.getByText(/De inhoud van de notitie/)).toBeTruthy())
+    expect(mockedIpc.readNote).toHaveBeenCalledWith('notitie.md')
+
+    const content = document.querySelector('.cm-content')
+    expect(content?.getAttribute('contenteditable')).toBe('false')
+  })
+
+  it('een mislukte read toont een foutmelding, geen editor', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.readNote.mockRejectedValue(new Error('kapot'))
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.click(screen.getByText(/notitie\.md/))
+
+    // De foutmelding staat zowel in de statusregel als in het hoofdvenster
+    // (Spec §5.6-stijl: geen editor zonder geslaagde read) — vandaar
+    // getAllByText in plaats van getByText.
+    await waitFor(() =>
+      expect(screen.getAllByText(/notitie openen mislukt/).length).toBeGreaterThan(0),
+    )
+    expect(document.querySelector('.cm-content')).toBeNull()
+  })
+
+  it('alleen het laatst geselecteerde bestand wint (bevinding B8)', async () => {
+    mockedIpc.restoreVault.mockResolvedValue({
+      rootDisplay: '/tmp/vault',
+      tree: {
+        name: 'vault',
+        relPath: '',
+        kind: 'dir',
+        readable: true,
+        children: [
+          { name: 'a.md', relPath: 'a.md', kind: 'file', readable: true, children: [] },
+          { name: 'b.md', relPath: 'b.md', kind: 'file', readable: true, children: [] },
+        ],
+      },
+    })
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+
+    let resolveA!: (v: string) => void
+    let resolveB!: (v: string) => void
+    mockedIpc.readNote.mockImplementation((relPath: string) => {
+      if (relPath === 'a.md') return new Promise((r) => (resolveA = r))
+      return new Promise((r) => (resolveB = r))
+    })
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/a\.md/)).toBeTruthy())
+
+    // Klik A, dan klik B — B's antwoord komt eerst terug, A's daarna.
+    fireEvent.click(screen.getByText(/a\.md/))
+    fireEvent.click(screen.getByText(/b\.md/))
+
+    resolveB('inhoud van B')
+    await waitFor(() => expect(screen.getByText(/inhoud van B/)).toBeTruthy())
+
+    resolveA('inhoud van A')
+    await new Promise((r) => setTimeout(r, 0))
+    expect(screen.queryByText(/inhoud van A/)).toBeNull()
+    expect(screen.getByText(/inhoud van B/)).toBeTruthy()
+  })
 })
