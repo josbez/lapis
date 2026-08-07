@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Ter goedkeuring door Jos |
+| **Status** | Beslisvragen beantwoord · klaar voor de Wave Specification, na goedkeuring van dit document |
 | **Gezag** | Dit document beheerst uitkomst, scope, grenzen en stopcondities van W1 |
 | **Bron** | [PRD v1.1 §F1](../../03-prd.md#f1--vault-openen-en-navigeren) · [Wave-methode](../../07-wave-methode.md) · [Code-analyse](../../09-code-analyse-en-verbeterplan.md) |
 
@@ -12,8 +12,11 @@
 
 *[07 §6](../../07-wave-methode.md#6-werkafspraak-per-wave): een Goal Document met
 onbeantwoorde blokkerende vragen is niet af. Deze vier komen uit de code-analyse (T13)
-en uit wat W0 tegenkwam. Ze zijn hier niet ingevuld met een aanname — dat was precies
-de fout van ronde 1.*
+en uit wat W0 tegenkwam. Ze zijn niet ingevuld met een aanname — dat was precies de
+fout van ronde 1.*
+
+**✅ Alle vier beantwoord door Jos.** Onder elk antwoord staat wat het voor de Wave
+Specification betekent; die gevolgen zijn van mij en mogen terug.
 
 ### V1 · Wat doet Lapis met een pad dat naar de vault-map zélf wijst?
 
@@ -27,7 +30,13 @@ paden aan, en een bug daarin moet netjes stranden.
 | b. Behandelen als "niets geselecteerd" | Stiller in beeld, maar het verschil tussen "nog niets open" en "kapot pad" verdwijnt |
 | c. Laten zoals het is | De gebruiker krijgt ooit een Engelse OS-foutmelding te zien |
 
-**Antwoord:** `____________________________________________`
+**Antwoord:** `c voor nu — eerst zien, dan oplossing bedenken.`
+
+*Gevolg voor de spec.* Geen `InvalidPath`-variant in W1. Wél een test die het huidige
+gedrag vastlégt in plaats van het te beoordelen: komt er een `Io`-fout, dan staat er
+zwart op wit wélke. Zonder die test is "eerst zien" niet uitvoerbaar — dan zie je het
+pas als een gebruiker het meldt. Herzien zodra het geval zich in de praktijk voordoet;
+dit is uitdrukkelijk uitgesteld, niet afgedaan.
 
 ### V2 · Wat doet Lapis met symlinks die buiten de vault wijzen?
 
@@ -40,7 +49,12 @@ is de veilige kant van inconsistent: je ziet iets dat je niet kunt openen.
 | b. Tonen, maar gemarkeerd en niet te openen | Eerlijker, kost een visuele toestand in de boom — en die is er in W1 nog niet |
 | c. Volgen, ook buiten de vault | Comfortabel, maar dan is "alles blijft binnen de gekozen map" geen garantie meer. Ik raad dit af |
 
-**Antwoord:** `____________________________________________`
+**Antwoord:** `a — niet tonen.`
+
+*Gevolg voor de spec.* De scan canonicaliseert elk item en laat alles weg dat na
+symlink-resolutie buiten de vault valt. Dat kost een `canonicalize` per item, wat
+meetelt in het prestatiebudget van §9 — mocht dat knellen, dan is dát de bevinding,
+niet een stille versoepeling van deze regel.
 
 ### V3 · Telt `notitie.MD` als markdown?
 
@@ -53,7 +67,12 @@ zichtbaar in Obsidian.
 | **a. Hoofdletter-ongevoelig** — `.md`, `.MD`, `.Md` tellen allemaal | Sluit aan bij Obsidian en bij hoe macOS zich gedraagt |
 | b. Alleen kleine letters | Voorspelbaar, maar bestanden uit oude exports blijven onzichtbaar |
 
-**Antwoord:** `____________________________________________`
+**Antwoord:** `a — hoofdletter-ongevoelig.`
+
+*Gevolg voor de spec.* De vergelijking gebeurt op de extensie in kleine letters. Let op
+het randgeval dat hierbij hoort: op een hoofdletter-*gevoelig* volume (APFS kán zo
+geformatteerd zijn) kunnen `notitie.md` en `notitie.MD` naast elkaar bestaan. Beide
+worden dan getoond, als twee aparte notities — dat is correct, want dat zijn het ook.
 
 ### V4 · Waar bewaart Lapis welke map je open had?
 
@@ -69,7 +88,16 @@ En de vervolgvraag die er los van staat: **wat gebeurt er als die map bij de sta
 of hernoemd?** Mijn voorstel is een lege staat met de mapkiezer en één regel uitleg — niet
 stilzwijgend de vorige inhoud tonen. Dat mag je terugdraaien.
 
-**Antwoord:** `____________________________________________`
+**Antwoord:** `b — ~/.config/lapis/. Eens met de lege staat met mapkiezer en één regel uitleg.`
+
+*Gevolg voor de spec.* Eén bestand in `~/.config/lapis/`, met de vault-keuze en de
+sidebar-stand erin. Terugvindbaar en met de hand te bewerken — dat is de winst, en
+tegelijk de reden om het formaat leesbaar te houden en kapotte inhoud te behandelen als
+"geen keuze" in plaats van als fout.
+
+Dit wijkt bewust af van waar macOS-apps hun voorkeuren neerzetten. Twee dingen die
+daaruit volgen en die de spec moet regelen: het pad respecteert `$XDG_CONFIG_HOME` als
+die gezet is, en de map wordt aangemaakt als hij niet bestaat.
 
 ---
 
@@ -286,8 +314,9 @@ Stop en meld een blokkade wanneer:
 - Het prestatiebudget uit §9 niet haalbaar blijkt met een eenvoudige scan. Dat is een
   gesprek over de architectuur (lazy laden, een index in W1 in plaats van W6), geen
   work-around.
-- De vier vragen uit §0 onbeantwoord zijn op het moment dat de code ze nodig heeft.
-  **Vul ze niet in met een aanname.**
+- Er een keuze nodig blijkt die niet in §0 staat. **Vul die niet in met een aanname** —
+  dat is wat §0 bestaat om te voorkomen. Dit geldt met nadruk voor V1: "eerst zien" is
+  een besluit om te wachten, geen vrijbrief om onderweg alsnog iets te verzinnen.
 - Er iets nodig blijkt uit §6 om de happy flow te halen.
 - Het onthouden van de vault-keuze op macOS-rechten stuit (sandboxing, security-scoped
   bookmarks). Dat is een reëel risico: een pad onthouden is niet hetzelfde als het
@@ -298,10 +327,13 @@ doel zo niet gehaald kan worden, en wat er van Jos nodig is.
 
 ## 16. Goal Coach Readiness Judgment
 
-**Status: Not ready — vier open vragen in §0.**
+**Status: Ready for Wave Specification.** V1 t/m V4 zijn beantwoord; er zaten geen
+andere gaten in.
 
-Zodra V1 t/m V4 beantwoord zijn, is dit document klaar voor de Wave Specification. Er
-zitten geen andere gaten in; deze vier zijn bewust niet ingevuld.
+Eén antwoord verdient een aantekening. **V1 is uitgesteld, niet beslist** ("eerst zien").
+Dat is een geldige keuze, maar het betekent dat W1 met een bekend rommelig randgeval
+oplevert. De test die het gedrag vastlegt is daarom geen formaliteit: zonder die test is
+er over een half jaar niemand meer die weet dat dit bewust zo staat.
 
 **Aannames die ik wél heb gedaan, en die je mag terugdraaien:**
 

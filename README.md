@@ -12,9 +12,9 @@ waves, als issues `#1`–`#11`. Stack: Tauri v2 · React · CodeMirror 6 · SQLi
 Goal Document en Wave Specification voor W0 zijn goedgekeurd; het
 [Test & Verification Plan](docs/waves/W0-spike/02-testplan.md) wacht op goedkeuring.
 De W0-spike staat er, met een [CI-poort](.github/workflows/ci.yml) eromheen; wat nog
-ontbreekt is de doorloop op de Mac. Het
-[W1 Goal Document](docs/waves/W1-vault-lezen/00-goal.md) ligt klaar met vier
-beslisvragen.
+ontbreekt is de doorloop op de Mac. De vier beslisvragen in het
+[W1 Goal Document](docs/waves/W1-vault-lezen/00-goal.md) zijn beantwoord; de Wave
+Specification is de volgende stap.
 
 ## Documenten
 
@@ -34,7 +34,7 @@ beslisvragen.
 | [W0 – Wave Specification](docs/waves/W0-spike/01-spec.md) | Het implementatiecontract voor de spike | ✅ goedgekeurd |
 | **[W0 – Test & Verification Plan](docs/waves/W0-spike/02-testplan.md)** | **Wat er bewezen moet worden vóór er code is** | ⏳ **ter goedkeuring** |
 | [W0 – Bewijsverslag](docs/waves/W0-spike/03-bewijs.md) | Wat er draaide, wat faalde, wat niet getest is | onvolledig — wacht op de doorloop |
-| **[W1 – Goal Document](docs/waves/W1-vault-lezen/00-goal.md)** | **Vault openen en tonen: doel, scope, grenzen** | ⏳ **vier open vragen** |
+| **[W1 – Goal Document](docs/waves/W1-vault-lezen/00-goal.md)** | **Vault openen en tonen: doel, scope, grenzen** | ✅ **vragen beantwoord** |
 
 ## Werkwijze
 
