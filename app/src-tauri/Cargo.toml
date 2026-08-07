@@ -1,0 +1,18 @@
+[package]
+name = "lapis"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+
+# Alle bestandslogica zit in deze twee crates. Deze crate is een dunne schil
+# (07 §4.3): geen fs::, geen File::create, geen OpenOptions hier.
+vault-core = { path = "../vault-core" }
+app-state = { path = "../app-state" }

@@ -10,6 +10,12 @@
 # ruisen. Een check die af en toe onterecht piept wordt binnen twee weken met
 # een `# noqa` het zwijgen opgelegd, en dan bewaakt hij niets meer.
 #
+# Sinds W1 dekt dit script twee projecten: spike/ (wegwerpcode, blijft
+# ongewijzigd) en app/ (het blijvende product). Elke bestaande regel loopt
+# daarom twee keer — één keer per project — als aparte, los benoemde checks,
+# zodat een fout in het ene project het andere niet verbergt. Eén regel is
+# nieuw voor W1: geen schrijfaanroep in app/vault-core (Goal W1 §11).
+#
 # Gebruik:
 #   scripts/isolatie-check.sh              controleer deze repo
 #   scripts/isolatie-check.sh --zelftest   bewijs dat elke check ook echt vangt
@@ -56,25 +62,37 @@ draai_checks() {
   # 07 §4.3: geen hardgecodeerde paden of gebruikersnamen. Lapis moet ook voor
   # iemand anders dan Jos werken. Testcode mag wel paden bouwen — die staat in
   # __tests__ en achter `CARGO_MANIFEST_DIR`, en wordt hier overgeslagen.
-  scan "geen hardgecodeerde paden of gebruikersnamen" \
+  scan "geen hardgecodeerde paden of gebruikersnamen (spike)" \
     '(/Users/|/home/[a-z]|C:\\\\)' \
     spike/vault-core/src spike/src-tauri/src spike/src
+  scan "geen hardgecodeerde paden of gebruikersnamen (app)" \
+    '(/Users/|/home/[a-z]|C:\\\\)' \
+    app/vault-core/src app/app-state/src app/src-tauri/src app/src
 
   # 07 §4.3: geen netwerk in de kern. Geen telemetrie, geen update-check.
-  scan "geen netwerk in de kern" \
+  scan "geen netwerk in de kern (spike)" \
     '\b(reqwest|ureq|hyper|curl|TcpStream|TcpListener|std::net)\b|https?://' \
     spike/vault-core/src spike/src-tauri/src
+  scan "geen netwerk in de kern (app)" \
+    '\b(reqwest|ureq|hyper|curl|TcpStream|TcpListener|std::net)\b|https?://' \
+    app/vault-core/src app/app-state/src app/src-tauri/src
 
   # 07 §4.4: de frontend raakt nooit zelf een bestand aan. Alles loopt via IPC.
-  scan "geen bestandstoegang vanuit de frontend" \
+  scan "geen bestandstoegang vanuit de frontend (spike)" \
     "@tauri-apps/plugin-fs|from '(node:)?fs'|from \"(node:)?fs\"|require\('fs'\)" \
     spike/src
+  scan "geen bestandstoegang vanuit de frontend (app)" \
+    "@tauri-apps/plugin-fs|from '(node:)?fs'|from \"(node:)?fs\"|require\('fs'\)" \
+    app/src
 
   # 07 §4.3: één poort naar de schijf. De Tauri-schil vertaalt alleen; alle
-  # bestandsoperaties staan in vault-core, waar de padcontrole omheen zit.
-  scan "geen bestandsoperaties in de Tauri-schil" \
+  # bestandsoperaties staan in de kern-crates, waar de padcontrole omheen zit.
+  scan "geen bestandsoperaties in de Tauri-schil (spike)" \
     '\bfs::|File::create|File::open|OpenOptions' \
     spike/src-tauri/src
+  scan "geen bestandsoperaties in de Tauri-schil (app)" \
+    '\bfs::|File::create|File::open|OpenOptions' \
+    app/src-tauri/src
 
   # Bevinding B1: de root is een veiligheidsinvariant en ligt in Rust. Zodra de
   # frontend een root kan meegeven, is de padcontrole eromheen te lopen.
@@ -82,23 +100,42 @@ draai_checks() {
   # bijhouden (dat is een string om te tónen); wat hij niet mag, is hem over de
   # IPC-grens duwen. Vandaar: geen enkel `invoke` met root waar dan ook, en in
   # `ipc.ts` — de enige plek waar die grens ligt — helemaal geen root-argument.
-  scan "geen IPC-aanroep met een root-argument" \
+  scan "geen IPC-aanroep met een root-argument (spike)" \
     'invoke\(.*root' \
     spike/src
+  scan "geen IPC-aanroep met een root-argument (app)" \
+    'invoke\(.*root' \
+    app/src
 
-  scan "ipc.ts kent geen root-parameter" \
+  scan "ipc.ts kent geen root-parameter (spike)" \
     '\broot\s*[:,}]' \
     spike/src/ipc.ts
+  scan "ipc.ts kent geen root-parameter (app)" \
+    '\broot\s*[:,}]' \
+    app/src/ipc.ts
 
-  scan "geen command accepteert nog een root-pad" \
+  scan "geen command accepteert nog een root-pad (spike)" \
     'fn [a-z_]+\([^)]*root' \
     spike/src-tauri/src
+  scan "geen command accepteert nog een root-pad (app)" \
+    'fn [a-z_]+\([^)]*root' \
+    app/src-tauri/src
 
-  # De fs-plugin is bewust niet toegekend: zou hij erbij komen, dan is de vorige
-  # check te omzeilen zonder één regel Rust te veranderen.
-  scan "de fs-plugin staat niet in de capabilities" \
+  # De fs-plugin is bewust niet toegekend: zou hij erbij komen, dan is de
+  # vorige check te omzeilen zonder één regel Rust te veranderen.
+  scan "de fs-plugin staat niet in de capabilities (spike)" \
     '"fs:' \
     spike/src-tauri/capabilities
+  scan "de fs-plugin staat niet in de capabilities (app)" \
+    '"fs:' \
+    app/src-tauri/capabilities
+
+  # Goal W1 §11 — nieuw sinds deze wave: vault-core mag niets schrijven.
+  # Persistentie loopt via app-state (Spec W1 §2), dat hier bewust NIET
+  # gescand wordt — schrijven is precies waar die crate voor bestaat.
+  scan "geen schrijfaanroep in de kern (app/vault-core)" \
+    'fs::write|File::create|remove_file|rename' \
+    app/vault-core/src
 }
 
 # Bouwt een miniatuur-repo waarin élke check overtreden wordt, en controleert
@@ -109,16 +146,31 @@ zelftest() {
   tmp="$(mktemp -d)"
   trap 'rm -rf "${tmp:-}"' EXIT
 
-  mkdir -p "$tmp/spike/vault-core/src" "$tmp/spike/src-tauri/src" \
-    "$tmp/spike/src-tauri/capabilities" "$tmp/spike/src"
+  for project in spike app; do
+    mkdir -p "$tmp/$project/vault-core/src" "$tmp/$project/src-tauri/src" \
+      "$tmp/$project/src-tauri/capabilities" "$tmp/$project/src"
+  done
+  mkdir -p "$tmp/app/app-state/src"
 
-  echo 'let pad = "/Users/jos/notities";' >"$tmp/spike/vault-core/src/lib.rs"
-  echo 'use reqwest::get; // https://voorbeeld.test' >>"$tmp/spike/vault-core/src/lib.rs"
-  echo 'fn read_note(root: String) { fs::write("x", "y"); }' >"$tmp/spike/src-tauri/src/main.rs"
-  echo "import { readFileSync } from 'node:fs'" >"$tmp/spike/src/App.tsx"
-  echo "export const readNote = (root: string) => invoke('read_note', { root })" \
-    >"$tmp/spike/src/ipc.ts"
-  echo '{"permissions": ["fs:allow-read"]}' >"$tmp/spike/src-tauri/capabilities/default.json"
+  for project in spike app; do
+    {
+      echo 'let pad = "/Users/jos/notities";'
+      echo 'use reqwest::get; // https://voorbeeld.test'
+    } >"$tmp/$project/vault-core/src/lib.rs"
+    echo 'fn read_note(root: String) { fs::write("x", "y"); }' \
+      >"$tmp/$project/src-tauri/src/main.rs"
+    echo "import { readFileSync } from 'node:fs'" >"$tmp/$project/src/App.tsx"
+    echo "export const readNote = (root: string) => invoke('read_note', { root })" \
+      >"$tmp/$project/src/ipc.ts"
+    echo '{"permissions": ["fs:allow-read"]}' \
+      >"$tmp/$project/src-tauri/capabilities/default.json"
+  done
+  # app-state bestaat wel (anders "pad bestaat niet"), maar overtreedt zelf
+  # niets — de vault-core-fixture hierboven levert de hardgecodeerd-pad- en
+  # netwerktreffers voor de (app)-varianten al.
+  echo '// niets bijzonders' >"$tmp/app/app-state/src/lib.rs"
+  # De W1-regel: vault-core zelf schrijft ook.
+  echo 'fn schrijf() { fs::write("x", "y"); }' >>"$tmp/app/vault-core/src/lib.rs"
 
   local echte_basis="$BASIS"
   BASIS="$tmp"
@@ -127,7 +179,7 @@ zelftest() {
   stil=0
   BASIS="$echte_basis"
 
-  local verwacht=8
+  local verwacht=17
   if [[ $fouten -eq $verwacht ]]; then
     echo "✓ zelftest: alle ${verwacht} checks vangen hun proef-overtreding"
     return 0

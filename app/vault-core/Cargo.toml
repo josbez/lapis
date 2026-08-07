@@ -1,0 +1,11 @@
+[package]
+name = "vault-core"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Bewust geen afhankelijkheden. Deze crate bevat alleen lees-only
+# bestandslogica en moet overal te testen zijn, ook zonder de macOS- of
+# webview-toolchain. Geen fs::write, File::create, remove_file of rename
+# (Goal W1 §11) — persistentie loopt via de aparte app-state-crate.
+[dependencies]

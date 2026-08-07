@@ -1,0 +1,3 @@
+# Buildartefacten van deze crate. De rest staat in de .gitignore van de repo.
+/target/
+/gen/
