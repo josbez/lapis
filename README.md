@@ -32,6 +32,17 @@ alle schrijftests in dit project draaien uitsluitend tegen tijdelijke fixture-va
 nooit tegen `~/Documents` — en vóór Jos zelf tegen zijn echte vault test, hoort daar een
 `git init` + commit aan vooraf te gaan, als vangnet.
 
+**Mismatch met de geplande wave-indeling, hier expliciet gemeld:** volgens
+[07 §5](docs/07-wave-methode.md#5-voorstel-wave-indeling) hoort het focusmodel (opslaan
+bij focusverlies, herladen bij terugkeer, het conflictgeval) een **eigen wave (W4)** te
+zijn, juist omdat het "de meeste manieren heeft om subtiel fout te gaan". Die logica zit
+inmiddels al in wat hierboven "W3" heet, in plaats van er apart uitgelicht te zijn. Wat
+er ná W3 is gebouwd, heet daarom in de commits en PR's "W4" maar is inhoudelijk het
+gedocumenteerde **W5 — de quick switcher**: `⌘K`, fuzzy zoeken op bestandsnaam en pad in
+het geheugen (geen index — dat is het echte W6, full-text search met SQLite FTS5),
+recent geopende notities bovenaan bij een lege invoer. Alle geautomatiseerde verificatie
+is groen.
+
 ## Documenten
 
 | Document | Waarvoor | Status |

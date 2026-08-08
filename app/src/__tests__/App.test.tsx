@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
 import App from '../App'
 import * as ipc from '../ipc'
 import type { VaultView } from '../ipc'
@@ -23,6 +23,10 @@ const eenBoom: VaultView = {
 describe('App', () => {
   beforeEach(() => {
     vi.resetAllMocks()
+    // Standaardwaarden voor W5 — individuele tests overschrijven dit alleen
+    // als het recente-paden-gedrag zelf getest wordt.
+    mockedIpc.getRecentPaths.mockResolvedValue([])
+    mockedIpc.recordNoteOpened.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -164,5 +168,55 @@ describe('App', () => {
     await new Promise((r) => setTimeout(r, 0))
     expect(screen.queryByText(/inhoud van A/)).toBeNull()
     expect(screen.getByText(/inhoud van B/)).toBeTruthy()
+  })
+
+  // W5 — quick switcher.
+  it('⌘K opent de quick switcher, Escape sluit hem weer', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    fireEvent.keyDown(window, { key: 'k', metaKey: true })
+    expect(screen.getByRole('dialog')).toBeTruthy()
+
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('een notitie kiezen in de quick switcher opent hem en onthoudt hem als recent', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.readNote.mockResolvedValue({ content: 'inhoud', modifiedMs: 1000 })
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.keyDown(window, { key: 'k', metaKey: true })
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^notitie\.md/ }))
+
+    await waitFor(() => expect(mockedIpc.readNote).toHaveBeenCalledWith('notitie.md'))
+    expect(mockedIpc.recordNoteOpened).toHaveBeenCalledWith('notitie.md')
+    // Openen sluit de switcher — anders staat hij nog over de editor heen.
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('herstelt de onthouden recente paden bij het opstarten', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.getRecentPaths.mockResolvedValue(['notitie.md'])
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.keyDown(window, { key: 'k', metaKey: true })
+
+    // Bij een lege invoer staat het onthouden recente pad in de lijst —
+    // bewijst dat getRecentPaths() daadwerkelijk in de startup-hydratie zit.
+    expect(mockedIpc.getRecentPaths).toHaveBeenCalled()
+    expect(screen.getAllByRole('option').length).toBeGreaterThan(0)
   })
 })

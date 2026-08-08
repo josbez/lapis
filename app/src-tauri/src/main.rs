@@ -197,6 +197,20 @@ fn write_note_as_copy(
         .map_err(|e| e.to_string())
 }
 
+/// De meest recent geopende notities, meest-recent-eerst (W5, quick
+/// switcher: "recent geopend bovenaan bij lege invoer").
+#[tauri::command]
+fn get_recent_paths() -> Result<Vec<String>, String> {
+    Ok(store().load().recent_paths)
+}
+
+/// Zet `path` vooraan in de recente lijst. De frontend roept dit aan na een
+/// geslaagde `read_note` — dit command leest zelf niets, het onthoudt alleen.
+#[tauri::command]
+fn record_note_opened(path: String) -> Result<(), String> {
+    store().record_note_opened(&path).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn get_sidebar_visible() -> Result<bool, String> {
     Ok(store().load().sidebar_visible)
@@ -220,6 +234,8 @@ fn main() {
             read_note,
             write_note,
             write_note_as_copy,
+            get_recent_paths,
+            record_note_opened,
             get_sidebar_visible,
             set_sidebar_visible
         ])

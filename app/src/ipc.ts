@@ -76,3 +76,13 @@ export const getSidebarVisible = (): Promise<boolean> => invoke('get_sidebar_vis
 
 export const setSidebarVisible = (visible: boolean): Promise<void> =>
   invoke('set_sidebar_visible', { visible })
+
+/**
+ * De meest recent geopende notities, meest-recent-eerst (W5, quick
+ * switcher: "recent geopend bovenaan bij lege invoer").
+ */
+export const getRecentPaths = (): Promise<string[]> => invoke('get_recent_paths')
+
+/** Zet `relPath` vooraan in de recente lijst. */
+export const recordNoteOpened = (relPath: string): Promise<void> =>
+  invoke('record_note_opened', { path: relPath })
