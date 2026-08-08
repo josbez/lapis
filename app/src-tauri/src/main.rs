@@ -1,9 +1,10 @@
 // De Tauri-schil van Lapis.
 //
 // Deze module bevat bewust geen bestandslogica: die staat in `vault-core`
-// (de boom, schrijfvrij) en `app-state` (instellingen, buiten de vault). Wat
-// hier staat is de vertaling van IPC-aanroepen naar die twee crates, en
-// niets meer (07 §4.3: geen directe bestands-I/O in deze schil).
+// (de boom, schrijfvrij), `app-state` (instellingen, buiten de vault) en
+// `search-index` (de FTS5-zoekindex, ook buiten de vault). Wat hier staat is
+// de vertaling van IPC-aanroepen naar die drie crates, en niets meer (07
+// §4.3: geen directe bestands-I/O in deze schil).
 //
 // De gekozen map zit in `vault_core::Session`, hier als managed state. De
 // frontend geeft dus geen root meer mee; hij kan er alleen één kiezen
@@ -11,7 +12,10 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
@@ -76,17 +80,122 @@ fn from_millis(ms: u64) -> SystemTime {
     UNIX_EPOCH + std::time::Duration::from_millis(ms)
 }
 
+/// De zoekindex van de huidige vault (W6). `None` vóórdat er een vault
+/// geopend is, of wanneer de index zelf niet te openen bleek — zoeken is een
+/// aanvullende functie, geen index is dan gewoon geen zoekresultaten, geen
+/// reden om de vault zelf te weigeren.
+struct IndexState(Mutex<Option<search_index::Index>>);
+
+/// Eén indexbestand per vault, in een submap van `app_support_dir()` — nooit
+/// in de vault zelf. `vault_label` (het gecanonicaliseerde vaultpad, zoals
+/// getoond in de UI) bepaalt de bestandsnaam via een hash, zodat teruggaan
+/// naar een eerder geopende vault zijn index hergebruikt in plaats van hem
+/// steeds opnieuw op te bouwen.
+fn index_path_for_vault(vault_label: &str) -> Result<PathBuf, String> {
+    let dir = app_state::app_support_dir().map_err(|e| e.to_string())?;
+    let mut hasher = DefaultHasher::new();
+    vault_label.hash(&mut hasher);
+    let id = hasher.finish();
+    Ok(dir.join("search-index").join(format!("{id:016x}.db")))
+}
+
+/// Verzamelt elk bestand uit de boom als `(pad, bestandsnaam, mtime-ms)`,
+/// voor `Index::sync`. Mappen leveren niets op, alleen hun kinderen.
+fn collect_files(node: &TreeNode, out: &mut Vec<(String, String, i64)>) {
+    for child in &node.children {
+        match child.kind {
+            NodeKind::File => {
+                if let Some(modified) = child.modified {
+                    out.push((
+                        child.rel_path.clone(),
+                        child.name.clone(),
+                        millis_since_epoch(modified) as i64,
+                    ));
+                }
+            }
+            NodeKind::Dir => collect_files(child, out),
+        }
+    }
+}
+
+/// Opent (of hergebruikt) de index voor `vault_label` en brengt hem in lijn
+/// met `tree`. Aangeroepen ná elke vault-open/-restore/-rescan. Een fout
+/// hierbij — een corrupt indexbestand dat toch niet opnieuw aangemaakt kon
+/// worden, een niet te beschrijven map — is nooit fataal voor het openen van
+/// de vault zelf; hij komt alleen op stderr terecht, en de index blijft
+/// `None` (`search_notes` geeft dan gewoon een lege lijst).
+fn sync_index(index_state: &IndexState, session: &Session, vault_label: &str, tree: &TreeNode) {
+    let mut guard = index_state.0.lock().unwrap_or_else(|e| e.into_inner());
+
+    let path = match index_path_for_vault(vault_label) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("kon indexpad niet bepalen: {e}");
+            *guard = None;
+            return;
+        }
+    };
+
+    let index = match search_index::Index::open(&path) {
+        Ok(i) => i,
+        Err(e) => {
+            eprintln!("kon zoekindex niet openen: {e}");
+            *guard = None;
+            return;
+        }
+    };
+
+    let mut files = Vec::new();
+    collect_files(tree, &mut files);
+    let result = index.sync(
+        files.iter().map(|(p, n, m)| (p.as_str(), n.as_str(), *m)),
+        |path| {
+            session
+                .read_note(path)
+                .map_err(|e| search_index::IndexError::Io(e.to_string()))
+        },
+    );
+    if let Err(e) = result {
+        eprintln!("kon zoekindex niet bijwerken: {e}");
+    }
+
+    *guard = Some(index);
+}
+
+/// Werkt de index bij voor één notitie, meteen na een geslaagde schrijfactie
+/// — zonder daarvoor op de eerstvolgende rescan te wachten. Geen index (nog)
+/// geopend, dan is er simpelweg niets te doen.
+fn index_upsert(index_state: &IndexState, path: &str, content: &str, modified: SystemTime) {
+    let file_name = path.rsplit('/').next().unwrap_or(path);
+    let guard = index_state.0.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(index) = guard.as_ref() {
+        if let Err(e) = index.upsert_note(
+            path,
+            file_name,
+            content,
+            millis_since_epoch(modified) as i64,
+        ) {
+            eprintln!("kon zoekindex niet bijwerken na schrijven: {e}");
+        }
+    }
+}
+
 /// De enige command die een absoluut pad accepteert — het pad dat de
 /// gebruiker zelf in de mapkiezer aanwees. Daarna ligt de root in de sessie
 /// én in app-state, en geeft de frontend nooit meer een root mee.
 #[tauri::command]
-fn open_vault(picked: String, session: State<'_, Session>) -> Result<VaultViewDto, String> {
+fn open_vault(
+    picked: String,
+    session: State<'_, Session>,
+    index: State<'_, IndexState>,
+) -> Result<VaultViewDto, String> {
     let view = session
         .open(&PathBuf::from(&picked))
         .map_err(|e| e.to_string())?;
     store()
         .save_vault_root(Some(Path::new(&view.root_display)))
         .map_err(|e| e.to_string())?;
+    sync_index(&index, &session, &view.root_display, &view.tree);
     Ok(view.into())
 }
 
@@ -94,23 +203,29 @@ fn open_vault(picked: String, session: State<'_, Session>) -> Result<VaultViewDt
 /// heropenen. Bestaat het niet meer, dan is `None` het antwoord — de lege
 /// staat, niets stilzwijgend getoond (Goal §0/V4).
 #[tauri::command]
-fn restore_vault(session: State<'_, Session>) -> Result<Option<VaultViewDto>, String> {
+fn restore_vault(
+    session: State<'_, Session>,
+    index: State<'_, IndexState>,
+) -> Result<Option<VaultViewDto>, String> {
     let Some(root) = store().load().vault_root else {
         return Ok(None);
     };
-    session
-        .restore(&root)
-        .map(|opt| opt.map(VaultViewDto::from))
-        .map_err(|e| e.to_string())
+    let Some(view) = session.restore(&root).map_err(|e| e.to_string())? else {
+        return Ok(None);
+    };
+    sync_index(&index, &session, &view.root_display, &view.tree);
+    Ok(Some(view.into()))
 }
 
 /// Handmatig verversen van de huidige sessie.
 #[tauri::command]
-fn rescan_vault(session: State<'_, Session>) -> Result<VaultViewDto, String> {
-    session
-        .rescan()
-        .map(VaultViewDto::from)
-        .map_err(|e| e.to_string())
+fn rescan_vault(
+    session: State<'_, Session>,
+    index: State<'_, IndexState>,
+) -> Result<VaultViewDto, String> {
+    let view = session.rescan().map_err(|e| e.to_string())?;
+    sync_index(&index, &session, &view.root_display, &view.tree);
+    Ok(view.into())
 }
 
 #[derive(Serialize)]
@@ -175,12 +290,16 @@ fn write_note(
     content: String,
     expected_modified_ms: Option<u64>,
     session: State<'_, Session>,
+    index: State<'_, IndexState>,
 ) -> Result<WriteOutcomeDto, String> {
     let expected = expected_modified_ms.map(from_millis);
-    session
+    let outcome = session
         .write_note(&path, &content, expected)
-        .map(WriteOutcomeDto::from)
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    if let WriteOutcome::Saved(modified) = outcome {
+        index_upsert(&index, &path, &content, modified);
+    }
+    Ok(outcome.into())
 }
 
 /// Slaat `content` op als nieuwe kopie naast `path` — "beide bewaren" bij
@@ -191,10 +310,55 @@ fn write_note_as_copy(
     path: String,
     content: String,
     session: State<'_, Session>,
+    index: State<'_, IndexState>,
 ) -> Result<String, String> {
-    session
+    let new_rel = session
         .write_note_as_copy(&path, &content)
+        .map_err(|e| e.to_string())?;
+    if let Ok(note) = session.read_note_with_mtime(&new_rel) {
+        index_upsert(&index, &new_rel, &content, note.modified);
+    }
+    Ok(new_rel)
+}
+
+/// Volledige tekst zoeken (W6, PRD F4, `⌘⇧F`). Geen index (nog) geopend —
+/// bijvoorbeeld vóór de eerste vault-open — geeft gewoon een lege lijst,
+/// geen fout: zoeken zonder vault is geen gebruikersfout.
+#[tauri::command]
+fn search_notes(
+    query: String,
+    index: State<'_, IndexState>,
+) -> Result<Vec<SearchResultDto>, String> {
+    let guard = index.0.lock().unwrap_or_else(|e| e.into_inner());
+    let Some(index) = guard.as_ref() else {
+        return Ok(Vec::new());
+    };
+    index
+        .search(&query, SEARCH_RESULT_LIMIT)
+        .map(|results| results.into_iter().map(SearchResultDto::from).collect())
         .map_err(|e| e.to_string())
+}
+
+/// Geen PRD-eis, een redelijke aanname zoals W5's `MAX_RECENT_PATHS` — een
+/// zoekvenster toont er toch nooit meer dan een handvol tegelijk.
+const SEARCH_RESULT_LIMIT: usize = 50;
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SearchResultDto {
+    path: String,
+    title: String,
+    snippet: String,
+}
+
+impl From<search_index::SearchResult> for SearchResultDto {
+    fn from(r: search_index::SearchResult) -> Self {
+        SearchResultDto {
+            path: r.path,
+            title: r.title,
+            snippet: r.snippet,
+        }
+    }
 }
 
 /// De meest recent geopende notities, meest-recent-eerst (W5, quick
@@ -227,6 +391,7 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(Session::new())
+        .manage(IndexState(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             open_vault,
             restore_vault,
@@ -234,6 +399,7 @@ fn main() {
             read_note,
             write_note,
             write_note_as_copy,
+            search_notes,
             get_recent_paths,
             record_note_opened,
             get_sidebar_visible,
@@ -268,5 +434,80 @@ mod tests {
     fn millis_rondje_blijft_gelijk() {
         let t = from_millis(1_700_000_000_123);
         assert_eq!(millis_since_epoch(t), 1_700_000_000_123);
+    }
+
+    // W6 — search_notes en de indexlevenscyclus.
+
+    #[test]
+    fn search_result_dto_serialiseert_camelcase() {
+        let result = search_index::SearchResult {
+            path: "dagboek/vandaag.md".to_string(),
+            title: "Vandaag".to_string(),
+            snippet: "…met <mark>koffie</mark>…".to_string(),
+        };
+        assert_eq!(
+            serde_json::to_value(SearchResultDto::from(result)).unwrap(),
+            serde_json::json!({
+                "path": "dagboek/vandaag.md",
+                "title": "Vandaag",
+                "snippet": "…met <mark>koffie</mark>…",
+            })
+        );
+    }
+
+    #[test]
+    fn index_pad_is_stabiel_voor_hetzelfde_label_en_verschilt_tussen_vaults() {
+        let a = index_path_for_vault("/tmp/notities").unwrap();
+        let a_opnieuw = index_path_for_vault("/tmp/notities").unwrap();
+        let b = index_path_for_vault("/tmp/ander-project").unwrap();
+
+        assert_eq!(
+            a, a_opnieuw,
+            "hetzelfde vaultpad moet hetzelfde indexbestand geven"
+        );
+        assert_ne!(a, b, "verschillende vaults mogen elkaars index niet delen");
+    }
+
+    fn tree_node(name: &str, rel_path: &str, kind: NodeKind, children: Vec<TreeNode>) -> TreeNode {
+        TreeNode {
+            name: name.to_string(),
+            rel_path: rel_path.to_string(),
+            kind,
+            readable: true,
+            children,
+            modified: match kind {
+                NodeKind::File => Some(SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1)),
+                NodeKind::Dir => None,
+            },
+        }
+    }
+
+    #[test]
+    fn collect_files_haalt_alleen_bestanden_uit_geneste_mappen() {
+        let tree = tree_node(
+            "vault",
+            "",
+            NodeKind::Dir,
+            vec![
+                tree_node("wortel.md", "wortel.md", NodeKind::File, Vec::new()),
+                tree_node(
+                    "map",
+                    "map",
+                    NodeKind::Dir,
+                    vec![tree_node(
+                        "kind.md",
+                        "map/kind.md",
+                        NodeKind::File,
+                        Vec::new(),
+                    )],
+                ),
+            ],
+        );
+
+        let mut files = Vec::new();
+        collect_files(&tree, &mut files);
+        let paths: Vec<&str> = files.iter().map(|(p, _, _)| p.as_str()).collect();
+
+        assert_eq!(paths, vec!["wortel.md", "map/kind.md"]);
     }
 }

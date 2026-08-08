@@ -204,6 +204,66 @@ describe('App', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
+  // W6 — volledige tekst zoeken.
+  it('⌘⇧F opent het zoekvenster, Escape sluit het weer', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    fireEvent.keyDown(window, { key: 'f', metaKey: true, shiftKey: true })
+    expect(screen.getByRole('dialog', { name: 'Zoeken in alle notities' })).toBeTruthy()
+
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('⌘⇧K opent niet de quick switcher (die luistert alleen zonder shift)', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.keyDown(window, { key: 'k', metaKey: true, shiftKey: true })
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('een zoekresultaat kiezen opent de notitie en sluit het zoekvenster', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.readNote.mockResolvedValue({ content: 'de inhoud met koffie erin', modifiedMs: 1000 })
+    mockedIpc.searchNotes.mockResolvedValue([
+      { path: 'notitie.md', title: 'Notitie', snippet: 'iets met <mark>koffie</mark> erin' },
+    ])
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.keyDown(window, { key: 'f', metaKey: true, shiftKey: true })
+    fireEvent.change(screen.getByPlaceholderText('Zoek in alle notities…'), {
+      target: { value: 'koffie' },
+    })
+
+    await waitFor(() => expect(screen.getByRole('option')).toBeTruthy())
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^Notitie/ }))
+
+    await waitFor(() => expect(mockedIpc.readNote).toHaveBeenCalledWith('notitie.md'))
+    expect(mockedIpc.recordNoteOpened).toHaveBeenCalledWith('notitie.md')
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    // Bewijst dat de gemarkeerde tekst uit de snippet ("koffie") daadwerkelijk
+    // als `initialRevealText` bij de editor terechtkomt — niet alleen dat de
+    // prop wordt doorgegeven, maar dat de echte CodeMirror-editor 'm ook
+    // gebruikt om te springen (herkenbaar aan atomic-editor's eigen
+    // markeringsklasse).
+    await waitFor(() => expect(document.querySelector('.cm-initialRevealMatch')).toBeTruthy())
+    expect(document.querySelector('.cm-initialRevealMatch')?.textContent).toBe('koffie')
+  })
+
   it('herstelt de onthouden recente paden bij het opstarten', async () => {
     mockedIpc.restoreVault.mockResolvedValue(eenBoom)
     mockedIpc.getSidebarVisible.mockResolvedValue(true)

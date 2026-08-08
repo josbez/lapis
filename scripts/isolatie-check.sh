@@ -72,7 +72,7 @@ draai_checks() {
     spike/vault-core/src spike/src-tauri/src spike/src
   scan "geen hardgecodeerde paden of gebruikersnamen (app)" \
     '(/Users/|/home/[a-z]|C:\\\\)' \
-    app/vault-core/src app/app-state/src app/src-tauri/src app/src
+    app/vault-core/src app/app-state/src app/search-index/src app/src-tauri/src app/src
 
   # 07 §4.3: geen netwerk in de kern. Geen telemetrie, geen update-check.
   scan "geen netwerk in de kern (spike)" \
@@ -80,7 +80,7 @@ draai_checks() {
     spike/vault-core/src spike/src-tauri/src
   scan "geen netwerk in de kern (app)" \
     '\b(reqwest|ureq|hyper|curl|TcpStream|TcpListener|std::net)\b|https?://' \
-    app/vault-core/src app/app-state/src app/src-tauri/src
+    app/vault-core/src app/app-state/src app/search-index/src app/src-tauri/src
 
   # 07 §4.4: de frontend raakt nooit zelf een bestand aan. Alles loopt via IPC.
   scan "geen bestandstoegang vanuit de frontend (spike)" \
@@ -148,7 +148,7 @@ zelftest() {
     mkdir -p "$tmp/$project/vault-core/src" "$tmp/$project/src-tauri/src" \
       "$tmp/$project/src-tauri/capabilities" "$tmp/$project/src"
   done
-  mkdir -p "$tmp/app/app-state/src"
+  mkdir -p "$tmp/app/app-state/src" "$tmp/app/search-index/src"
 
   for project in spike app; do
     {
@@ -163,10 +163,11 @@ zelftest() {
     echo '{"permissions": ["fs:allow-read"]}' \
       >"$tmp/$project/src-tauri/capabilities/default.json"
   done
-  # app-state bestaat wel (anders "pad bestaat niet"), maar overtreedt zelf
-  # niets — de vault-core-fixture hierboven levert de hardgecodeerd-pad- en
-  # netwerktreffers voor de (app)-varianten al.
+  # app-state en search-index bestaan wel (anders "pad bestaat niet"), maar
+  # overtreden zelf niets — de vault-core-fixture hierboven levert de
+  # hardgecodeerd-pad- en netwerktreffers voor de (app)-varianten al.
   echo '// niets bijzonders' >"$tmp/app/app-state/src/lib.rs"
+  echo '// niets bijzonders' >"$tmp/app/search-index/src/lib.rs"
 
   local echte_basis="$BASIS"
   BASIS="$tmp"

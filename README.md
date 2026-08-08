@@ -39,9 +39,27 @@ zijn, juist omdat het "de meeste manieren heeft om subtiel fout te gaan". Die lo
 inmiddels al in wat hierboven "W3" heet, in plaats van er apart uitgelicht te zijn. Wat
 er ná W3 is gebouwd, heet daarom in de commits en PR's "W4" maar is inhoudelijk het
 gedocumenteerde **W5 — de quick switcher**: `⌘K`, fuzzy zoeken op bestandsnaam en pad in
-het geheugen (geen index — dat is het echte W6, full-text search met SQLite FTS5),
-recent geopende notities bovenaan bij een lege invoer. Alle geautomatiseerde verificatie
-is groen.
+het geheugen, recent geopende notities bovenaan bij een lege invoer. Alle
+geautomatiseerde verificatie is groen.
+
+Ook zonder de drie wave-documenten gebouwd, op hetzelfde expliciete verzoek: **W6 —
+volledige tekst zoeken** (PRD F4, `⌘⇧F`). Een nieuwe crate `search-index` houdt een
+SQLite FTS5-index bij, buiten de vault (`~/Library/Application Support/Lapis/`, één
+indexbestand per vault via een hash van het vaultpad) — de index is wegwerpbaar: bij een
+schema-mismatch of corrupt bestand wordt hij gewoon opnieuw opgebouwd, en er staat nooit
+iets in die niet ook uit de vault zelf is af te leiden. `TreeNode` draagt sinds deze wave
+een `modified`-tijdstip voor bestanden (hergebruik van de metadata die het scannen toch al
+ophaalt, geen extra syscall), waarmee `search_notes` incrementeel bijwerkt: alleen
+gewijzigde of nieuwe bestanden worden herlezen en opnieuw geïndexeerd, bij het openen van
+een vault, een handmatige rescan, én meteen na elke geslaagde schrijfactie. Zoeken zelf
+gaat via FTS5 `MATCH` met BM25-ranking en gemarkeerde snippets; de frontend rendert die
+markering zelf als React-elementen in plaats van via `dangerouslySetInnerHTML`, omdat de
+snippet afgeleid is van de eigen notitie-inhoud van de gebruiker en dus nooit als HTML
+geparsed mag worden. Op een treffer klikken of Enter drukken opent de notitie en springt
+naar de gevonden regel (`initialRevealText`, atomic-editor's eigen fade-out-markering) —
+"Enter opent op de gevonden regel". De isolatiecheck is uitgebreid met `app/search-index`
+in de bestaande hardgecodeerd-pad- en netwerkchecks (16 checks in totaal, zelftest
+onveranderd). Alle geautomatiseerde verificatie is groen.
 
 ## Documenten
 

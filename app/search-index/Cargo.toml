@@ -1,0 +1,11 @@
+[package]
+name = "search-index"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# SQLite FTS5 (PRD D5), buiten de vault. `bundled` compileert SQLite mee
+# (geen systeemafhankelijkheid) — in deze rusqlite-versie zit FTS5 al
+# ingebakken in de gebundelde build, zonder aparte featurevlag.
+[dependencies]
+rusqlite = { version = "0.31", features = ["bundled"] }

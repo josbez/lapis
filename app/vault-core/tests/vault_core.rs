@@ -837,3 +837,38 @@ fn w3_sessie_read_note_with_mtime_geeft_inhoud_en_tijd() {
     assert_eq!(gelezen.content, "inhoud");
     assert_eq!(gelezen.modified, mtime(&dir.join("notitie.md")));
 }
+
+// W6 — TreeNode.modified, voor search-index's sync().
+#[test]
+fn w6_bestanden_hebben_een_mtime_mappen_niet() {
+    let dir = temp_dir("w6-mtime");
+    write(&dir, "notitie.md", "inhoud");
+    write(&dir, "map/andere.md", "meer inhoud");
+
+    let boom = scan_tree(&dir).unwrap();
+    assert_eq!(boom.modified, None);
+
+    let notitie = find(&boom.children, "notitie.md");
+    assert_eq!(notitie.modified, Some(mtime(&dir.join("notitie.md"))));
+
+    let map = find(&boom.children, "map");
+    assert_eq!(map.modified, None);
+    let andere = find(&map.children, "andere.md");
+    assert_eq!(andere.modified, Some(mtime(&dir.join("map/andere.md"))));
+}
+
+#[test]
+fn w6_mtime_verandert_na_herschrijven() {
+    let dir = temp_dir("w6-mtime-verandert");
+    write(&dir, "notitie.md", "eerste versie");
+    let eerste = find(&scan_tree(&dir).unwrap().children, "notitie.md")
+        .modified
+        .unwrap();
+
+    zet_mtime(&dir.join("notitie.md"), eerste + Duration::from_secs(5));
+
+    let tweede = find(&scan_tree(&dir).unwrap().children, "notitie.md")
+        .modified
+        .unwrap();
+    assert_ne!(eerste, tweede);
+}
