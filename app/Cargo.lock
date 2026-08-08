@@ -1603,6 +1603,7 @@ version = "0.0.0"
 dependencies = [
  "app-state",
  "serde",
+ "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",

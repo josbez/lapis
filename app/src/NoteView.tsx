@@ -4,16 +4,28 @@ import '@atomic-editor/editor/styles.css'
 interface NoteViewProps {
   documentId: string
   markdownSource: string
+  /**
+   * Alleen-lezen (W2-gedrag) is de default: geen caret, geen
+   * typen/plakken/tabelbewerking, en gewone links én wikilinks blijven
+   * klikbaar. W3 zet 'm uit om te kunnen bewerken, en weer aan tijdens een
+   * conflict — geen typen totdat je kiest (PRD §10).
+   */
+  readOnly?: boolean
+  onMarkdownChange?: (markdown: string) => void
 }
 
-/**
- * Alleen-lezen weergave van een notitie (W2). `readOnly` komt uit
- * atomic-editor zelf: geen caret, geen typen/plakken/tabelbewerking, en
- * gewone links én wikilinks blijven klikbaar. Er is geen schrijfpad — dat
- * is W3, en tot die er is mag dit ook niet meer lijken dan het is.
- */
-export function NoteView({ documentId, markdownSource }: NoteViewProps) {
+export function NoteView({
+  documentId,
+  markdownSource,
+  readOnly = true,
+  onMarkdownChange,
+}: NoteViewProps) {
   return (
-    <AtomicCodeMirrorEditor documentId={documentId} markdownSource={markdownSource} readOnly />
+    <AtomicCodeMirrorEditor
+      documentId={documentId}
+      markdownSource={markdownSource}
+      readOnly={readOnly}
+      onMarkdownChange={onMarkdownChange}
+    />
   )
 }

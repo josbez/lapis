@@ -1,18 +1,24 @@
 //! Integratietests voor `vault-core`, als apart bestand onder `tests/` in
 //! plaats van een `#[cfg(test)] mod tests` in `src/lib.rs`.
 //!
-//! Waarom hier en niet inline: deze tests bouwen fixture-vaults op met
-//! `fs::write`/`fs::create_dir_all`, en de isolatiecheck uit Goal W1 §11
-//! ("geen schrijfaanroep in de kern") scant `vault-core/src` als tekst — hij
-//! kan geen onderscheid maken tussen een `fs::write` in productiecode en een
-//! in testcode. Door de tests hier te zetten, buiten `src/`, blijft `src/`
-//! aantoonbaar schrijfvrij én blijven de tests gewoon tegen de publieke API
-//! draaien (alles hieronder gebruikt uitsluitend `pub` items van `vault-core`).
+//! Deze opzet dateert uit W1, toen `vault-core` nog geen enkele
+//! schrijfaanroep mocht bevatten (Goal W1 §11) en de isolatiecheck
+//! `src/` als platte tekst scande — een testfixture met `fs::write` zou de
+//! crate dan valselijk hebben laten falen. Die regel is in W3 bewust
+//! ingetrokken (`vault-core` schrijft nu zelf ook, atomair), maar de tests
+//! blijven hier: ze draaien uitsluitend tegen de publieke API (alles
+//! hieronder gebruikt uitsluitend `pub` items van `vault-core`), en dat is
+//! op zichzelf al reden genoeg om ze als integratietest te laten staan in
+//! plaats van terug te verhuizen naar `src/`.
+//!
+//! **Schrijftests draaien uitsluitend tegen tijdelijke mappen, nooit tegen
+//! een echte vault** (afspraak V6b, 08-vervolgvragen.md) — elke test hier
+//! bouwt zijn eigen `temp_dir()`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::Instant;
+use std::time::{Duration, Instant, SystemTime};
 use vault_core::*;
 
 fn temp_dir(label: &str) -> PathBuf {
@@ -581,4 +587,253 @@ fn w2_lone_cr_fixture_bevat_losse_cr_en_geen_lf() {
     let bytes = fs::read(fixture_dir().join("lone-cr.md")).unwrap();
     assert!(bytes.contains(&b'\r'));
     assert!(!bytes.contains(&b'\n'));
+}
+
+// W3 — write_note: atomair schrijven, mtime-conflictcontrole (PRD F3/C4).
+
+fn mtime(path: &Path) -> SystemTime {
+    fs::metadata(path).unwrap().modified().unwrap()
+}
+
+/// Zet de wijzigingstijd van `path` expliciet, zodat conflicttests niet
+/// afhangen van de tijdresolutie van het bestandssysteem (geen slaap-hack).
+fn zet_mtime(path: &Path, t: SystemTime) {
+    let file = fs::OpenOptions::new().write(true).open(path).unwrap();
+    file.set_modified(t).unwrap();
+}
+
+fn dir_entries(dir: &Path) -> Vec<String> {
+    let mut names: Vec<String> = fs::read_dir(dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort();
+    names
+}
+
+#[test]
+fn w3_write_note_schrijft_atomair_en_laat_geen_temp_bestand_achter() {
+    let dir = temp_dir("w3-atomair");
+    write(&dir, "notitie.md", "oude inhoud");
+    let voor = mtime(&dir.join("notitie.md"));
+
+    let uitkomst = write_note(&dir, "notitie.md", "nieuwe inhoud", Some(voor)).unwrap();
+
+    assert!(matches!(uitkomst, WriteOutcome::Saved(_)));
+    assert_eq!(
+        fs::read_to_string(dir.join("notitie.md")).unwrap(),
+        "nieuwe inhoud"
+    );
+    assert_eq!(
+        dir_entries(&dir),
+        vec!["notitie.md"],
+        "er is een tijdelijk bestand achtergebleven"
+    );
+}
+
+#[test]
+fn w3_write_note_geeft_de_nieuwe_mtime_terug() {
+    let dir = temp_dir("w3-mtime");
+    write(&dir, "notitie.md", "x");
+    let voor = mtime(&dir.join("notitie.md"));
+
+    let uitkomst = write_note(&dir, "notitie.md", "y", Some(voor)).unwrap();
+
+    let WriteOutcome::Saved(teruggegeven) = uitkomst else {
+        panic!("verwacht Saved, kreeg {uitkomst:?}");
+    };
+    assert_eq!(teruggegeven, mtime(&dir.join("notitie.md")));
+}
+
+#[test]
+fn w3_write_note_conflict_wanneer_extern_gewijzigd() {
+    let dir = temp_dir("w3-conflict");
+    write(&dir, "notitie.md", "origineel");
+    let baseline = mtime(&dir.join("notitie.md"));
+
+    // "Extern" gewijzigd: andere inhoud, en een expliciet afwijkende mtime
+    // zodat de test niet leunt op de tijdresolutie van het bestandssysteem.
+    write(&dir, "notitie.md", "extern gewijzigd");
+    zet_mtime(&dir.join("notitie.md"), baseline + Duration::from_secs(60));
+
+    let uitkomst = write_note(&dir, "notitie.md", "mijn versie", Some(baseline)).unwrap();
+
+    assert_eq!(uitkomst, WriteOutcome::Conflict);
+    assert_eq!(
+        fs::read_to_string(dir.join("notitie.md")).unwrap(),
+        "extern gewijzigd",
+        "een conflict mag niets overschrijven"
+    );
+    assert_eq!(
+        dir_entries(&dir),
+        vec!["notitie.md"],
+        "geen zwervend tijdelijk bestand"
+    );
+}
+
+#[test]
+fn w3_write_note_zonder_expected_negeert_het_conflict_bewust() {
+    let dir = temp_dir("w3-force");
+    write(&dir, "notitie.md", "origineel");
+    let baseline = mtime(&dir.join("notitie.md"));
+    write(&dir, "notitie.md", "extern gewijzigd");
+    zet_mtime(&dir.join("notitie.md"), baseline + Duration::from_secs(60));
+
+    // "Mijn versie behouden": expected = None, forceert het schrijven.
+    let uitkomst = write_note(&dir, "notitie.md", "mijn versie wint", None).unwrap();
+
+    assert!(matches!(uitkomst, WriteOutcome::Saved(_)));
+    assert_eq!(
+        fs::read_to_string(dir.join("notitie.md")).unwrap(),
+        "mijn versie wint"
+    );
+}
+
+#[test]
+fn w3_write_note_maakt_geen_nieuw_bestand_aan() {
+    let dir = temp_dir("w3-nieuw");
+    assert_eq!(
+        write_note(&dir, "bestaat-niet.md", "x", None),
+        Err(VaultError::NotFound)
+    );
+    assert!(!dir.join("bestaat-niet.md").exists());
+}
+
+#[test]
+fn w3_write_note_buiten_root_faalt_en_schrijft_niets() {
+    let (ouder, dir) = temp_dir_met_ouder("w3-buiten");
+    write(&ouder, "doelwit.md", "origineel");
+    assert_eq!(
+        write_note(&dir, "../doelwit.md", "x", None),
+        Err(VaultError::OutsideRoot)
+    );
+    assert_eq!(
+        fs::read_to_string(ouder.join("doelwit.md")).unwrap(),
+        "origineel"
+    );
+}
+
+#[test]
+fn w3_write_note_op_leeg_pad_geeft_invalid_path() {
+    let dir = temp_dir("w3-leeg-pad");
+    assert_eq!(
+        write_note(&dir, "", "x", None),
+        Err(VaultError::InvalidPath)
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn w3_write_note_zonder_schrijfrechten_laat_geen_zwervend_bestand_achter() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = temp_dir("w3-permissie");
+    write(&dir, "notitie.md", "origineel");
+    let baseline = mtime(&dir.join("notitie.md"));
+
+    let mut perms = fs::metadata(&dir).unwrap().permissions();
+    perms.set_mode(0o555); // map alleen-lezen: geen nieuw bestand erin
+    fs::set_permissions(&dir, perms).unwrap();
+
+    let is_root = std::env::var("USER").as_deref() == Ok("root") || unsafe { libc_geteuid() } == 0;
+    let uitkomst = write_note(&dir, "notitie.md", "nieuwe inhoud", Some(baseline));
+
+    let mut restore = fs::metadata(&dir).unwrap().permissions();
+    restore.set_mode(0o755);
+    fs::set_permissions(&dir, restore).unwrap();
+
+    if is_root {
+        return;
+    }
+
+    assert!(
+        uitkomst.is_err(),
+        "schrijven in een alleen-lezen map had moeten falen"
+    );
+    assert_eq!(
+        fs::read_to_string(dir.join("notitie.md")).unwrap(),
+        "origineel",
+        "een mislukte schrijfpoging mag de inhoud niet veranderen"
+    );
+    assert_eq!(
+        dir_entries(&dir),
+        vec!["notitie.md"],
+        "een mislukte schrijfpoging mag geen tijdelijk bestand achterlaten"
+    );
+}
+
+// W3 — write_note_as_copy: "beide bewaren" bij een conflict.
+
+#[test]
+fn w3_write_note_as_copy_maakt_een_niet_bestaand_bestand_aan() {
+    let dir = temp_dir("w3-kopie");
+    write(&dir, "notitie.md", "origineel, onaangeroerd");
+
+    let kopie_pad = write_note_as_copy(&dir, "notitie.md", "mijn versie").unwrap();
+
+    assert_eq!(kopie_pad, "notitie (conflict).md");
+    assert_eq!(
+        fs::read_to_string(dir.join("notitie (conflict).md")).unwrap(),
+        "mijn versie"
+    );
+    assert_eq!(
+        fs::read_to_string(dir.join("notitie.md")).unwrap(),
+        "origineel, onaangeroerd",
+        "het origineel mag niet veranderen"
+    );
+}
+
+#[test]
+fn w3_write_note_as_copy_telt_op_bij_een_naamsbotsing() {
+    let dir = temp_dir("w3-kopie-botsing");
+    write(&dir, "notitie.md", "x");
+    write(&dir, "notitie (conflict).md", "al bezet");
+
+    let kopie_pad = write_note_as_copy(&dir, "notitie.md", "mijn versie").unwrap();
+
+    assert_eq!(kopie_pad, "notitie (conflict 2).md");
+    assert_eq!(
+        fs::read_to_string(dir.join("notitie (conflict 2).md")).unwrap(),
+        "mijn versie"
+    );
+}
+
+// W3 — Session-methodes.
+
+#[test]
+fn w3_sessie_write_note_werkt_op_de_geopende_vault() {
+    let dir = temp_dir("w3-sessie");
+    write(&dir, "notitie.md", "oud");
+    let baseline = mtime(&dir.join("notitie.md"));
+
+    let sessie = Session::new();
+    sessie.open(&dir).unwrap();
+
+    let uitkomst = sessie
+        .write_note("notitie.md", "nieuw", Some(baseline))
+        .unwrap();
+    assert!(matches!(uitkomst, WriteOutcome::Saved(_)));
+    assert_eq!(fs::read_to_string(dir.join("notitie.md")).unwrap(), "nieuw");
+}
+
+#[test]
+fn w3_sessie_write_note_vereist_geopende_sessie() {
+    let sessie = Session::new();
+    assert_eq!(
+        sessie.write_note("notitie.md", "x", None),
+        Err(VaultError::NoVaultSelected)
+    );
+}
+
+#[test]
+fn w3_sessie_read_note_with_mtime_geeft_inhoud_en_tijd() {
+    let dir = temp_dir("w3-sessie-mtime");
+    write(&dir, "notitie.md", "inhoud");
+
+    let sessie = Session::new();
+    sessie.open(&dir).unwrap();
+
+    let gelezen = sessie.read_note_with_mtime("notitie.md").unwrap();
+    assert_eq!(gelezen.content, "inhoud");
+    assert_eq!(gelezen.modified, mtime(&dir.join("notitie.md")));
 }

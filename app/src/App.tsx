@@ -1,30 +1,41 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { EmptyState } from './EmptyState'
-import { NoteView } from './NoteView'
+import { NoteEditor } from './NoteEditor'
+import { QuickSwitcher, flattenFiles } from './QuickSwitcher'
 import { Tree } from './Tree'
 import { createRequestGate } from './requestGate'
 import {
+  getRecentPaths,
   getSidebarVisible,
   openVault,
   readNote,
+  recordNoteOpened,
   rescanVault,
   restoreVault,
   setSidebarVisible,
+  type NoteContent,
   type VaultView,
 } from './ipc'
 
+// Zelfde grens als app-state::MAX_RECENT_PATHS — de optimistische
+// bijwerking hier mag niet ongelimiteerd doorgroeien binnen één sessie.
+const MAX_RECENT_PATHS = 20
+
 /**
- * De hele UI van W1+W2: lege staat of boom, sidebar verbergen/tonen, en een
- * notitie openen in alleen-lezen weergave. Opslaan is W3 — er is geen
- * schrijfpad in deze component.
+ * De hele UI van W1+W2+W3+W5: lege staat of boom, sidebar verbergen/tonen,
+ * een notitie openen en bewerken, en de ⌘K quick switcher. Het bewerken
+ * zelf — autosave, ⌘S, conflicten — zit in NoteEditor/useNoteEditor; deze
+ * component regelt alleen welke notitie open is.
  */
 export default function App() {
   const [view, setView] = useState<VaultView | null>(null)
   const [sidebarVisible, setSidebarVisibleState] = useState(true)
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
-  const [noteContent, setNoteContent] = useState<string | null>(null)
+  const [noteContent, setNoteContent] = useState<NoteContent | null>(null)
   const [status, setStatus] = useState('')
   const [ready, setReady] = useState(false)
+  const [recentPaths, setRecentPaths] = useState<string[]>([])
+  const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false)
 
   // Bewaakt zowel het wisselen van vault als het openen van een notitie
   // (bevinding B8): een tweede actie die vóór het antwoord op de eerste
@@ -38,10 +49,15 @@ export default function App() {
     const isLatest = gate.current.start()
     void (async () => {
       try {
-        const [restored, visible] = await Promise.all([restoreVault(), getSidebarVisible()])
+        const [restored, visible, recent] = await Promise.all([
+          restoreVault(),
+          getSidebarVisible(),
+          getRecentPaths(),
+        ])
         if (!isLatest()) return
         setView(restored)
         setSidebarVisibleState(visible)
+        setRecentPaths(recent)
       } catch (e) {
         if (!isLatest()) return
         setStatus(`herstellen mislukt: ${e}`)
@@ -72,12 +88,18 @@ export default function App() {
     const isLatest = gate.current.start()
     setSelectedPath(relPath)
     setNoteContent(null)
+    setQuickSwitcherOpen(false)
     void (async () => {
       try {
         const content = await readNote(relPath)
         if (!isLatest()) return
         setNoteContent(content)
         setStatus('')
+        // Optimistisch bijwerken (instant in beeld) én laten onthouden voor
+        // een volgende sessie (W5) — de opslag zelf mag rustig op de
+        // achtergrond gebeuren.
+        setRecentPaths((prev) => [relPath, ...prev.filter((p) => p !== relPath)].slice(0, MAX_RECENT_PATHS))
+        void recordNoteOpened(relPath)
       } catch (e) {
         if (!isLatest()) return
         setNoteContent(null)
@@ -104,6 +126,22 @@ export default function App() {
       setStatus(`sidebar-status opslaan mislukt: ${e}`)
     })
   }, [sidebarVisible])
+
+  const files = useMemo(() => (view ? flattenFiles(view.tree) : []), [view])
+
+  // ⌘K: de quick switcher (W5). Werkt ook terwijl er in een notitie getypt
+  // wordt — CodeMirror bindt ⌘K zelf niet, dus dit komt gewoon door.
+  useEffect(() => {
+    if (!view) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setQuickSwitcherOpen((open) => !open)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [view])
 
   // Nog niets te tonen vóórdat restoreVault() en getSidebarVisible()
   // terugkomen — anders flitst de lege staat even op bij elke start.
@@ -142,12 +180,25 @@ export default function App() {
           {selectedPath === null ? (
             <p>Kies een notitie in de boom.</p>
           ) : noteContent !== null ? (
-            <NoteView documentId={`${view.rootDisplay}::${selectedPath}`} markdownSource={noteContent} />
+            <NoteEditor
+              relPath={selectedPath}
+              initial={noteContent}
+              onStatus={setStatus}
+              onCopySaved={refresh}
+            />
           ) : (
             <p>{status || 'laden…'}</p>
           )}
         </main>
       </div>
+      {quickSwitcherOpen && (
+        <QuickSwitcher
+          files={files}
+          recentPaths={recentPaths}
+          onOpen={openNote}
+          onClose={() => setQuickSwitcherOpen(false)}
+        />
+      )}
     </div>
   )
 }

@@ -15,10 +15,17 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+/// Hoeveel paden `recent_paths` bewaart (W5, quick switcher: "recent geopend
+/// bovenaan bij lege invoer"). Geen PRD-eis, een redelijke aanname — net als
+/// het prestatiebudget in W1 mag Jos dit terugdraaien.
+const MAX_RECENT_PATHS: usize = 20;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Settings {
     pub vault_root: Option<PathBuf>,
     pub sidebar_visible: bool,
+    /// Meest recent geopende notitie eerst, gededupliceerd.
+    pub recent_paths: Vec<String>,
 }
 
 impl Default for Settings {
@@ -26,6 +33,7 @@ impl Default for Settings {
         Self {
             vault_root: None,
             sidebar_visible: true,
+            recent_paths: Vec::new(),
         }
     }
 }
@@ -34,6 +42,11 @@ impl Default for Settings {
 struct SettingsDto {
     vault_root: Option<String>,
     sidebar_visible: bool,
+    // Ontbreekt in een settings.json van vóór W5 — zonder default zou zo'n
+    // bestand hier in zijn geheel niet meer deserialiseren, en `load()` zou
+    // dan ook vault_root en sidebar_visible stilzwijgend kwijtraken.
+    #[serde(default)]
+    recent_paths: Vec<String>,
 }
 
 impl From<&Settings> for SettingsDto {
@@ -44,6 +57,7 @@ impl From<&Settings> for SettingsDto {
                 .as_ref()
                 .map(|p| p.to_string_lossy().into_owned()),
             sidebar_visible: s.sidebar_visible,
+            recent_paths: s.recent_paths.clone(),
         }
     }
 }
@@ -53,6 +67,7 @@ impl From<SettingsDto> for Settings {
         Self {
             vault_root: dto.vault_root.map(PathBuf::from),
             sidebar_visible: dto.sidebar_visible,
+            recent_paths: dto.recent_paths,
         }
     }
 }
@@ -116,6 +131,16 @@ impl Store {
     pub fn save_sidebar_visible(&self, visible: bool) -> io::Result<()> {
         let mut settings = self.load();
         settings.sidebar_visible = visible;
+        self.save(&settings)
+    }
+
+    /// Zet `rel_path` vooraan in `recent_paths` (W5). Stond hij er al in, dan
+    /// verhuist hij naar voren in plaats van te dupliceren.
+    pub fn record_note_opened(&self, rel_path: &str) -> io::Result<()> {
+        let mut settings = self.load();
+        settings.recent_paths.retain(|p| p != rel_path);
+        settings.recent_paths.insert(0, rel_path.to_string());
+        settings.recent_paths.truncate(MAX_RECENT_PATHS);
         self.save(&settings)
     }
 }
@@ -199,5 +224,63 @@ mod tests {
 
         let inhoud: Vec<_> = fs::read_dir(&vault).unwrap().collect();
         assert!(inhoud.is_empty(), "er is iets in de vault-map geschreven");
+    }
+
+    // W5 — recente paden voor de quick switcher.
+
+    #[test]
+    fn record_note_opened_zet_vooraan() {
+        let store = temp_store("recent-vooraan");
+        store.record_note_opened("a.md").unwrap();
+        store.record_note_opened("b.md").unwrap();
+        assert_eq!(store.load().recent_paths, vec!["b.md", "a.md"]);
+    }
+
+    #[test]
+    fn record_note_opened_dedupliceert_door_te_verplaatsen() {
+        let store = temp_store("recent-dedupe");
+        store.record_note_opened("a.md").unwrap();
+        store.record_note_opened("b.md").unwrap();
+        store.record_note_opened("a.md").unwrap();
+        assert_eq!(store.load().recent_paths, vec!["a.md", "b.md"]);
+    }
+
+    #[test]
+    fn record_note_opened_bewaart_maximaal_twintig() {
+        let store = temp_store("recent-max");
+        for i in 0..25 {
+            store
+                .record_note_opened(&format!("notitie-{i}.md"))
+                .unwrap();
+        }
+        let recent = store.load().recent_paths;
+        assert_eq!(recent.len(), 20);
+        assert_eq!(recent[0], "notitie-24.md");
+        assert_eq!(recent[19], "notitie-5.md");
+    }
+
+    #[test]
+    fn recent_paths_is_leeg_zonder_bestaand_instellingenbestand() {
+        let store = temp_store("recent-default");
+        assert_eq!(store.load().recent_paths, Vec::<String>::new());
+    }
+
+    #[test]
+    fn een_settingsbestand_van_voor_w5_blijft_bruikbaar() {
+        // Simuleert een settings.json geschreven door W1-W3-code, zonder het
+        // recent_paths-veld — moet nog steeds vault_root en sidebar_visible
+        // opleveren, niet stilzwijgend terugvallen op de volledige default.
+        let store = temp_store("recent-oud-bestand");
+        fs::create_dir_all(store.path.parent().unwrap()).unwrap();
+        fs::write(
+            &store.path,
+            r#"{"vault_root":"/tmp/oude-vault","sidebar_visible":false}"#,
+        )
+        .unwrap();
+
+        let settings = store.load();
+        assert_eq!(settings.vault_root, Some(PathBuf::from("/tmp/oude-vault")));
+        assert!(!settings.sidebar_visible);
+        assert_eq!(settings.recent_paths, Vec::<String>::new());
     }
 }
