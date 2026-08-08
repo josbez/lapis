@@ -1,5 +1,5 @@
 //! Bestandslogica voor de vault-boom, lezen en schrijven van notities
-//! (W1, W2, W3).
+//! (W1, W2, W3, W7).
 //!
 //! Deze crate bevat geen Tauri-afhankelijkheid, zodat de tests overal draaien —
 //! ook op een machine zonder de macOS- of webview-toolchain. De app in
@@ -7,14 +7,20 @@
 //! aanbiedt. De tests staan in `../tests/vault_core.rs`, niet hier — zie de
 //! uitleg bovenaan dat bestand.
 //!
-//! **Schrijven is beperkt tot bewerken van bestaande notities** — geen nieuw
-//! bestand aanmaken (dat is F5, een latere wave), en altijd atomair: naar
-//! een tijdelijk bestand in dezelfde map, `fsync`, dan `rename()` over het
-//! origineel (PRD F3). Tot en met W1 mocht deze crate helemaal niets
-//! schrijven (Goal W1 §11); die beperking is hier bewust en zichtbaar
-//! opgeheven, precies zoals daar aangekondigd. Persistentie van het
-//! vault-pad en de sidebar-status blijft apart lopen via `app-state`, dat
-//! nooit binnen een vault-pad schrijft.
+//! Schrijven gaat altijd atomair: naar een tijdelijk bestand in dezelfde map,
+//! `fsync`, dan `rename()` over het origineel (PRD F3). Tot en met W1 mocht
+//! deze crate helemaal niets schrijven (Goal W1 §11); die beperking is in W3
+//! bewust en zichtbaar opgeheven. Persistentie van het vault-pad en de
+//! sidebar-status blijft apart lopen via `app-state`, dat nooit binnen een
+//! vault-pad schrijft.
+//!
+//! **W7 (PRD F5) — bestandsbeheer:** `create_note` maakt een notitie pas op
+//! schijf aan bij de allereerste opslag, genoemd naar de kopregel die er dan
+//! staat (C5+V3) — vóór die eerste opslag bestaat de notitie alleen als
+//! concept in de frontend, hier komt niets van in beeld. `move_note` dekt
+//! zowel hernoemen als verplaatsen (één `rename()` op besturingssysteemniveau
+//! is voor beide identiek). `trash_note` verwijdert nooit permanent: de
+//! systeem-prullenbak via de `trash`-crate (PRD C7).
 //!
 //! Wat deze code bewust NIET doet:
 //! - de inhoud ooit normaliseren: geen regeleindes omzetten, geen trailing
@@ -393,17 +399,183 @@ pub fn write_note_as_copy(root: &Path, rel: &str, content: &str) -> Result<Strin
         .unwrap_or("notitie");
     let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("md");
 
-    let mut candidate = parent.join(format!("{stem} (conflict).{ext}"));
-    let mut n = 2;
-    while candidate.exists() {
-        candidate = parent.join(format!("{stem} (conflict {n}).{ext}"));
-        n += 1;
-    }
+    let candidate = first_available_path(parent, |n| match n {
+        None => format!("{stem} (conflict).{ext}"),
+        Some(n) => format!("{stem} (conflict {n}).{ext}"),
+    });
 
     let tmp_path = temp_sibling(&candidate)?;
     write_atomically(&tmp_path, &candidate, content)?;
 
     Ok(rel_path_str(root, &candidate))
+}
+
+/// Het eerste pad in `parent` dat nog niet bestaat, geprobeerd via `name(None)`
+/// en dan oplopend `name(Some(2))`, `name(Some(3))`, … Gedeeld tussen
+/// `write_note_as_copy` ("conflict"-kopieën) en `create_note`/`create_folder`
+/// (naamsbotsingen bij het aanmaken) — dezelfde botsingslus, twee toepassingen.
+fn first_available_path(parent: &Path, mut name: impl FnMut(Option<u32>) -> String) -> PathBuf {
+    let mut candidate = parent.join(name(None));
+    let mut n = 2;
+    while candidate.exists() {
+        candidate = parent.join(name(Some(n)));
+        n += 1;
+    }
+    candidate
+}
+
+/// De eerste `# `-kop in `content`, of `None` als die er niet is. Gebruikt om
+/// een nieuwe notitie te noemen bij de eerste opslag (C5+V3) — bewust alleen
+/// de allereerste kop, geen frontmatter-titel (dat is een apart, uitgebreider
+/// mechanisme dat hier niet gevraagd is).
+fn first_heading(content: &str) -> Option<&str> {
+    for line in content.lines() {
+        if let Some(heading) = line.strip_prefix("# ") {
+            let heading = heading.trim();
+            if !heading.is_empty() {
+                return Some(heading);
+            }
+        }
+    }
+    None
+}
+
+/// Bestandsnaamstam voor een nieuwe notitie: de eerste kopregel, ontdaan van
+/// tekens die op een bestandssysteem niet als naam mogen (`/`, `:` — macOS'
+/// Finder toont `:` zelf als `/` maar HFS+/APFS staan het toe; we weigeren
+/// het toch, voor draagbaarheid), ingekort tot een redelijke lengte, of
+/// `"Untitled"` als er nog geen kop is (leeg concept, of een opslag vóór er
+/// getypt is — PRD F5 noemt dit geval niet expliciet, "Untitled" is hier de
+/// aanname, net als Obsidian's eigen gedrag).
+fn note_name_stem(content: &str) -> String {
+    let heading = first_heading(content).unwrap_or("Untitled");
+    let cleaned: String = heading
+        .chars()
+        .map(|c| {
+            if c == '/' || c == ':' || c.is_control() {
+                ' '
+            } else {
+                c
+            }
+        })
+        .collect();
+    let cleaned = cleaned.split_whitespace().collect::<Vec<_>>().join(" ");
+    let trimmed = cleaned.trim().trim_matches('.');
+    let truncated: String = trimmed.chars().take(120).collect();
+    if truncated.is_empty() {
+        "Untitled".to_string()
+    } else {
+        truncated
+    }
+}
+
+/// Wat `create_note` teruggeeft.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CreatedNote {
+    pub rel_path: String,
+    pub modified: SystemTime,
+}
+
+/// Zet een relatief mappad om naar een absoluut pad binnen `root`, waarbij
+/// (anders dan `resolve_in_root`) de lege string geldig is en naar `root`
+/// zelf wijst — nodig omdat de vault-root een prima plek is om een nieuwe
+/// notitie of map in aan te maken, terwijl `resolve_in_root` de root juist
+/// uitsluit (dat is een regel voor *notities*, niet voor mapdoelen; Goal
+/// §0/V1).
+fn resolve_dir_in_root(root: &Path, dir_rel: &str) -> Result<PathBuf, VaultError> {
+    if dir_rel.is_empty() {
+        return Ok(root.to_path_buf());
+    }
+    let dir_path = Path::new(dir_rel);
+    if dir_path.is_absolute() {
+        return Err(VaultError::OutsideRoot);
+    }
+    for component in dir_path.components() {
+        match component {
+            Component::Normal(_) | Component::CurDir => {}
+            _ => return Err(VaultError::OutsideRoot),
+        }
+    }
+    let resolved = canonicalize_existing_prefix(&root.join(dir_path))?;
+    if !resolved.starts_with(root) {
+        return Err(VaultError::OutsideRoot);
+    }
+    if !resolved.is_dir() {
+        return Err(VaultError::NotADirectory);
+    }
+    Ok(resolved)
+}
+
+/// Maakt een nieuwe notitie aan in `dir_rel` (leeg voor de vault-root) — dit
+/// ÍS de "eerste opslag" uit C5+V3: de bestandsnaam komt uit de eerste
+/// kopregel van `content` op dit moment, of wordt `Untitled(.md/ 2.md/…)` als
+/// die er nog niet is. Botst de naam met een bestaand bestand, dan telt er
+/// een nummer bij op — nooit stilzwijgend overschrijven.
+pub fn create_note(root: &Path, dir_rel: &str, content: &str) -> Result<CreatedNote, VaultError> {
+    let root = resolve_root(root)?;
+    let dir = resolve_dir_in_root(&root, dir_rel)?;
+    let stem = note_name_stem(content);
+
+    let target = first_available_path(&dir, |n| match n {
+        None => format!("{stem}.md"),
+        Some(n) => format!("{stem} {n}.md"),
+    });
+
+    let tmp_path = temp_sibling(&target)?;
+    write_atomically(&tmp_path, &target, content)?;
+
+    let modified = fs::metadata(&target).map_err(io)?.modified().map_err(io)?;
+    Ok(CreatedNote {
+        rel_path: rel_path_str(&root, &target),
+        modified,
+    })
+}
+
+/// Maakt een nieuwe, lege map aan in `dir_rel`. Botst `name` met wat er al
+/// staat, dan is dat `AlreadyExists` — anders dan bij `create_note` (waar de
+/// naam automatisch uit de inhoud komt) heeft de gebruiker deze naam hier
+/// zelf getypt, dus mag een botsing gewoon terugkomen als foutmelding in
+/// plaats van er stilzwijgend een nummer bij te plakken.
+pub fn create_folder(root: &Path, dir_rel: &str, name: &str) -> Result<String, VaultError> {
+    let root = resolve_root(root)?;
+    let dir = resolve_dir_in_root(&root, dir_rel)?;
+    let name = name.trim();
+    if name.is_empty() || name.contains('/') {
+        return Err(VaultError::InvalidPath);
+    }
+
+    let target = dir.join(name);
+    if target.exists() {
+        return Err(VaultError::AlreadyExists);
+    }
+    fs::create_dir(&target).map_err(io)?;
+    Ok(rel_path_str(&root, &target))
+}
+
+/// Hernoemen én verplaatsen zijn dezelfde operatie: één `rename()` op
+/// besturingssysteemniveau, of de doelmap nu dezelfde is (hernoemen) of een
+/// andere (verplaatsen). Weigert stilzwijgend te overschrijven — bestaat
+/// `to_rel` al, dan komt er `AlreadyExists` terug, niets verandert.
+pub fn move_note(root: &Path, from_rel: &str, to_rel: &str) -> Result<(), VaultError> {
+    let from = resolve_in_root(root, from_rel)?;
+    if !from.is_file() {
+        return Err(VaultError::NotFound);
+    }
+    let to = resolve_in_root(root, to_rel)?;
+    if to.exists() {
+        return Err(VaultError::AlreadyExists);
+    }
+    fs::rename(&from, &to).map_err(io)
+}
+
+/// Verplaatst een notitie naar de systeem-prullenbak — nooit permanent
+/// verwijderen (PRD C7).
+pub fn trash_note(root: &Path, rel: &str) -> Result<(), VaultError> {
+    let path = resolve_in_root(root, rel)?;
+    if !path.is_file() {
+        return Err(VaultError::NotFound);
+    }
+    trash::delete(&path).map_err(|e| VaultError::Io(e.to_string()))
 }
 
 /// Een verborgen, gegarandeerd unieke naam náást `path` — dezelfde map, zodat
@@ -523,6 +695,27 @@ impl Session {
     /// vault (W3, "beide bewaren" bij een conflict).
     pub fn write_note_as_copy(&self, rel: &str, content: &str) -> Result<String, VaultError> {
         write_note_as_copy(&self.root()?, rel, content)
+    }
+
+    /// Maakt een nieuwe notitie aan binnen de huidige vault (W7) — de
+    /// "eerste opslag" die de bestandsnaam uit de kopregel bepaalt.
+    pub fn create_note(&self, dir_rel: &str, content: &str) -> Result<CreatedNote, VaultError> {
+        create_note(&self.root()?, dir_rel, content)
+    }
+
+    /// Maakt een nieuwe, lege map aan binnen de huidige vault (W7).
+    pub fn create_folder(&self, dir_rel: &str, name: &str) -> Result<String, VaultError> {
+        create_folder(&self.root()?, dir_rel, name)
+    }
+
+    /// Hernoemt of verplaatst een notitie binnen de huidige vault (W7).
+    pub fn move_note(&self, from_rel: &str, to_rel: &str) -> Result<(), VaultError> {
+        move_note(&self.root()?, from_rel, to_rel)
+    }
+
+    /// Verplaatst een notitie naar de systeem-prullenbak (W7).
+    pub fn trash_note(&self, rel: &str) -> Result<(), VaultError> {
+        trash_note(&self.root()?, rel)
     }
 
     fn root(&self) -> Result<PathBuf, VaultError> {

@@ -180,6 +180,17 @@ fn index_upsert(index_state: &IndexState, path: &str, content: &str, modified: S
     }
 }
 
+/// Haalt één notitie uit de index — na verplaatsen (het oude pad) of naar de
+/// prullenbak (W7). Geen index (nog) geopend, dan is er niets te doen.
+fn index_remove(index_state: &IndexState, path: &str) {
+    let guard = index_state.0.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(index) = guard.as_ref() {
+        if let Err(e) = index.remove_note(path) {
+            eprintln!("kon zoekindex niet bijwerken na verwijderen: {e}");
+        }
+    }
+}
+
 /// De enige command die een absoluut pad accepteert — het pad dat de
 /// gebruiker zelf in de mapkiezer aanwees. Daarna ligt de root in de sessie
 /// én in app-state, en geeft de frontend nooit meer een root mee.
@@ -321,6 +332,81 @@ fn write_note_as_copy(
     Ok(new_rel)
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CreatedNoteDto {
+    rel_path: String,
+    modified_ms: u64,
+}
+
+impl From<vault_core::CreatedNote> for CreatedNoteDto {
+    fn from(c: vault_core::CreatedNote) -> Self {
+        CreatedNoteDto {
+            rel_path: c.rel_path,
+            modified_ms: millis_since_epoch(c.modified),
+        }
+    }
+}
+
+/// Maakt een nieuwe notitie aan (W7, PRD F5). Dit ÍS de "eerste opslag" uit
+/// C5+V3: de bestandsnaam komt uit de eerste kopregel van `content` op dit
+/// moment — vóór deze aanroep bestond de notitie alleen als concept in de
+/// frontend, hier komt niets van in beeld.
+#[tauri::command]
+fn create_note(
+    dir: String,
+    content: String,
+    session: State<'_, Session>,
+    index: State<'_, IndexState>,
+) -> Result<CreatedNoteDto, String> {
+    let created = session
+        .create_note(&dir, &content)
+        .map_err(|e| e.to_string())?;
+    index_upsert(&index, &created.rel_path, &content, created.modified);
+    Ok(created.into())
+}
+
+/// Maakt een nieuwe, lege map aan (W7, PRD F5).
+#[tauri::command]
+fn create_folder(dir: String, name: String, session: State<'_, Session>) -> Result<String, String> {
+    session
+        .create_folder(&dir, &name)
+        .map_err(|e| e.to_string())
+}
+
+/// Hernoemt of verplaatst een notitie (W7, PRD F5) — dezelfde onderliggende
+/// bewerking (Spec: één `rename()`), of `to_path` nu in dezelfde map ligt of
+/// een andere.
+#[tauri::command]
+fn move_note(
+    from_path: String,
+    to_path: String,
+    session: State<'_, Session>,
+    index: State<'_, IndexState>,
+) -> Result<(), String> {
+    session
+        .move_note(&from_path, &to_path)
+        .map_err(|e| e.to_string())?;
+    index_remove(&index, &from_path);
+    if let Ok(note) = session.read_note_with_mtime(&to_path) {
+        index_upsert(&index, &to_path, &note.content, note.modified);
+    }
+    Ok(())
+}
+
+/// Verplaatst een notitie naar de systeem-prullenbak (W7, PRD C7) — nooit
+/// permanent.
+#[tauri::command]
+fn trash_note(
+    path: String,
+    session: State<'_, Session>,
+    index: State<'_, IndexState>,
+) -> Result<(), String> {
+    session.trash_note(&path).map_err(|e| e.to_string())?;
+    index_remove(&index, &path);
+    Ok(())
+}
+
 /// Volledige tekst zoeken (W6, PRD F4, `⌘⇧F`). Geen index (nog) geopend —
 /// bijvoorbeeld vóór de eerste vault-open — geeft gewoon een lege lijst,
 /// geen fout: zoeken zonder vault is geen gebruikersfout.
@@ -399,6 +485,10 @@ fn main() {
             read_note,
             write_note,
             write_note_as_copy,
+            create_note,
+            create_folder,
+            move_note,
+            trash_note,
             search_notes,
             get_recent_paths,
             record_note_opened,
@@ -427,6 +517,19 @@ mod tests {
         assert_eq!(
             serde_json::to_value(&conflict).unwrap(),
             serde_json::json!({ "kind": "conflict" })
+        );
+    }
+
+    // W7 — create_note.
+    #[test]
+    fn created_note_dto_serialiseert_camelcase() {
+        let created = vault_core::CreatedNote {
+            rel_path: "Boodschappen.md".to_string(),
+            modified: from_millis(1_700_000_000_000),
+        };
+        assert_eq!(
+            serde_json::to_value(CreatedNoteDto::from(created)).unwrap(),
+            serde_json::json!({ "relPath": "Boodschappen.md", "modifiedMs": 1_700_000_000_000_u64 })
         );
     }
 

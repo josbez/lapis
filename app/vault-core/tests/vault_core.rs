@@ -872,3 +872,271 @@ fn w6_mtime_verandert_na_herschrijven() {
         .unwrap();
     assert_ne!(eerste, tweede);
 }
+
+// W7 — create_note: de "eerste opslag" uit C5+V3.
+
+#[test]
+fn w7_create_note_gebruikt_de_eerste_kopregel_als_naam() {
+    let dir = temp_dir("w7-create-kop");
+    let created = create_note(&dir, "", "# Boodschappenlijst\n\nMelk, brood.").unwrap();
+
+    assert_eq!(created.rel_path, "Boodschappenlijst.md");
+    assert_eq!(
+        fs::read_to_string(dir.join("Boodschappenlijst.md")).unwrap(),
+        "# Boodschappenlijst\n\nMelk, brood."
+    );
+    assert_eq!(created.modified, mtime(&dir.join("Boodschappenlijst.md")));
+}
+
+#[test]
+fn w7_create_note_valt_terug_op_untitled_zonder_kopregel() {
+    let dir = temp_dir("w7-create-untitled");
+    let created = create_note(&dir, "", "gewone tekst, geen kop").unwrap();
+    assert_eq!(created.rel_path, "Untitled.md");
+}
+
+#[test]
+fn w7_create_note_valt_terug_op_untitled_bij_lege_inhoud() {
+    let dir = temp_dir("w7-create-leeg");
+    let created = create_note(&dir, "", "").unwrap();
+    assert_eq!(created.rel_path, "Untitled.md");
+}
+
+#[test]
+fn w7_create_note_telt_op_bij_naamsbotsing() {
+    let dir = temp_dir("w7-create-botsing");
+    write(&dir, "Boodschappenlijst.md", "al bestaand");
+
+    let created = create_note(&dir, "", "# Boodschappenlijst\n\ninhoud").unwrap();
+
+    assert_eq!(created.rel_path, "Boodschappenlijst 2.md");
+    assert_eq!(
+        fs::read_to_string(dir.join("Boodschappenlijst.md")).unwrap(),
+        "al bestaand",
+        "het bestaande bestand mag niet zijn aangeraakt"
+    );
+}
+
+#[test]
+fn w7_create_note_in_een_submap() {
+    let dir = temp_dir("w7-create-submap");
+    fs::create_dir_all(dir.join("dagboek")).unwrap();
+
+    let created = create_note(&dir, "dagboek", "# Vandaag").unwrap();
+
+    assert_eq!(created.rel_path, "dagboek/Vandaag.md");
+}
+
+#[test]
+fn w7_create_note_buiten_root_faalt() {
+    let dir = temp_dir("w7-create-buiten-root");
+    let err = create_note(&dir, "../buiten", "# X").unwrap_err();
+    assert_eq!(err, VaultError::OutsideRoot);
+}
+
+#[test]
+fn w7_create_note_in_niet_bestaande_map_geeft_nette_fout() {
+    let dir = temp_dir("w7-create-geen-map");
+    let err = create_note(&dir, "spookmap", "# X").unwrap_err();
+    assert_eq!(err, VaultError::NotADirectory);
+}
+
+#[test]
+fn w7_create_note_schrijft_atomair_en_laat_geen_temp_bestand_achter() {
+    let dir = temp_dir("w7-create-atomair");
+    create_note(&dir, "", "# Notitie").unwrap();
+    assert_eq!(dir_entries(&dir), vec!["Notitie.md"]);
+}
+
+#[test]
+fn w7_create_note_ontsmet_illegale_tekens_in_de_kop() {
+    let dir = temp_dir("w7-create-ontsmet");
+    let created = create_note(&dir, "", "# Rapport: Q1/Q2 resultaten").unwrap();
+    // `/` en `:` zijn geen geldige tekens in een bestandsnaam.
+    assert!(!created.rel_path.contains('/') || created.rel_path == "Rapport Q1 Q2 resultaten.md");
+    assert_eq!(created.rel_path, "Rapport Q1 Q2 resultaten.md");
+}
+
+// W7 — create_folder.
+
+#[test]
+fn w7_create_folder_maakt_een_lege_map() {
+    let dir = temp_dir("w7-folder-nieuw");
+    let rel = create_folder(&dir, "", "Projecten").unwrap();
+
+    assert_eq!(rel, "Projecten");
+    assert!(dir.join("Projecten").is_dir());
+}
+
+#[test]
+fn w7_create_folder_in_een_submap() {
+    let dir = temp_dir("w7-folder-submap");
+    fs::create_dir_all(dir.join("a")).unwrap();
+
+    let rel = create_folder(&dir, "a", "b").unwrap();
+    assert_eq!(rel, "a/b");
+}
+
+#[test]
+fn w7_create_folder_botst_met_bestaande_naam() {
+    let dir = temp_dir("w7-folder-botsing");
+    fs::create_dir_all(dir.join("Projecten")).unwrap();
+
+    let err = create_folder(&dir, "", "Projecten").unwrap_err();
+    assert_eq!(err, VaultError::AlreadyExists);
+}
+
+#[test]
+fn w7_create_folder_met_lege_naam_geeft_invalid_path() {
+    let dir = temp_dir("w7-folder-leeg");
+    let err = create_folder(&dir, "", "").unwrap_err();
+    assert_eq!(err, VaultError::InvalidPath);
+}
+
+#[test]
+fn w7_create_folder_met_slash_in_naam_geeft_invalid_path() {
+    let dir = temp_dir("w7-folder-slash");
+    let err = create_folder(&dir, "", "a/b").unwrap_err();
+    assert_eq!(err, VaultError::InvalidPath);
+}
+
+// W7 — move_note: dekt zowel hernoemen als verplaatsen.
+
+#[test]
+fn w7_move_note_hernoemt_binnen_dezelfde_map() {
+    let dir = temp_dir("w7-move-hernoemen");
+    write(&dir, "oud.md", "inhoud");
+
+    move_note(&dir, "oud.md", "nieuw.md").unwrap();
+
+    assert!(!dir.join("oud.md").exists());
+    assert_eq!(fs::read_to_string(dir.join("nieuw.md")).unwrap(), "inhoud");
+}
+
+#[test]
+fn w7_move_note_verplaatst_naar_andere_map() {
+    let dir = temp_dir("w7-move-verplaatsen");
+    write(&dir, "notitie.md", "inhoud");
+    fs::create_dir_all(dir.join("archief")).unwrap();
+
+    move_note(&dir, "notitie.md", "archief/notitie.md").unwrap();
+
+    assert!(!dir.join("notitie.md").exists());
+    assert_eq!(
+        fs::read_to_string(dir.join("archief/notitie.md")).unwrap(),
+        "inhoud"
+    );
+}
+
+#[test]
+fn w7_move_note_overschrijft_nooit_een_bestaand_bestand() {
+    let dir = temp_dir("w7-move-overschrijft-niet");
+    write(&dir, "a.md", "van a");
+    write(&dir, "b.md", "van b");
+
+    let err = move_note(&dir, "a.md", "b.md").unwrap_err();
+
+    assert_eq!(err, VaultError::AlreadyExists);
+    assert_eq!(fs::read_to_string(dir.join("a.md")).unwrap(), "van a");
+    assert_eq!(fs::read_to_string(dir.join("b.md")).unwrap(), "van b");
+}
+
+#[test]
+fn w7_move_note_op_niet_bestaand_bestand_geeft_not_found() {
+    let dir = temp_dir("w7-move-ontbreekt");
+    let err = move_note(&dir, "spook.md", "nieuw.md").unwrap_err();
+    assert_eq!(err, VaultError::NotFound);
+}
+
+#[test]
+fn w7_move_note_buiten_root_faalt_en_verandert_niets() {
+    let dir = temp_dir("w7-move-buiten-root");
+    write(&dir, "notitie.md", "inhoud");
+
+    let err = move_note(&dir, "notitie.md", "../buiten.md").unwrap_err();
+
+    assert_eq!(err, VaultError::OutsideRoot);
+    assert!(dir.join("notitie.md").exists());
+}
+
+// W7 — trash_note: systeem-prullenbak, nooit permanent (PRD C7).
+
+#[test]
+fn w7_trash_note_haalt_het_bestand_van_zijn_plek() {
+    let dir = temp_dir("w7-trash");
+    write(&dir, "weg.md", "verdwijnt");
+
+    trash_note(&dir, "weg.md").unwrap();
+
+    assert!(!dir.join("weg.md").exists());
+}
+
+#[test]
+fn w7_trash_note_op_niet_bestaand_bestand_geeft_not_found() {
+    let dir = temp_dir("w7-trash-ontbreekt");
+    let err = trash_note(&dir, "spook.md").unwrap_err();
+    assert_eq!(err, VaultError::NotFound);
+}
+
+#[test]
+fn w7_trash_note_buiten_root_faalt() {
+    let (parent, dir) = temp_dir_met_ouder("w7-trash-buiten-root");
+    fs::write(parent.join("buiten.md"), "x").unwrap();
+
+    let err = trash_note(&dir, "../buiten.md").unwrap_err();
+
+    assert_eq!(err, VaultError::OutsideRoot);
+    assert!(parent.join("buiten.md").exists());
+}
+
+// W7 — Session-methodes.
+
+#[test]
+fn w7_sessie_create_note_werkt_op_de_geopende_vault() {
+    let dir = temp_dir("w7-sessie-create");
+    let sessie = Session::new();
+    sessie.open(&dir).unwrap();
+
+    let created = sessie.create_note("", "# Nieuw").unwrap();
+    assert_eq!(created.rel_path, "Nieuw.md");
+}
+
+#[test]
+fn w7_sessie_create_note_vereist_geopende_sessie() {
+    let sessie = Session::new();
+    let err = sessie.create_note("", "# X").unwrap_err();
+    assert_eq!(err, VaultError::NoVaultSelected);
+}
+
+#[test]
+fn w7_sessie_move_note_werkt_op_de_geopende_vault() {
+    let dir = temp_dir("w7-sessie-move");
+    write(&dir, "oud.md", "inhoud");
+    let sessie = Session::new();
+    sessie.open(&dir).unwrap();
+
+    sessie.move_note("oud.md", "nieuw.md").unwrap();
+    assert!(dir.join("nieuw.md").exists());
+}
+
+#[test]
+fn w7_sessie_trash_note_werkt_op_de_geopende_vault() {
+    let dir = temp_dir("w7-sessie-trash");
+    write(&dir, "weg.md", "x");
+    let sessie = Session::new();
+    sessie.open(&dir).unwrap();
+
+    sessie.trash_note("weg.md").unwrap();
+    assert!(!dir.join("weg.md").exists());
+}
+
+#[test]
+fn w7_sessie_create_folder_werkt_op_de_geopende_vault() {
+    let dir = temp_dir("w7-sessie-folder");
+    let sessie = Session::new();
+    sessie.open(&dir).unwrap();
+
+    let rel = sessie.create_folder("", "Nieuwe map").unwrap();
+    assert_eq!(rel, "Nieuwe map");
+    assert!(dir.join("Nieuwe map").is_dir());
+}

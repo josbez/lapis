@@ -4,8 +4,10 @@ version = "0.0.0"
 edition = "2021"
 publish = false
 
-# Bewust geen afhankelijkheden. Deze crate bevat alleen lees-only
-# bestandslogica en moet overal te testen zijn, ook zonder de macOS- of
-# webview-toolchain. Geen fs::write, File::create, remove_file of rename
-# (Goal W1 §11) — persistentie loopt via de aparte app-state-crate.
+# `trash` (W7, PRD F5/C7): verwijderen gaat naar de systeem-prullenbak, nooit
+# permanent — op macOS via NSFileManager's trashItem, precies zoals
+# 04-technische-spec.md al aangaf. Verder bewust minimale afhankelijkheden:
+# deze crate moet overal te testen zijn, ook zonder de macOS- of
+# webview-toolchain.
 [dependencies]
+trash = "3"

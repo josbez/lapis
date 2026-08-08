@@ -1,19 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { EmptyState } from './EmptyState'
 import { FullTextSearch } from './FullTextSearch'
+import { NoteDraft } from './NoteDraft'
 import { NoteEditor } from './NoteEditor'
 import { QuickSwitcher, flattenFiles } from './QuickSwitcher'
-import { Tree } from './Tree'
+import { Tree, type TreeActions } from './Tree'
 import { createRequestGate } from './requestGate'
 import {
+  createFolder,
   getRecentPaths,
   getSidebarVisible,
+  moveNote,
   openVault,
   readNote,
   recordNoteOpened,
   rescanVault,
   restoreVault,
   setSidebarVisible,
+  trashNote,
   type NoteContent,
   type VaultView,
 } from './ipc'
@@ -40,6 +44,9 @@ export default function App() {
   const [recentPaths, setRecentPaths] = useState<string[]>([])
   const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false)
   const [fullTextSearchOpen, setFullTextSearchOpen] = useState(false)
+  // W7: `null` zolang er geen concept openstaat, anders de map waarin het
+  // straks aangemaakt wordt (leeg voor de vault-root).
+  const [draftDir, setDraftDir] = useState<string | null>(null)
 
   // Bewaakt zowel het wisselen van vault als het openen van een notitie
   // (bevinding B8): een tweede actie die vóór het antwoord op de eerste
@@ -125,6 +132,128 @@ export default function App() {
     })()
   }, [])
 
+  /** "Nieuwe notitie" (W7) — opent een concept, nog geen bestand op schijf. */
+  const newNote = useCallback((dir: string = '') => {
+    gate.current.start()
+    setSelectedPath(null)
+    setNoteContent(null)
+    setRevealText(null)
+    setQuickSwitcherOpen(false)
+    setFullTextSearchOpen(false)
+    setDraftDir(dir)
+  }, [])
+
+  /** Het concept is bij de eerste opslag echt aangemaakt (W7) — vanaf hier
+   * is het een gewone notitie, behandeld door NoteEditor/useNoteEditor. */
+  const handleDraftCreated = useCallback(
+    (relPath: string, content: string, modifiedMs: number) => {
+      setDraftDir(null)
+      setSelectedPath(relPath)
+      setNoteContent({ content, modifiedMs })
+      setStatus('')
+      setRecentPaths((prev) => [relPath, ...prev.filter((p) => p !== relPath)].slice(0, MAX_RECENT_PATHS))
+      void recordNoteOpened(relPath)
+      refresh()
+    },
+    [refresh],
+  )
+
+  /**
+   * Hernoemen (W7) — vraagt een nieuwe naam, blijft in dezelfde map.
+   * `moveNote`/`renameNote` zijn aan de Rust-kant dezelfde bewerking (Spec:
+   * één `rename()`); hier zijn het twee prompts met een verschillend doel.
+   */
+  const renameFile = useCallback(
+    (relPath: string) => {
+      const slash = relPath.lastIndexOf('/')
+      const dir = slash === -1 ? '' : relPath.slice(0, slash)
+      const currentName = slash === -1 ? relPath : relPath.slice(slash + 1)
+
+      const input = window.prompt('Nieuwe naam:', currentName)
+      if (input === null) return
+      const name = input.trim()
+      if (name === '' || name === currentName) return
+      const withExt = name.toLowerCase().endsWith('.md') ? name : `${name}.md`
+      const newRelPath = dir === '' ? withExt : `${dir}/${withExt}`
+
+      void moveNote(relPath, newRelPath)
+        .then(() => {
+          refresh()
+          if (selectedPath === relPath) openNote(newRelPath)
+        })
+        .catch((e: unknown) => setStatus(`hernoemen mislukt: ${e}`))
+    },
+    [refresh, selectedPath, openNote],
+  )
+
+  /**
+   * Verplaatsen naar een andere map (W7). Een ruw eerste antwoord — een pad
+   * intypen in plaats van een mapkiezer of drag-and-drop — bewust een MVP
+   * (zie README): het maakt verplaatsen mogelijk zonder de scope van deze
+   * wave te laten uitdijen naar interactiepolish, dat hoort bij W10.
+   */
+  const moveFile = useCallback(
+    (relPath: string) => {
+      const name = relPath.slice(relPath.lastIndexOf('/') + 1)
+      const input = window.prompt(
+        'Verplaatsen naar (pad vanaf de vault-root, leeg voor de hoofdmap):',
+        '',
+      )
+      if (input === null) return
+      const dir = input.trim().replace(/^\/+|\/+$/g, '')
+      const newRelPath = dir === '' ? name : `${dir}/${name}`
+      if (newRelPath === relPath) return
+
+      void moveNote(relPath, newRelPath)
+        .then(() => {
+          refresh()
+          if (selectedPath === relPath) openNote(newRelPath)
+        })
+        .catch((e: unknown) => setStatus(`verplaatsen mislukt: ${e}`))
+    },
+    [refresh, selectedPath, openNote],
+  )
+
+  /** Naar de prullenbak (W7, PRD C7) — nooit permanent. */
+  const trashFile = useCallback(
+    (relPath: string) => {
+      if (!window.confirm(`"${relPath}" naar de prullenbak?`)) return
+      void trashNote(relPath)
+        .then(() => {
+          refresh()
+          if (selectedPath === relPath) {
+            setSelectedPath(null)
+            setNoteContent(null)
+          }
+        })
+        .catch((e: unknown) => setStatus(`naar de prullenbak verplaatsen mislukt: ${e}`))
+    },
+    [refresh, selectedPath],
+  )
+
+  /** "Nieuwe map" (W7). `dir` is leeg voor de vault-root. */
+  const newFolder = useCallback(
+    (dir: string = '') => {
+      const input = window.prompt('Naam van de nieuwe map:')
+      if (input === null || input.trim() === '') return
+      void createFolder(dir, input.trim())
+        .then(() => refresh())
+        .catch((e: unknown) => setStatus(`nieuwe map aanmaken mislukt: ${e}`))
+    },
+    [refresh],
+  )
+
+  const treeActions: TreeActions = useMemo(
+    () => ({
+      onRenameFile: renameFile,
+      onMoveFile: moveFile,
+      onTrashFile: trashFile,
+      onNewNoteInDir: newNote,
+      onNewFolderInDir: newFolder,
+    }),
+    [renameFile, moveFile, trashFile, newNote, newFolder],
+  )
+
   const toggleSidebar = useCallback(() => {
     const next = !sidebarVisible
     setSidebarVisibleState(next)
@@ -177,17 +306,25 @@ export default function App() {
         <button type="button" onClick={refresh}>
           Verversen
         </button>
+        <button type="button" onClick={() => newNote()}>
+          Nieuwe notitie
+        </button>
+        <button type="button" onClick={() => newFolder()}>
+          Nieuwe map
+        </button>
         <span> {view.rootDisplay}</span>
         <span> {status}</span>
       </div>
       <div style={{ display: 'flex' }}>
         {sidebarVisible && (
           <nav aria-label="Vault">
-            <Tree root={view.tree} selectedPath={selectedPath} onSelectFile={openNote} />
+            <Tree root={view.tree} selectedPath={selectedPath} onSelectFile={openNote} actions={treeActions} />
           </nav>
         )}
         <main>
-          {selectedPath === null ? (
+          {draftDir !== null ? (
+            <NoteDraft dir={draftDir} onCreated={handleDraftCreated} onStatus={setStatus} />
+          ) : selectedPath === null ? (
             <p>Kies een notitie in de boom.</p>
           ) : noteContent !== null ? (
             <NoteEditor

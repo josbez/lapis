@@ -1,13 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
 import App from '../App'
 import * as ipc from '../ipc'
 import type { VaultView } from '../ipc'
+import { useDraftNote, type UseDraftNoteResult } from '../useDraftNote'
 
 vi.mock('../ipc')
 vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn() }))
+// W7 — alleen gemockt om onCreated rechtstreeks te kunnen aanroepen; de
+// hook zelf (debounce, ⌘S, blur, de create_note-race) is al uitputtend
+// getest in useDraftNote.test.ts. Zonder mock zou "een concept wordt bij de
+// eerste opslag…" moeten typen in de echte CodeMirror-editor, en dat is
+// precies wat nergens anders in deze testsuite gebeurt — jsdom simuleert
+// CM6's contenteditable-mechanisme niet betrouwbaar.
+vi.mock('../useDraftNote')
 
 const mockedIpc = vi.mocked(ipc)
+const mockedUseDraftNote = vi.mocked(useDraftNote)
+
+function draftStub(overrides: Partial<UseDraftNoteResult> = {}): UseDraftNoteResult {
+  return { content: '', handleMarkdownChange: vi.fn(), ...overrides }
+}
 
 const eenBoom: VaultView = {
   rootDisplay: '/tmp/vault',
@@ -27,6 +40,9 @@ describe('App', () => {
     // als het recente-paden-gedrag zelf getest wordt.
     mockedIpc.getRecentPaths.mockResolvedValue([])
     mockedIpc.recordNoteOpened.mockResolvedValue(undefined)
+    // W7 — idem: alleen tests die zelf "Nieuwe notitie" aanklikken
+    // overschrijven dit.
+    mockedUseDraftNote.mockReturnValue(draftStub())
   })
 
   afterEach(() => {
@@ -278,5 +294,184 @@ describe('App', () => {
     // bewijst dat getRecentPaths() daadwerkelijk in de startup-hydratie zit.
     expect(mockedIpc.getRecentPaths).toHaveBeenCalled()
     expect(screen.getAllByRole('option').length).toBeGreaterThan(0)
+  })
+
+  // W7 — "Nieuwe notitie": een concept tot de eerste opslag (C5+V3).
+  it('"Nieuwe notitie" opent een leeg, bewerkbaar concept', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.click(screen.getByText('Nieuwe notitie'))
+
+    const content = document.querySelector('.cm-content')
+    expect(content?.getAttribute('contenteditable')).toBe('true')
+    expect(mockedIpc.createNote).not.toHaveBeenCalled()
+  })
+
+  it('een concept wordt bij de eerste opslag een gewone, open notitie', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.rescanVault.mockResolvedValue(eenBoom)
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.click(screen.getByText('Nieuwe notitie'))
+
+    // De hook zelf (create_note-aanroep, race met verder typen) is elders
+    // getest — hier bewijzen we alleen dat App.tsx de overdracht (onCreated)
+    // correct afhandelt: de callback die aan useDraftNote is doorgegeven,
+    // rechtstreeks aangeroepen alsof de eerste opslag net gelukt is.
+    const lastCall = mockedUseDraftNote.mock.calls.at(-1)?.[0]
+    act(() => lastCall?.onCreated('Boodschappen.md', '# Boodschappen', 1000))
+
+    expect(mockedIpc.recordNoteOpened).toHaveBeenCalledWith('Boodschappen.md')
+    await waitFor(() => expect(mockedIpc.rescanVault).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByText(/Boodschappen/)).toBeTruthy())
+    // readNote wordt hier nooit aangeroepen — de inhoud van het net
+    // aangemaakte bestand is al bekend uit onCreated's argumenten.
+    expect(mockedIpc.readNote).not.toHaveBeenCalled()
+  })
+
+  it('"Nieuwe notitie" sluit een open notitie-editor en de zoekvensters', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.readNote.mockResolvedValue({ content: 'bestaande inhoud', modifiedMs: 1000 })
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.click(screen.getByText(/notitie\.md/))
+    await waitFor(() => expect(screen.getByText(/bestaande inhoud/)).toBeTruthy())
+
+    fireEvent.click(screen.getByText('Nieuwe notitie'))
+
+    expect(screen.queryByText(/bestaande inhoud/)).toBeNull()
+  })
+
+  // W7 — "Nieuwe map", en het rechtsklik-contextmenu op de boom.
+
+  it('"Nieuwe map" vraagt een naam en maakt de map aan', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.createFolder.mockResolvedValue('Projecten')
+    mockedIpc.rescanVault.mockResolvedValue(eenBoom)
+    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('Projecten')
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.click(screen.getByText('Nieuwe map'))
+
+    expect(promptSpy).toHaveBeenCalled()
+    await waitFor(() => expect(mockedIpc.createFolder).toHaveBeenCalledWith('', 'Projecten'))
+    await waitFor(() => expect(mockedIpc.rescanVault).toHaveBeenCalled())
+  })
+
+  it('"Nieuwe map" annuleren maakt niets aan', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    vi.spyOn(window, 'prompt').mockReturnValue(null)
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.click(screen.getByText('Nieuwe map'))
+
+    expect(mockedIpc.createFolder).not.toHaveBeenCalled()
+  })
+
+  it('"Hernoemen" via het contextmenu hernoemt en heropent de actieve notitie op het nieuwe pad', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.readNote
+      .mockResolvedValueOnce({ content: 'inhoud', modifiedMs: 1000 })
+      .mockResolvedValueOnce({ content: 'inhoud', modifiedMs: 1000 })
+    mockedIpc.moveNote.mockResolvedValue(undefined)
+    mockedIpc.rescanVault.mockResolvedValue(eenBoom)
+    vi.spyOn(window, 'prompt').mockReturnValue('Boodschappen')
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.click(screen.getByText(/notitie\.md/))
+    await waitFor(() => expect(mockedIpc.readNote).toHaveBeenCalledTimes(1))
+
+    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.click(screen.getByText('Hernoemen'))
+
+    await waitFor(() =>
+      expect(mockedIpc.moveNote).toHaveBeenCalledWith('notitie.md', 'Boodschappen.md'),
+    )
+    // De open notitie volgt naar het nieuwe pad — opnieuw gelezen, niet
+    // stilzwijgend op het oude pad blijven staan.
+    await waitFor(() => expect(mockedIpc.readNote).toHaveBeenCalledWith('Boodschappen.md'))
+  })
+
+  it('"Naar prullenbak" via het contextmenu sluit de actieve notitie na bevestiging', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.readNote.mockResolvedValue({ content: 'inhoud', modifiedMs: 1000 })
+    mockedIpc.trashNote.mockResolvedValue(undefined)
+    mockedIpc.rescanVault.mockResolvedValue(eenBoom)
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.click(screen.getByText(/notitie\.md/))
+    await waitFor(() => expect(screen.getByText(/inhoud/)).toBeTruthy())
+
+    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.click(screen.getByText('Naar prullenbak'))
+
+    await waitFor(() => expect(mockedIpc.trashNote).toHaveBeenCalledWith('notitie.md'))
+    await waitFor(() => expect(screen.getByText('Kies een notitie in de boom.')).toBeTruthy())
+  })
+
+  it('"Naar prullenbak" annuleren via confirm() verwijdert niets', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.click(screen.getByText('Naar prullenbak'))
+
+    expect(mockedIpc.trashNote).not.toHaveBeenCalled()
+  })
+
+  it('"Nieuwe notitie hier" op een map opent een concept in die map', async () => {
+    const boomMetMap: VaultView = {
+      rootDisplay: '/tmp/vault',
+      tree: {
+        name: 'vault',
+        relPath: '',
+        kind: 'dir',
+        readable: true,
+        children: [
+          { name: 'dagboek', relPath: 'dagboek', kind: 'dir', readable: true, children: [] },
+        ],
+      },
+    }
+    mockedIpc.restoreVault.mockResolvedValue(boomMetMap)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/dagboek/)).toBeTruthy())
+
+    fireEvent.contextMenu(screen.getByText(/dagboek/))
+    fireEvent.click(screen.getByText('Nieuwe notitie hier'))
+
+    await waitFor(() =>
+      expect(mockedUseDraftNote).toHaveBeenLastCalledWith(
+        expect.objectContaining({ dir: 'dagboek' }),
+      ),
+    )
   })
 })
