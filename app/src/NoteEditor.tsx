@@ -5,6 +5,8 @@ import type { NoteContent } from './ipc'
 interface NoteEditorProps {
   relPath: string
   initial: NoteContent
+  /** W6: gezet na openen vanuit volledige-tekst-zoeken, anders `null`. */
+  revealText?: string | null
   onStatus: (status: string) => void
   onCopySaved?: () => void
 }
@@ -14,7 +16,7 @@ interface NoteEditorProps {
  * "mijn versie behouden" · "hun versie laden" · "beide bewaren". Alle
  * logica zit in `useNoteEditor`; dit is alleen de wiring naar de UI.
  */
-export function NoteEditor({ relPath, initial, onStatus, onCopySaved }: NoteEditorProps) {
+export function NoteEditor({ relPath, initial, revealText, onStatus, onCopySaved }: NoteEditorProps) {
   const editor = useNoteEditor({ relPath, initial, onStatus, onCopySaved })
 
   return (
@@ -37,6 +39,7 @@ export function NoteEditor({ relPath, initial, onStatus, onCopySaved }: NoteEdit
         documentId={editor.documentId}
         markdownSource={editor.markdownSource}
         readOnly={editor.readOnly}
+        revealText={revealText}
         onMarkdownChange={editor.handleMarkdownChange}
       />
     </div>

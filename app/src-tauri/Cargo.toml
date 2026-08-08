@@ -12,10 +12,13 @@ tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 
-# Alle bestandslogica zit in deze twee crates. Deze crate is een dunne schil
-# (07 §4.3): geen fs::, geen File::create, geen OpenOptions hier.
+# Alle bestandslogica zit in deze drie crates. Deze crate is een dunne schil
+# (07 §4.3): geen fs::, geen File::create, geen OpenOptions hier — ook niet
+# voor de zoekindex, die zijn eigen bestand via `search-index::Index::open`
+# beheert.
 vault-core = { path = "../vault-core" }
 app-state = { path = "../app-state" }
+search-index = { path = "../search-index" }
 
 [dev-dependencies]
 serde_json = "1"

@@ -72,6 +72,17 @@ impl From<SettingsDto> for Settings {
     }
 }
 
+/// `~/Library/Application Support/Lapis` — de map buiten de vault waar deze
+/// crate zelf in schrijft, en die de Tauri-schil ook gebruikt voor
+/// afgeleide gegevens die hier niet thuishoren (W6: de zoekindex, in een
+/// eigen submap, per vault). Eén plek voor dat pad, zodat het niet op twee
+/// plekken los hardgecodeerd staat.
+pub fn app_support_dir() -> io::Result<PathBuf> {
+    let home = std::env::var_os("HOME")
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "HOME is niet gezet"))?;
+    Ok(PathBuf::from(home).join("Library/Application Support/Lapis"))
+}
+
 /// Eén instellingenbestand op een vast pad.
 pub struct Store {
     path: PathBuf,
@@ -81,10 +92,7 @@ impl Store {
     /// De standaardlocatie: `~/Library/Application Support/Lapis/settings.json`
     /// (Goal §0/V4-antwoord a).
     pub fn default_location() -> io::Result<Self> {
-        let home = std::env::var_os("HOME")
-            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "HOME is niet gezet"))?;
-        let dir = PathBuf::from(home).join("Library/Application Support/Lapis");
-        Ok(Self::at(dir.join("settings.json")))
+        Ok(Self::at(app_support_dir()?.join("settings.json")))
     }
 
     /// Een instellingenbestand op een gekozen pad — voor tests, zodat de

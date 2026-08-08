@@ -86,3 +86,18 @@ export const getRecentPaths = (): Promise<string[]> => invoke('get_recent_paths'
 /** Zet `relPath` vooraan in de recente lijst. */
 export const recordNoteOpened = (relPath: string): Promise<void> =>
   invoke('record_note_opened', { path: relPath })
+
+export interface SearchResult {
+  path: string
+  title: string
+  /** Met `<mark>…</mark>` rond de treffer(s), uit FTS5's `snippet()`. */
+  snippet: string
+}
+
+/**
+ * Volledige tekst zoeken over de hele vault (W6, PRD F4, `⌘⇧F`). Een lege of
+ * ongeldige query geeft gewoon een lege lijst terug, geen foutmelding —
+ * evenals wanneer er (nog) geen index is, bijvoorbeeld vóór de eerste
+ * vault-open.
+ */
+export const searchNotes = (query: string): Promise<SearchResult[]> => invoke('search_notes', { query })

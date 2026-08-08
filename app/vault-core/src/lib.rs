@@ -52,6 +52,13 @@ pub struct TreeNode {
     pub readable: bool,
     /// Altijd leeg voor `File`.
     pub children: Vec<TreeNode>,
+    /// Wijzigingstijd, alleen voor `File` (W6, voor `search-index`'s
+    /// `sync`). Hergebruikt de metadata die `scan_children` toch al ophaalt
+    /// voor `is_dir`/`is_file` — geen extra syscall. `None` voor mappen, en
+    /// voor een bestand waarvan de mtime onverwacht niet te lezen was (geen
+    /// reden om de hele scan te laten falen over informatie die alleen de
+    /// zoekindex gebruikt).
+    pub modified: Option<SystemTime>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -212,6 +219,7 @@ pub fn scan_tree(root: &Path) -> Result<TreeNode, VaultError> {
         kind: NodeKind::Dir,
         readable: true,
         children,
+        modified: None,
     })
 }
 
@@ -247,12 +255,14 @@ fn scan_children(root: &Path, dir_abs: &Path) -> Result<Vec<TreeNode>, VaultErro
             // vault wordt niet gevolgd (voorkomt cyclische recursie).
             if let Ok(target) = fs::canonicalize(&path) {
                 if target.starts_with(root) && target.is_file() && is_markdown(&name) {
+                    let modified = fs::metadata(&target).ok().and_then(|m| m.modified().ok());
                     out.push(TreeNode {
                         name: name.clone(),
                         rel_path: rel_path_str(root, &path),
                         kind: NodeKind::File,
                         readable: true,
                         children: Vec::new(),
+                        modified,
                     });
                 }
             }
@@ -268,6 +278,7 @@ fn scan_children(root: &Path, dir_abs: &Path) -> Result<Vec<TreeNode>, VaultErro
                     kind: NodeKind::Dir,
                     readable: true,
                     children,
+                    modified: None,
                 }),
                 Err(VaultError::PermissionDenied) => out.push(TreeNode {
                     name,
@@ -275,6 +286,7 @@ fn scan_children(root: &Path, dir_abs: &Path) -> Result<Vec<TreeNode>, VaultErro
                     kind: NodeKind::Dir,
                     readable: false,
                     children: Vec::new(),
+                    modified: None,
                 }),
                 Err(e) => return Err(e),
             }
@@ -285,6 +297,7 @@ fn scan_children(root: &Path, dir_abs: &Path) -> Result<Vec<TreeNode>, VaultErro
                 kind: NodeKind::File,
                 readable: true,
                 children: Vec::new(),
+                modified: meta.modified().ok(),
             });
         }
     }

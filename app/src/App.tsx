@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { EmptyState } from './EmptyState'
+import { FullTextSearch } from './FullTextSearch'
 import { NoteEditor } from './NoteEditor'
 import { QuickSwitcher, flattenFiles } from './QuickSwitcher'
 import { Tree } from './Tree'
@@ -22,20 +23,23 @@ import {
 const MAX_RECENT_PATHS = 20
 
 /**
- * De hele UI van W1+W2+W3+W5: lege staat of boom, sidebar verbergen/tonen,
- * een notitie openen en bewerken, en de ⌘K quick switcher. Het bewerken
- * zelf — autosave, ⌘S, conflicten — zit in NoteEditor/useNoteEditor; deze
- * component regelt alleen welke notitie open is.
+ * De hele UI van W1+W2+W3+W5+W6: lege staat of boom, sidebar verbergen/tonen,
+ * een notitie openen en bewerken, de ⌘K quick switcher en ⌘⇧F volledige-
+ * tekst-zoeken. Het bewerken zelf — autosave, ⌘S, conflicten — zit in
+ * NoteEditor/useNoteEditor; deze component regelt alleen welke notitie open
+ * is.
  */
 export default function App() {
   const [view, setView] = useState<VaultView | null>(null)
   const [sidebarVisible, setSidebarVisibleState] = useState(true)
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const [noteContent, setNoteContent] = useState<NoteContent | null>(null)
+  const [revealText, setRevealText] = useState<string | null>(null)
   const [status, setStatus] = useState('')
   const [ready, setReady] = useState(false)
   const [recentPaths, setRecentPaths] = useState<string[]>([])
   const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false)
+  const [fullTextSearchOpen, setFullTextSearchOpen] = useState(false)
 
   // Bewaakt zowel het wisselen van vault als het openen van een notitie
   // (bevinding B8): een tweede actie die vóór het antwoord op de eerste
@@ -84,11 +88,13 @@ export default function App() {
     })()
   }, [])
 
-  const openNote = useCallback((relPath: string) => {
+  const openNote = useCallback((relPath: string, reveal: string | null = null) => {
     const isLatest = gate.current.start()
     setSelectedPath(relPath)
     setNoteContent(null)
+    setRevealText(reveal)
     setQuickSwitcherOpen(false)
+    setFullTextSearchOpen(false)
     void (async () => {
       try {
         const content = await readNote(relPath)
@@ -129,14 +135,18 @@ export default function App() {
 
   const files = useMemo(() => (view ? flattenFiles(view.tree) : []), [view])
 
-  // ⌘K: de quick switcher (W5). Werkt ook terwijl er in een notitie getypt
-  // wordt — CodeMirror bindt ⌘K zelf niet, dus dit komt gewoon door.
+  // ⌘K: de quick switcher (W5). ⌘⇧F: volledige tekst zoeken (W6). Werken
+  // ook terwijl er in een notitie getypt wordt — CodeMirror bindt geen van
+  // beide zelf, dus dit komt gewoon door.
   useEffect(() => {
     if (!view) return
     const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setQuickSwitcherOpen((open) => !open)
+      } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        setFullTextSearchOpen((open) => !open)
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -183,6 +193,7 @@ export default function App() {
             <NoteEditor
               relPath={selectedPath}
               initial={noteContent}
+              revealText={revealText}
               onStatus={setStatus}
               onCopySaved={refresh}
             />
@@ -198,6 +209,9 @@ export default function App() {
           onOpen={openNote}
           onClose={() => setQuickSwitcherOpen(false)}
         />
+      )}
+      {fullTextSearchOpen && (
+        <FullTextSearch onOpen={openNote} onClose={() => setFullTextSearchOpen(false)} />
       )}
     </div>
   )

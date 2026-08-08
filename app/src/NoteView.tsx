@@ -11,6 +11,12 @@ interface NoteViewProps {
    * conflict — geen typen totdat je kiest (PRD §10).
    */
   readOnly?: boolean
+  /**
+   * Springt bij het monteren naar de eerste treffer van deze tekst, met een
+   * korte fade-out-markering (W6: "Enter opent op de gevonden regel" na
+   * volledige-tekst-zoeken). `null`/`undefined` voor een gewone open.
+   */
+  revealText?: string | null
   onMarkdownChange?: (markdown: string) => void
 }
 
@@ -18,6 +24,7 @@ export function NoteView({
   documentId,
   markdownSource,
   readOnly = true,
+  revealText,
   onMarkdownChange,
 }: NoteViewProps) {
   return (
@@ -25,6 +32,7 @@ export function NoteView({
       documentId={documentId}
       markdownSource={markdownSource}
       readOnly={readOnly}
+      initialRevealText={revealText}
       onMarkdownChange={onMarkdownChange}
     />
   )
