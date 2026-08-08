@@ -61,6 +61,27 @@ naar de gevonden regel (`initialRevealText`, atomic-editor's eigen fade-out-mark
 in de bestaande hardgecodeerd-pad- en netwerkchecks (16 checks in totaal, zelftest
 onveranderd). Alle geautomatiseerde verificatie is groen.
 
+Ook W7 (PRD F5, bestandsbeheer) is zonder de drie wave-documenten gebouwd, op hetzelfde
+expliciete verzoek — maar niet zonder overleg: de wave raakt rechtstreeks de C5+V3-afspraak
+die Jos destijds zelf omschreef als "de gevaarlijkste interactie in het hele ontwerp"
+("een letter typen in je titel verplaatst bestanden"), dus is één concrete uitwerkingsvraag
+alsnog voorgelegd vóór er gebouwd werd. Jos koos het letterlijke antwoord uit die
+afspraak: een nieuwe notitie bestaat pas op schijf na de allereerste opslag (debounce,
+`⌘S`, of wegklikken — dezelfde triggers als gewone autosave), genoemd naar de kopregel op
+dát moment, of `Untitled(.md/ 2.md/…)` zonder kopregel. Vóór die eerste opslag bestaat de
+notitie alleen als concept in de frontend (`useDraftNote`/`NoteDraft`) — er komt geen
+`Untitled.md` op schijf dat later hernoemd wordt. Een subtiele race is daarbij expliciet
+dichtgetimmerd: tekst die getypt wordt terwijl `create_note`'s IPC-aanroep nog onderweg is,
+wordt na afloop alsnog bijgeschreven op het net aangemaakte bestand, zodat niets verloren
+gaat. `vault-core` kreeg `create_note`, `create_folder`, `move_note` (dekt zowel hernoemen
+als verplaatsen — dezelfde `rename()`) en `trash_note` (systeem-prullenbak via de
+`trash`-crate, PRD C7, nooit permanent). De boom heeft nu een rechtsklik-contextmenu
+(hernoemen/verplaatsen naar…/naar prullenbak op een bestand; nieuwe notitie/map hier op
+een map) plus twee toolbarknoppen. **Verplaatsen gaat bewust via een pad intypen, geen
+drag-and-drop of mapkiezer** — een ruwe eerste versie om de scope van deze wave niet te
+laten uitdijen naar interactiepolish; dat hoort bij W10 ("De vorm"). Alle geautomatiseerde
+verificatie is groen.
+
 ## Documenten
 
 | Document | Waarvoor | Status |

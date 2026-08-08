@@ -72,6 +72,35 @@ export const writeNote = (
 export const writeNoteAsCopy = (relPath: string, content: string): Promise<string> =>
   invoke('write_note_as_copy', { path: relPath, content })
 
+export interface CreatedNote {
+  relPath: string
+  modifiedMs: number
+}
+
+/**
+ * Maakt een nieuwe notitie aan (W7, PRD F5). Dit ÍS de "eerste opslag" uit
+ * C5+V3: de bestandsnaam komt uit de eerste kopregel van `content` op dit
+ * moment, of wordt `Untitled(.md/ 2.md/…)` als die er nog niet is. `dir` is
+ * leeg voor de vault-root.
+ */
+export const createNote = (dir: string, content: string): Promise<CreatedNote> =>
+  invoke('create_note', { dir, content })
+
+/** Maakt een nieuwe, lege map aan (W7). `dir` is leeg voor de vault-root. */
+export const createFolder = (dir: string, name: string): Promise<string> =>
+  invoke('create_folder', { dir, name })
+
+/**
+ * Hernoemt of verplaatst een notitie (W7) — dezelfde onderliggende
+ * bewerking, of `toRelPath` nu in dezelfde map ligt of een andere. Bestaat
+ * `toRelPath` al, dan wordt er niets overschreven: de aanroep faalt.
+ */
+export const moveNote = (fromRelPath: string, toRelPath: string): Promise<void> =>
+  invoke('move_note', { fromPath: fromRelPath, toPath: toRelPath })
+
+/** Verplaatst een notitie naar de systeem-prullenbak (W7, PRD C7) — nooit permanent. */
+export const trashNote = (relPath: string): Promise<void> => invoke('trash_note', { path: relPath })
+
 export const getSidebarVisible = (): Promise<boolean> => invoke('get_sidebar_visible')
 
 export const setSidebarVisible = (visible: boolean): Promise<void> =>
