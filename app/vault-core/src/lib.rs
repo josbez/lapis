@@ -22,6 +22,16 @@
 //! is voor beide identiek). `trash_note` verwijdert nooit permanent: de
 //! systeem-prullenbak via de `trash`-crate (PRD C7).
 //!
+//! **W8 (PRD F5/C8) — bijlagen:** `write_attachment` slaat een bijlage
+//! (bijvoorbeeld een geplakte afbeelding) op naast een notitie. Bij de
+//! éérste bijlage in een notitie ontstaat een map genoemd naar de notitie
+//! zelf, en het `.md`-bestand verhuist daar samen met de bijlage in —
+//! bestaande notities migreren daarbij nooit vanzelf (V3), alleen een
+//! bijlage die via Lapis zelf wordt toegevoegd triggert dit. `read_attachment`
+//! leest de bytes van een bijlage voor inline weergave, opgelost relatief
+//! aan de map van de notitie die ernaar verwijst (mag, anders dan een
+//! notitiepad zelf, `..`-componenten bevatten).
+//!
 //! Wat deze code bewust NIET doet:
 //! - de inhoud ooit normaliseren: geen regeleindes omzetten, geen trailing
 //!   newline toevoegen, geen witruimte opruimen — noch bij lezen, noch bij
@@ -578,6 +588,182 @@ pub fn trash_note(root: &Path, rel: &str) -> Result<(), VaultError> {
     trash::delete(&path).map_err(|e| VaultError::Io(e.to_string()))
 }
 
+/// Zet een pad-verwijzing uit de markdown van een notitie (een afbeeldings-
+/// link) om naar een absoluut pad binnen `root`, relatief aan `base` (de map
+/// van de notitie zelf). Anders dan `resolve_in_root` mag dit wél
+/// `..`-componenten bevatten — een notitie kan best naar een bijlage in een
+/// buurmap verwijzen, bijvoorbeeld een centrale bijlagenmap uit een vault die
+/// van vóór Lapis dateert (V3: bestaande notities migreren niet). Dezelfde
+/// canonicalisatie als elders vangt zowel `..` als een symlink die naar
+/// buiten de vault wijst af.
+fn resolve_note_relative(root: &Path, base: &Path, reference: &str) -> Result<PathBuf, VaultError> {
+    if reference.is_empty() {
+        return Err(VaultError::InvalidPath);
+    }
+    let ref_path = Path::new(reference);
+    if ref_path.is_absolute() {
+        return Err(VaultError::OutsideRoot);
+    }
+    for component in ref_path.components() {
+        match component {
+            Component::Normal(_) | Component::CurDir | Component::ParentDir => {}
+            _ => return Err(VaultError::OutsideRoot),
+        }
+    }
+    let resolved = canonicalize_existing_prefix(&base.join(ref_path))?;
+    if !resolved.starts_with(root) {
+        return Err(VaultError::OutsideRoot);
+    }
+    Ok(resolved)
+}
+
+/// Leest de bytes van een bijlage die vanuit een notitie wordt verwezen (W8,
+/// PRD F5/C8) — voor inline weergave in de editor. `image_ref` is de
+/// letterlijke string uit de markdown-link (`![alt](image_ref)`), opgelost
+/// relatief aan de map van `note_rel`.
+pub fn read_attachment(
+    root: &Path,
+    note_rel: &str,
+    image_ref: &str,
+) -> Result<Vec<u8>, VaultError> {
+    let root = resolve_root(root)?;
+    let note_path = resolve_in_root(&root, note_rel)?;
+    let note_dir = note_path.parent().ok_or(VaultError::OutsideRoot)?;
+    let path = resolve_note_relative(&root, note_dir, image_ref)?;
+    if !path.is_file() {
+        return Err(VaultError::NotFound);
+    }
+    fs::read(&path).map_err(io)
+}
+
+/// Wat `write_attachment` teruggeeft: het pad van de bijlage, plús het
+/// (mogelijk gewijzigde) pad van de notitie zelf. Bij de éérste bijlage in
+/// een notitie verhuist de notitie naar een eigen map genoemd naar de
+/// notitie (PRD F5/C8) — de aanroeper (Tauri-schil, dan de frontend) moet dat
+/// nieuwe pad meekrijgen om zijn eigen "welke notitie staat open"-toestand
+/// bij te werken, precies zoals bij `move_note`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AttachmentOutcome {
+    pub note_rel_path: String,
+    pub attachment_rel_path: String,
+    /// `true` wanneer dit de eerste bijlage in deze notitie was en de
+    /// notitie daarom verhuisd is naar haar eigen map.
+    pub note_moved: bool,
+}
+
+/// Bestandsnaamstam plus (optionele) extensie voor `first_available_path`'s
+/// naamfunctie, botsingsvrij binnen `dir`. Gedeeld tussen de "notitie heeft
+/// al een map"- en "eerste bijlage, migreren"-paden van `write_attachment`.
+fn attachment_target_path(dir: &Path, filename: &str) -> PathBuf {
+    let stem = Path::new(filename)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("bijlage")
+        .to_string();
+    let ext = Path::new(filename)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(str::to_string);
+
+    first_available_path(dir, |n| match (&ext, n) {
+        (Some(ext), None) => format!("{stem}.{ext}"),
+        (Some(ext), Some(n)) => format!("{stem} {n}.{ext}"),
+        (None, None) => stem.clone(),
+        (None, Some(n)) => format!("{stem} {n}"),
+    })
+}
+
+/// Ontsmet een door de aanroeper voorgestelde bijlagenaam. Dit is een
+/// bestandsnaam, geen pad — geen padscheidingstekens, geen `.`/`..`, geen
+/// controletekens. Minder uitgebreid dan `note_name_stem` (dat een hele
+/// kopregel opschoont); hier levert de aanroeper al een kale bestandsnaam,
+/// bijvoorbeeld afgeleid van het klembord.
+fn sanitize_attachment_name(name: &str) -> Result<String, VaultError> {
+    let name = name.trim();
+    if name.is_empty() || name == "." || name == ".." {
+        return Err(VaultError::InvalidPath);
+    }
+    if name.contains('/') || name.contains('\\') || name.chars().any(char::is_control) {
+        return Err(VaultError::InvalidPath);
+    }
+    Ok(name.to_string())
+}
+
+/// Slaat een bijlage (bijvoorbeeld een geplakte afbeelding) op bij een
+/// notitie (PRD F5/C8). Is de map van de notitie al naar de notitie zelf
+/// genoemd (`ergens/Notitie/Notitie.md`), dan komt de bijlage daar gewoon
+/// naast. Anders is dit de éérste bijlage: er ontstaat een map met de naam
+/// van de notitie, en het `.md`-bestand verhuist daar samen met de bijlage
+/// in.
+///
+/// Volgorde is bewust: de bijlage wordt éérst geschreven, in de nieuwe map —
+/// pas als dat gelukt is, verhuist de notitie zelf ernaartoe met dezelfde
+/// `rename()` als `move_note`. Mislukt de bijlage-schrijfactie, dan is de
+/// notitie nog geen millimeter verplaatst; er blijft hoogstens een lege
+/// (opgeruimde) map achter. De notitie raken is het risicovollere,
+/// onomkeerbaardere deel van deze operatie en gebeurt daarom als laatste,
+/// niet als eerste.
+///
+/// Botst de bijlagenaam met wat er al in de doelmap staat, dan telt er een
+/// nummer bij op (`first_available_path`) — nooit stilzwijgend overschrijven.
+/// Bestaande notities migreren nooit vanzelf (V3): dit gebeurt alleen op het
+/// moment dat er via Lapis zelf een bijlage bij komt.
+pub fn write_attachment(
+    root: &Path,
+    note_rel: &str,
+    filename: &str,
+    bytes: &[u8],
+) -> Result<AttachmentOutcome, VaultError> {
+    let root = resolve_root(root)?;
+    let note_path = resolve_in_root(&root, note_rel)?;
+    if !note_path.is_file() {
+        return Err(VaultError::NotFound);
+    }
+    let filename = sanitize_attachment_name(filename)?;
+
+    let note_dir = note_path.parent().ok_or(VaultError::OutsideRoot)?;
+    let note_stem = note_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .ok_or(VaultError::OutsideRoot)?;
+    let already_in_own_folder = note_dir.file_name().and_then(|n| n.to_str()) == Some(note_stem);
+
+    if already_in_own_folder {
+        let attachment_target = attachment_target_path(note_dir, &filename);
+        fs::write(&attachment_target, bytes).map_err(io)?;
+        return Ok(AttachmentOutcome {
+            note_rel_path: rel_path_str(&root, &note_path),
+            attachment_rel_path: rel_path_str(&root, &attachment_target),
+            note_moved: false,
+        });
+    }
+
+    let new_dir = first_available_path(note_dir, |n| match n {
+        None => note_stem.to_string(),
+        Some(n) => format!("{note_stem} {n}"),
+    });
+    fs::create_dir(&new_dir).map_err(io)?;
+
+    let attachment_target = attachment_target_path(&new_dir, &filename);
+    if let Err(e) = fs::write(&attachment_target, bytes) {
+        let _ = fs::remove_dir(&new_dir);
+        return Err(io(e));
+    }
+
+    let note_filename = note_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or(VaultError::OutsideRoot)?;
+    let new_note_path = new_dir.join(note_filename);
+    fs::rename(&note_path, &new_note_path).map_err(io)?;
+
+    Ok(AttachmentOutcome {
+        note_rel_path: rel_path_str(&root, &new_note_path),
+        attachment_rel_path: rel_path_str(&root, &attachment_target),
+        note_moved: true,
+    })
+}
+
 /// Een verborgen, gegarandeerd unieke naam náást `path` — dezelfde map, zodat
 /// de latere `rename()` binnen één bestandssysteem blijft (vereist voor
 /// atomiciteit). Het punt vooraan laat `scan_tree` hem overslaan, mocht een
@@ -716,6 +902,23 @@ impl Session {
     /// Verplaatst een notitie naar de systeem-prullenbak (W7).
     pub fn trash_note(&self, rel: &str) -> Result<(), VaultError> {
         trash_note(&self.root()?, rel)
+    }
+
+    /// Leest de bytes van een bijlage, opgelost relatief aan een notitie
+    /// binnen de huidige vault (W8).
+    pub fn read_attachment(&self, note_rel: &str, image_ref: &str) -> Result<Vec<u8>, VaultError> {
+        read_attachment(&self.root()?, note_rel, image_ref)
+    }
+
+    /// Slaat een bijlage op bij een notitie binnen de huidige vault (W8) —
+    /// migreert de notitie naar haar eigen map als dit de eerste bijlage is.
+    pub fn write_attachment(
+        &self,
+        note_rel: &str,
+        filename: &str,
+        bytes: &[u8],
+    ) -> Result<AttachmentOutcome, VaultError> {
+        write_attachment(&self.root()?, note_rel, filename, bytes)
     }
 
     fn root(&self) -> Result<PathBuf, VaultError> {

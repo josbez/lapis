@@ -21,6 +21,7 @@ export function NoteDraft({ dir, onCreated, onStatus }: NoteDraftProps) {
   return (
     <NoteView
       documentId={`draft::${dir}`}
+      notePath={null}
       markdownSource={draft.content}
       readOnly={false}
       onMarkdownChange={draft.handleMarkdownChange}

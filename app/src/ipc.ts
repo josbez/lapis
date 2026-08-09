@@ -101,6 +101,36 @@ export const moveNote = (fromRelPath: string, toRelPath: string): Promise<void> 
 /** Verplaatst een notitie naar de systeem-prullenbak (W7, PRD C7) — nooit permanent. */
 export const trashNote = (relPath: string): Promise<void> => invoke('trash_note', { path: relPath })
 
+export interface AttachmentOutcome {
+  noteRelPath: string
+  attachmentRelPath: string
+  /** `true` bij de eerste bijlage in de notitie — de notitie is dan mee
+   * verhuisd naar haar eigen map en `noteRelPath` is het nieuwe pad. */
+  noteMoved: boolean
+}
+
+/**
+ * Slaat een bijlage op bij een notitie (W8, PRD F5/C8) — bijvoorbeeld een
+ * geplakte afbeelding. `bytesBase64` is de ruwe inhoud, base64-gecodeerd.
+ * Is dit de eerste bijlage in de notitie, dan verhuist de notitie naar haar
+ * eigen map (`noteMoved`); de aanroeper moet dan zijn "welke notitie staat
+ * open"-toestand bijwerken naar `noteRelPath`.
+ */
+export const writeAttachment = (
+  noteRelPath: string,
+  filename: string,
+  bytesBase64: string,
+): Promise<AttachmentOutcome> =>
+  invoke('write_attachment', { notePath: noteRelPath, filename, bytesBase64 })
+
+/**
+ * Leest een bijlage voor inline weergave (W8). `imageRef` is de letterlijke
+ * string uit de markdown-link (`![alt](imageRef)`), opgelost relatief aan de
+ * map van `noteRelPath`. Geeft de bytes base64-gecodeerd terug.
+ */
+export const readAttachment = (noteRelPath: string, imageRef: string): Promise<string> =>
+  invoke('read_attachment', { notePath: noteRelPath, imageRef })
+
 export const getSidebarVisible = (): Promise<boolean> => invoke('get_sidebar_visible')
 
 export const setSidebarVisible = (visible: boolean): Promise<void> =>

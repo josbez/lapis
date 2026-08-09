@@ -13,14 +13,20 @@ describe('NoteView', () => {
 
   it('toont de opgemaakte inhoud', () => {
     const { container } = render(
-      <NoteView documentId="a" markdownSource={'# Kop\n\nEen paragraaf met tekst.'} />,
+      <NoteView
+        documentId="a"
+        notePath="a.md"
+        markdownSource={'# Kop\n\nEen paragraaf met tekst.'}
+      />,
     )
     expect(container.textContent).toContain('Kop')
     expect(container.textContent).toContain('Een paragraaf met tekst.')
   })
 
   it('is niet bewerkbaar', () => {
-    const { container } = render(<NoteView documentId="b" markdownSource={'gewone tekst'} />)
+    const { container } = render(
+      <NoteView documentId="b" notePath="b.md" markdownSource={'gewone tekst'} />,
+    )
     const content = container.querySelector('.cm-content')
     expect(content).not.toBeNull()
     expect(content?.getAttribute('contenteditable')).toBe('false')
@@ -29,11 +35,11 @@ describe('NoteView', () => {
 
   it('een ander documentId mount de editor opnieuw op de nieuwe inhoud', () => {
     const { container, rerender } = render(
-      <NoteView documentId="c" markdownSource={'eerste notitie'} />,
+      <NoteView documentId="c" notePath="c.md" markdownSource={'eerste notitie'} />,
     )
     expect(container.textContent).toContain('eerste notitie')
 
-    rerender(<NoteView documentId="d" markdownSource={'tweede notitie'} />)
+    rerender(<NoteView documentId="d" notePath="d.md" markdownSource={'tweede notitie'} />)
     expect(container.textContent).toContain('tweede notitie')
     expect(container.textContent).not.toContain('eerste notitie')
   })

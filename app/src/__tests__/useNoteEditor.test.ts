@@ -294,4 +294,102 @@ describe('useNoteEditor', () => {
     expect(result.current.markdownSource).toBe(initial.content)
     unmount()
   })
+
+  // W8 — flush() wordt gebruikt vóór het plakken van een bijlage, en moet
+  // dus daadwerkelijk op de afronding van het schrijven wachten, niet
+  // fire-and-forget zijn.
+  it('flush() is awaitable en rondt pas af nadat het schrijven klaar is', async () => {
+    mockedIpc.writeNote.mockResolvedValue({ kind: 'saved', modifiedMs: 2000 })
+    const onStatus = vi.fn()
+
+    const { result, unmount } = renderHook(() =>
+      useNoteEditor({ relPath: 'a.md', initial, onStatus }),
+    )
+
+    act(() => result.current.handleMarkdownChange('nog niet opgeslagen'))
+    await act(async () => {
+      await result.current.flush()
+    })
+
+    expect(mockedIpc.writeNote).toHaveBeenCalledWith('a.md', 'nog niet opgeslagen', 1000)
+    expect(onStatus).toHaveBeenCalledWith(expect.stringContaining('opgeslagen'))
+    unmount()
+  })
+
+  // W8 — write_attachment kan `relPath` laten wijzigen (migratie naar een
+  // eigen map) zonder dat de hook ontmount: NoteEditor blijft gemonteerd,
+  // App.tsx werkt alleen `selectedPath` bij. `documentId` moet dan NIET
+  // veranderen (dat zou de editor onnodig laten remounten, cursor/undo
+  // kwijt) en de bestaande "flush bij ontmounten"-cleanup mag niet alsnog
+  // naar het oude (inmiddels verplaatste) pad schrijven.
+  describe('een relPath-wijziging zonder ontmounten (W8-migratie)', () => {
+    it('documentId blijft gelijk, ook al verandert relPath', () => {
+      const onStatus = vi.fn()
+      const { result, rerender, unmount } = renderHook(
+        ({ relPath }) => useNoteEditor({ relPath, initial, onStatus }),
+        { initialProps: { relPath: 'a.md' } },
+      )
+
+      const before = result.current.documentId
+      rerender({ relPath: 'Notitie/a.md' })
+
+      expect(result.current.documentId).toBe(before)
+      unmount()
+    })
+
+    it('schrijft niet meteen naar het oude pad zodra relPath wijzigt', () => {
+      mockedIpc.writeNote.mockResolvedValue({ kind: 'saved', modifiedMs: 2000 })
+      const onStatus = vi.fn()
+      const { result, rerender, unmount } = renderHook(
+        ({ relPath }) => useNoteEditor({ relPath, initial, onStatus }),
+        { initialProps: { relPath: 'a.md' } },
+      )
+
+      act(() => result.current.handleMarkdownChange('getypt vlak vóór de migratie'))
+      rerender({ relPath: 'Notitie/a.md' })
+
+      // Vóór de W8-fix zou dit de "flush bij ontmounten"-cleanup triggeren
+      // met de oude (inmiddels niet meer bestaande) relPath.
+      expect(mockedIpc.writeNote).not.toHaveBeenCalled()
+      unmount()
+    })
+
+    it('een volgende autosave gaat naar het nieuwe pad', () => {
+      mockedIpc.writeNote.mockResolvedValue({ kind: 'saved', modifiedMs: 2000 })
+      const onStatus = vi.fn()
+      const { result, rerender, unmount } = renderHook(
+        ({ relPath }) => useNoteEditor({ relPath, initial, onStatus }),
+        { initialProps: { relPath: 'a.md' } },
+      )
+
+      rerender({ relPath: 'Notitie/a.md' })
+      act(() => result.current.handleMarkdownChange('na de migratie getypt'))
+      act(() => {
+        window.dispatchEvent(new Event('blur'))
+      })
+
+      expect(mockedIpc.writeNote).toHaveBeenCalledWith('Notitie/a.md', 'na de migratie getypt', 1000)
+      unmount()
+    })
+
+    it('ontmounten ná een relPath-wijziging flusht naar het huidige (nieuwe) pad', () => {
+      mockedIpc.writeNote.mockResolvedValue({ kind: 'saved', modifiedMs: 2000 })
+      const onStatus = vi.fn()
+      const { result, rerender, unmount } = renderHook(
+        ({ relPath }) => useNoteEditor({ relPath, initial, onStatus }),
+        { initialProps: { relPath: 'a.md' } },
+      )
+
+      rerender({ relPath: 'Notitie/a.md' })
+      act(() => result.current.handleMarkdownChange('nog niet opgeslagen, na migratie'))
+      unmount()
+
+      expect(mockedIpc.writeNote).toHaveBeenCalledWith(
+        'Notitie/a.md',
+        'nog niet opgeslagen, na migratie',
+        1000,
+      )
+      expect(mockedIpc.writeNote).not.toHaveBeenCalledWith('a.md', expect.anything(), expect.anything())
+    })
+  })
 })

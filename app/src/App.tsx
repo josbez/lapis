@@ -132,6 +132,25 @@ export default function App() {
     })()
   }, [])
 
+  /**
+   * De eerste bijlage in de open notitie migreert 'm naar haar eigen map
+   * (W8). Anders dan `renameFile`/`moveFile` géén `openNote()` (dat zou
+   * `noteContent` op `null` zetten en dus `NoteEditor` laten ontmounten —
+   * precies wat hier niet mag: de gebruiker was nog aan het typen toen de
+   * bijlage geplakt werd, en `NoteEditor` heeft de actuele inhoud al zelf
+   * naar het nieuwe pad geschreven vóór dit aangeroepen wordt). Alleen het
+   * pad zelf bijwerken, zodat toekomstige acties (opslaan, hernoemen,
+   * naar de prullenbak) het juiste bestand raken; de boom volgt via
+   * `refresh()`.
+   */
+  const handleNoteMoved = useCallback(
+    (newRelPath: string) => {
+      setSelectedPath(newRelPath)
+      refresh()
+    },
+    [refresh],
+  )
+
   /** "Nieuwe notitie" (W7) — opent een concept, nog geen bestand op schijf. */
   const newNote = useCallback((dir: string = '') => {
     gate.current.start()
@@ -333,6 +352,7 @@ export default function App() {
               revealText={revealText}
               onStatus={setStatus}
               onCopySaved={refresh}
+              onNoteMoved={handleNoteMoved}
             />
           ) : (
             <p>{status || 'laden…'}</p>

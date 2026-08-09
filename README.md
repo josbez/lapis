@@ -82,6 +82,26 @@ drag-and-drop of mapkiezer** — een ruwe eerste versie om de scope van deze wav
 laten uitdijen naar interactiepolish; dat hoort bij W10 ("De vorm"). Alle geautomatiseerde
 verificatie is groen.
 
+Ook W8 (PRD F5/C8, bijlagen) is zonder de drie wave-documenten gebouwd, op hetzelfde
+expliciete verzoek. Het PRD zelf vlagt één open vraag specifiek "voor de bijlagenwave" —
+hoe bestaande bijlagen nu al op schijf staan, met ~168 MB aan bijlagen op 402 notities in
+Jos' echte vault een reëel risico op twee botsende conventies naast elkaar. Voorgelegd
+vóór er gebouwd werd; Jos' antwoord: bouw gewoon volgens F5, bestaand materiaal blijft
+ongemoeid ongeacht hoe het er nu bij staat. `vault-core` kreeg `write_attachment`
+(bij de eerste bijlage in een notitie ontstaat een map genoemd naar de notitie zelf, en
+het `.md`-bestand verhuist daar samen met de bijlage in — de bijlage wordt bewust eerst
+weggeschreven, pas dáárna de notitie verplaatst, zodat een falende schrijfactie de
+notitie nooit halverwege achterlaat) en `read_attachment` (leest een bijlage relatief aan
+de map van de notitie die ernaar verwijst, en mag daarbij — anders dan een notitiepad
+zelf — `..`-componenten bevatten, voor bijlagen die al vóór Lapis ergens anders stonden).
+Bijlagen gaan als base64 over de IPC-grens. Aan de frontend-kant rendert een
+CodeMirror-extensie relatieve `<img src>`'s als blob-URL (de editor biedt hiervoor geen
+resolver-hook, dit werkt dus op DOM-niveau), en een tweede extensie onderschept het
+plakken van een afbeelding uit het klembord: eerst alles wat tot dan toe getypt is
+opslaan, dan de bijlage wegschrijven, en bij een migratie het geopende notitiepad
+bijwerken — zonder de editor zelf te laten remounten, want de gebruiker was nog aan het
+typen toen de bijlage geplakt werd. Alle geautomatiseerde verificatie is groen.
+
 ## Documenten
 
 | Document | Waarvoor | Status |

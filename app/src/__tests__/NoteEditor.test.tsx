@@ -17,6 +17,7 @@ function stub(overrides: Partial<UseNoteEditorResult> = {}): UseNoteEditorResult
     keepMine: vi.fn(),
     loadTheirs: vi.fn(),
     keepBoth: vi.fn(),
+    flush: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   }
 }

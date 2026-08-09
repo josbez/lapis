@@ -11,6 +11,10 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
+# Bijlagen gaan als base64 over de IPC-grens (W8) — compacter dan een
+# JSON-array van getallen, en simpeler dan Tauri's raw-request-mechanisme
+# voor iets dat maar in twee commands gebeurt.
+base64 = "0.22"
 
 # Alle bestandslogica zit in deze drie crates. Deze crate is een dunne schil
 # (07 §4.3): geen fs::, geen File::create, geen OpenOptions hier — ook niet
