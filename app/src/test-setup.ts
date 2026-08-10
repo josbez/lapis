@@ -21,3 +21,30 @@ Range.prototype.getBoundingClientRect = () =>
   ({ top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect
 
 Element.prototype.scrollIntoView = () => {}
+
+/**
+ * jsdom implementeert `URL.createObjectURL`/`revokeObjectURL` niet (geen
+ * echte blob-registry) — nodig voor `attachmentImageResolver` (W8), dat
+ * bijlage-bytes als blob-URL in een `<img src>` zet. Een teller volstaat:
+ * de tests controleren alleen dát de `src` herschreven wordt, niet de
+ * inhoud van de URL zelf.
+ */
+let objectUrlCounter = 0
+URL.createObjectURL = () => `blob:mock-${++objectUrlCounter}`
+URL.revokeObjectURL = () => {}
+
+/**
+ * jsdom implementeert `Blob.prototype.arrayBuffer` niet — nodig om een
+ * geplakte afbeelding als bytes te lezen (W8, `attachmentPasteHandler`).
+ * `FileReader` (wél aanwezig in jsdom) doet hetzelfde werk.
+ */
+if (!Blob.prototype.arrayBuffer) {
+  Blob.prototype.arrayBuffer = function (this: Blob) {
+    return new Promise<ArrayBuffer>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as ArrayBuffer)
+      reader.onerror = () => reject(reader.error)
+      reader.readAsArrayBuffer(this)
+    })
+  }
+}

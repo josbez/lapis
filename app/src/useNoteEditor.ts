@@ -45,6 +45,13 @@ export interface UseNoteEditorResult {
   keepMine: () => void
   loadTheirs: () => void
   keepBoth: () => void
+  /**
+   * Slaat direct op, zonder debounce (W8: gebruikt vóór het plakken van een
+   * bijlage — de notitie moet op schijf staan mét de tekst tot dan toe vóór
+   * `write_attachment` 'm eventueel naar een eigen map verplaatst). Ook wat
+   * `⌘S` intern al deed, nu ook naar buiten toe bruikbaar.
+   */
+  flush: () => Promise<void>
 }
 
 export function useNoteEditor({
@@ -56,6 +63,16 @@ export function useNoteEditor({
   const [generation, setGeneration] = useState(0)
   const [baseline, setBaseline] = useState<NoteContent>(initial)
   const [conflict, setConflict] = useState<ConflictState | null>(null)
+
+  // Stabiele identiteit voor `documentId`, losgekoppeld van `relPath` zelf
+  // — nodig sinds W8: `write_attachment` kan `relPath` laten wijzigen
+  // zonder dat deze hook ontmount (de notitie migreert naar haar eigen map
+  // terwijl er nog in getypt wordt), en dat mag de editor niet laten
+  // remounten (cursor/undo-geschiedenis zou dan verloren gaan). Vóór W8
+  // ontmountte deze hook altijd bij een andere `relPath` (App.tsx zette
+  // `noteContent` eerst op `null`), dus dit verandert niets aan bestaand
+  // gedrag — alleen aan het nieuwe geval waarin dat niet meer zo is.
+  const [mountIdentity] = useState(relPath)
 
   const baselineRef = useRef(baseline)
   useEffect(() => {
@@ -81,19 +98,19 @@ export function useNoteEditor({
   }
 
   const doSave = useCallback(
-    (opts?: { force?: boolean }) => {
+    (opts?: { force?: boolean }): Promise<void> => {
       // Een actief conflict blokkeert elke automatische schrijfpoging — ook
       // via ⌘S, blur of het ontmounten. Alleen een geforceerde aanroep
       // (keepMine) mag hier doorheen; er is toch niets nieuws te bewaren,
       // want de editor is read-only zolang het conflict openstaat.
-      if (conflictRef.current && !opts?.force) return
+      if (conflictRef.current && !opts?.force) return Promise.resolve()
       const current = currentRef.current
-      if (!opts?.force && current === baselineRef.current.content) return
-      if (savingRef.current) return
+      if (!opts?.force && current === baselineRef.current.content) return Promise.resolve()
+      if (savingRef.current) return Promise.resolve()
       savingRef.current = true
       const expected = opts?.force ? null : baselineRef.current.modifiedMs
 
-      void writeNote(relPath, current, expected)
+      return writeNote(relPath, current, expected)
         .then((outcome) => {
           if (outcome.kind === 'conflict') {
             setConflict({ mine: current })
@@ -114,9 +131,9 @@ export function useNoteEditor({
     [relPath, onStatus],
   )
 
-  const flush = useCallback(() => {
+  const flush = useCallback((): Promise<void> => {
     clearTimer()
-    doSave()
+    return doSave()
   }, [doSave])
 
   const handleMarkdownChange = useCallback(
@@ -126,7 +143,7 @@ export function useNoteEditor({
       clearTimer()
       timerRef.current = setTimeout(() => {
         timerRef.current = null
-        doSave()
+        void doSave()
       }, AUTOSAVE_DEBOUNCE_MS)
     },
     [doSave],
@@ -137,7 +154,7 @@ export function useNoteEditor({
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 's') {
         e.preventDefault()
-        flush()
+        void flush()
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -175,17 +192,28 @@ export function useNoteEditor({
   }, [flush, checkOnFocus])
 
   // Bij het wisselen van notitie ontmount deze hook — alsnog opslaan wat er
-  // nog niet op schijf staat.
+  // nog niet op schijf staat. Via een ref in plaats van `doSave` zelf als
+  // dependency: sinds W8 kan `relPath` ook wijzigen zónder dat deze hook
+  // ontmount (`write_attachment` migreert de notitie terwijl er nog in
+  // getypt wordt) — met `doSave` als dependency zou déze cleanup dan bij
+  // elke relPath-wijziging draaien, en dus alsnog proberen te schrijven
+  // naar het oude (al verplaatste, dus niet meer bestaande) pad. Met een
+  // lege dependency-lijst draait de cleanup alleen bij een écht ontmounten,
+  // en dan met de op dát moment actuele `doSave` (dus het actuele pad).
+  const doSaveRef = useRef(doSave)
+  useEffect(() => {
+    doSaveRef.current = doSave
+  }, [doSave])
   useEffect(() => {
     return () => {
       clearTimer()
-      doSave()
+      doSaveRef.current()
     }
-  }, [doSave])
+  }, [])
 
   const keepMine = useCallback(() => {
     setConflict(null)
-    doSave({ force: true })
+    void doSave({ force: true })
   }, [doSave])
 
   const loadTheirs = useCallback(() => {
@@ -220,7 +248,7 @@ export function useNoteEditor({
   }, [relPath, onStatus, onCopySaved])
 
   return {
-    documentId: `${relPath}::${generation}`,
+    documentId: `${mountIdentity}::${generation}`,
     markdownSource: baseline.content,
     readOnly: conflict !== null,
     conflict,
@@ -228,5 +256,6 @@ export function useNoteEditor({
     keepMine,
     loadTheirs,
     keepBoth,
+    flush,
   }
 }

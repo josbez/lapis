@@ -1644,6 +1644,7 @@ name = "lapis"
 version = "0.0.0"
 dependencies = [
  "app-state",
+ "base64 0.22.1",
  "search-index",
  "serde",
  "serde_json",

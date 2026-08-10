@@ -1140,3 +1140,222 @@ fn w7_sessie_create_folder_werkt_op_de_geopende_vault() {
     assert_eq!(rel, "Nieuwe map");
     assert!(dir.join("Nieuwe map").is_dir());
 }
+
+// W8 — write_attachment: de eerste bijlage migreert de notitie naar haar
+// eigen map (PRD F5/C8).
+
+#[test]
+fn w8_write_attachment_eerste_bijlage_migreert_notitie() {
+    let dir = temp_dir("w8-eerste-bijlage");
+    write(&dir, "Notitie.md", "# Notitie\n\ninhoud");
+
+    let outcome = write_attachment(&dir, "Notitie.md", "foto.png", b"pngbytes").unwrap();
+
+    assert!(outcome.note_moved);
+    assert_eq!(outcome.note_rel_path, "Notitie/Notitie.md");
+    assert_eq!(outcome.attachment_rel_path, "Notitie/foto.png");
+    assert!(!dir.join("Notitie.md").exists());
+    assert_eq!(
+        fs::read_to_string(dir.join("Notitie/Notitie.md")).unwrap(),
+        "# Notitie\n\ninhoud"
+    );
+    assert_eq!(fs::read(dir.join("Notitie/foto.png")).unwrap(), b"pngbytes");
+}
+
+#[test]
+fn w8_write_attachment_tweede_bijlage_blijft_in_dezelfde_map() {
+    let dir = temp_dir("w8-tweede-bijlage");
+    write(&dir, "Notitie.md", "# Notitie");
+    let eerste = write_attachment(&dir, "Notitie.md", "foto.png", b"1").unwrap();
+    assert!(eerste.note_moved);
+
+    let tweede = write_attachment(&dir, &eerste.note_rel_path, "schema.png", b"2").unwrap();
+
+    assert!(!tweede.note_moved);
+    assert_eq!(tweede.note_rel_path, "Notitie/Notitie.md");
+    assert_eq!(tweede.attachment_rel_path, "Notitie/schema.png");
+    assert!(dir.join("Notitie/foto.png").exists());
+    assert!(dir.join("Notitie/schema.png").exists());
+}
+
+#[test]
+fn w8_write_attachment_botst_op_bijlagenaam() {
+    let dir = temp_dir("w8-bijlage-botsing");
+    write(&dir, "Notitie.md", "# Notitie");
+    let eerste = write_attachment(&dir, "Notitie.md", "foto.png", b"1").unwrap();
+
+    let tweede = write_attachment(&dir, &eerste.note_rel_path, "foto.png", b"2").unwrap();
+
+    assert!(!tweede.note_moved);
+    assert_eq!(tweede.attachment_rel_path, "Notitie/foto 2.png");
+    assert_eq!(fs::read(dir.join("Notitie/foto.png")).unwrap(), b"1");
+    assert_eq!(fs::read(dir.join("Notitie/foto 2.png")).unwrap(), b"2");
+}
+
+#[test]
+fn w8_write_attachment_notitie_al_in_gelijknamige_map_geen_migratie() {
+    let dir = temp_dir("w8-al-gemigreerd");
+    fs::create_dir_all(dir.join("Notitie")).unwrap();
+    write(&dir, "Notitie/Notitie.md", "# Notitie");
+
+    let outcome = write_attachment(&dir, "Notitie/Notitie.md", "foto.png", b"x").unwrap();
+
+    assert!(!outcome.note_moved);
+    assert_eq!(outcome.note_rel_path, "Notitie/Notitie.md");
+    assert_eq!(outcome.attachment_rel_path, "Notitie/foto.png");
+}
+
+#[test]
+fn w8_write_attachment_migratiemap_botst_met_niet_gerelateerde_map() {
+    let dir = temp_dir("w8-migratie-botsing");
+    fs::create_dir_all(dir.join("Notitie")).unwrap();
+    write(&dir, "Notitie/anders.md", "niet deze notitie");
+    write(&dir, "Notitie.md", "# Notitie");
+
+    let outcome = write_attachment(&dir, "Notitie.md", "foto.png", b"x").unwrap();
+
+    assert!(outcome.note_moved);
+    assert_eq!(outcome.note_rel_path, "Notitie 2/Notitie.md");
+    assert_eq!(outcome.attachment_rel_path, "Notitie 2/foto.png");
+    // De niet-gerelateerde map blijft ongemoeid.
+    assert_eq!(
+        fs::read_to_string(dir.join("Notitie/anders.md")).unwrap(),
+        "niet deze notitie"
+    );
+}
+
+#[test]
+fn w8_write_attachment_in_een_submap() {
+    let dir = temp_dir("w8-submap");
+    fs::create_dir_all(dir.join("dagboek")).unwrap();
+    write(&dir, "dagboek/Vandaag.md", "# Vandaag");
+
+    let outcome = write_attachment(&dir, "dagboek/Vandaag.md", "foto.png", b"x").unwrap();
+
+    assert_eq!(outcome.note_rel_path, "dagboek/Vandaag/Vandaag.md");
+    assert_eq!(outcome.attachment_rel_path, "dagboek/Vandaag/foto.png");
+}
+
+#[test]
+fn w8_write_attachment_op_niet_bestaande_notitie_geeft_not_found() {
+    let dir = temp_dir("w8-not-found");
+    let err = write_attachment(&dir, "spook.md", "foto.png", b"x").unwrap_err();
+    assert_eq!(err, VaultError::NotFound);
+}
+
+#[test]
+fn w8_write_attachment_buiten_root_faalt() {
+    let (parent, dir) = temp_dir_met_ouder("w8-buiten-root");
+    fs::write(parent.join("buiten.md"), "x").unwrap();
+
+    let err = write_attachment(&dir, "../buiten.md", "foto.png", b"x").unwrap_err();
+    assert_eq!(err, VaultError::OutsideRoot);
+}
+
+#[test]
+fn w8_write_attachment_ontsmet_bestandsnaam_met_padscheiding() {
+    let dir = temp_dir("w8-naam-padscheiding");
+    write(&dir, "Notitie.md", "# Notitie");
+
+    let err = write_attachment(&dir, "Notitie.md", "sub/foto.png", b"x").unwrap_err();
+
+    assert_eq!(err, VaultError::InvalidPath);
+    // Niets aangeraakt: geen migratie, geen halve map.
+    assert!(dir.join("Notitie.md").exists());
+    assert!(!dir.join("Notitie").exists());
+}
+
+#[test]
+fn w8_write_attachment_lege_bestandsnaam_geeft_invalid_path() {
+    let dir = temp_dir("w8-naam-leeg");
+    write(&dir, "Notitie.md", "# Notitie");
+
+    let err = write_attachment(&dir, "Notitie.md", "  ", b"x").unwrap_err();
+    assert_eq!(err, VaultError::InvalidPath);
+}
+
+// W8 — read_attachment: opgelost relatief aan de map van de notitie, mag
+// (anders dan een notitiepad) `..` bevatten.
+
+#[test]
+fn w8_read_attachment_leest_bytes_relatief_aan_notitiemap() {
+    let dir = temp_dir("w8-read");
+    fs::create_dir_all(dir.join("Notitie")).unwrap();
+    write(&dir, "Notitie/Notitie.md", "# Notitie");
+    fs::write(dir.join("Notitie/foto.png"), b"pngbytes").unwrap();
+
+    let bytes = read_attachment(&dir, "Notitie/Notitie.md", "foto.png").unwrap();
+    assert_eq!(bytes, b"pngbytes");
+}
+
+#[test]
+fn w8_read_attachment_ondersteunt_dubbele_punt_naar_buurmap() {
+    let dir = temp_dir("w8-read-buurmap");
+    fs::create_dir_all(dir.join("sub")).unwrap();
+    fs::create_dir_all(dir.join("gedeeld")).unwrap();
+    write(&dir, "sub/Notitie.md", "# Notitie");
+    fs::write(dir.join("gedeeld/foto.png"), b"gedeeld").unwrap();
+
+    let bytes = read_attachment(&dir, "sub/Notitie.md", "../gedeeld/foto.png").unwrap();
+    assert_eq!(bytes, b"gedeeld");
+}
+
+#[test]
+fn w8_read_attachment_buiten_root_faalt() {
+    let (parent, dir) = temp_dir_met_ouder("w8-read-buiten-root");
+    fs::create_dir_all(dir.join("sub")).unwrap();
+    write(&dir, "sub/Notitie.md", "# Notitie");
+    fs::write(parent.join("stiekem.png"), b"x").unwrap();
+
+    let err = read_attachment(&dir, "sub/Notitie.md", "../../stiekem.png").unwrap_err();
+    assert_eq!(err, VaultError::OutsideRoot);
+}
+
+#[test]
+fn w8_read_attachment_op_niet_bestaande_bijlage_geeft_not_found() {
+    let dir = temp_dir("w8-read-not-found");
+    write(&dir, "Notitie.md", "# Notitie");
+
+    let err = read_attachment(&dir, "Notitie.md", "spook.png").unwrap_err();
+    assert_eq!(err, VaultError::NotFound);
+}
+
+// W8 — Session-methodes.
+
+#[test]
+fn w8_sessie_write_attachment_werkt_op_de_geopende_vault() {
+    let dir = temp_dir("w8-sessie-write");
+    write(&dir, "Notitie.md", "# Notitie");
+    let sessie = Session::new();
+    sessie.open(&dir).unwrap();
+
+    let outcome = sessie
+        .write_attachment("Notitie.md", "foto.png", b"x")
+        .unwrap();
+    assert!(outcome.note_moved);
+    assert!(dir.join("Notitie/foto.png").exists());
+}
+
+#[test]
+fn w8_sessie_write_attachment_vereist_geopende_sessie() {
+    let sessie = Session::new();
+    let err = sessie
+        .write_attachment("Notitie.md", "foto.png", b"x")
+        .unwrap_err();
+    assert_eq!(err, VaultError::NoVaultSelected);
+}
+
+#[test]
+fn w8_sessie_read_attachment_werkt_op_de_geopende_vault() {
+    let dir = temp_dir("w8-sessie-read");
+    fs::create_dir_all(dir.join("Notitie")).unwrap();
+    write(&dir, "Notitie/Notitie.md", "# Notitie");
+    fs::write(dir.join("Notitie/foto.png"), b"x").unwrap();
+    let sessie = Session::new();
+    sessie.open(&dir).unwrap();
+
+    let bytes = sessie
+        .read_attachment("Notitie/Notitie.md", "foto.png")
+        .unwrap();
+    assert_eq!(bytes, b"x");
+}

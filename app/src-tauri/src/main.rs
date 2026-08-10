@@ -18,6 +18,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use base64::Engine as _;
 use serde::Serialize;
 use tauri::State;
 use vault_core::{NodeKind, NoteContent, Session, TreeNode, TreeView, WriteOutcome};
@@ -407,6 +408,73 @@ fn trash_note(
     Ok(())
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AttachmentOutcomeDto {
+    note_rel_path: String,
+    attachment_rel_path: String,
+    /// `true` wanneer dit de eerste bijlage in de notitie was — de frontend
+    /// moet dan zijn "welke notitie staat open"-toestand bijwerken naar
+    /// `note_rel_path`, precies zoals na een `move_note`.
+    note_moved: bool,
+}
+
+impl From<vault_core::AttachmentOutcome> for AttachmentOutcomeDto {
+    fn from(o: vault_core::AttachmentOutcome) -> Self {
+        AttachmentOutcomeDto {
+            note_rel_path: o.note_rel_path,
+            attachment_rel_path: o.attachment_rel_path,
+            note_moved: o.note_moved,
+        }
+    }
+}
+
+/// Slaat een bijlage op bij een notitie (W8, PRD F5/C8) — bijvoorbeeld een
+/// geplakte afbeelding. `bytes_base64` is de ruwe inhoud, base64-gecodeerd:
+/// compacter over de IPC-grens dan een JSON-array van getallen, en simpeler
+/// dan Tauri's raw-request-mechanisme voor iets dat maar in twee commands
+/// gebeurt. Is dit de eerste bijlage, dan verhuist de notitie naar haar
+/// eigen map (`note_moved`); de index volgt die padwijziging net als bij
+/// `move_note`.
+#[tauri::command]
+fn write_attachment(
+    note_path: String,
+    filename: String,
+    bytes_base64: String,
+    session: State<'_, Session>,
+    index: State<'_, IndexState>,
+) -> Result<AttachmentOutcomeDto, String> {
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(&bytes_base64)
+        .map_err(|e| e.to_string())?;
+    let outcome = session
+        .write_attachment(&note_path, &filename, &bytes)
+        .map_err(|e| e.to_string())?;
+    if outcome.note_moved {
+        index_remove(&index, &note_path);
+        if let Ok(note) = session.read_note_with_mtime(&outcome.note_rel_path) {
+            index_upsert(&index, &outcome.note_rel_path, &note.content, note.modified);
+        }
+    }
+    Ok(outcome.into())
+}
+
+/// Leest een bijlage voor inline weergave (W8) — `image_ref` is de
+/// letterlijke string uit de markdown-link (`![alt](image_ref)`), opgelost
+/// relatief aan de map van `note_path`. Geeft de bytes base64-gecodeerd
+/// terug, voor de frontend om als blob-URL te tonen.
+#[tauri::command]
+fn read_attachment(
+    note_path: String,
+    image_ref: String,
+    session: State<'_, Session>,
+) -> Result<String, String> {
+    let bytes = session
+        .read_attachment(&note_path, &image_ref)
+        .map_err(|e| e.to_string())?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
+}
+
 /// Volledige tekst zoeken (W6, PRD F4, `⌘⇧F`). Geen index (nog) geopend —
 /// bijvoorbeeld vóór de eerste vault-open — geeft gewoon een lege lijst,
 /// geen fout: zoeken zonder vault is geen gebruikersfout.
@@ -489,6 +557,8 @@ fn main() {
             create_folder,
             move_note,
             trash_note,
+            write_attachment,
+            read_attachment,
             search_notes,
             get_recent_paths,
             record_note_opened,
@@ -530,6 +600,24 @@ mod tests {
         assert_eq!(
             serde_json::to_value(CreatedNoteDto::from(created)).unwrap(),
             serde_json::json!({ "relPath": "Boodschappen.md", "modifiedMs": 1_700_000_000_000_u64 })
+        );
+    }
+
+    // W8 — write_attachment/read_attachment.
+    #[test]
+    fn attachment_outcome_dto_serialiseert_camelcase() {
+        let outcome = vault_core::AttachmentOutcome {
+            note_rel_path: "Notitie/Notitie.md".to_string(),
+            attachment_rel_path: "Notitie/foto.png".to_string(),
+            note_moved: true,
+        };
+        assert_eq!(
+            serde_json::to_value(AttachmentOutcomeDto::from(outcome)).unwrap(),
+            serde_json::json!({
+                "noteRelPath": "Notitie/Notitie.md",
+                "attachmentRelPath": "Notitie/foto.png",
+                "noteMoved": true,
+            })
         );
     }
 
