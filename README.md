@@ -102,6 +102,21 @@ opslaan, dan de bijlage wegschrijven, en bij een migratie het geopende notitiepa
 bijwerken — zonder de editor zelf te laten remounten, want de gebruiker was nog aan het
 typen toen de bijlage geplakt werd. Alle geautomatiseerde verificatie is groen.
 
+## Volgende stap
+
+**W9 (vaste eerste pagina) en W10 (de vorm).** Daarna pas is Lapis dagelijks te
+gebruiken; Jos' oordeel na W8: *"ik ga het zo niet kunnen gebruiken, daar zijn W9 en W10
+voor nodig."* Die twee waves zijn dus geen afwerking maar de voorwaarde voor de eerste
+echte gebruikstest.
+
+**Werkwijze vanaf hier:** klein snijden, vaste volgorde, groene verificatie per stap, en
+beslissingen die de PRD raken apart voorleggen — maar zónder de drie formele
+wave-documenten. Zie de evaluatie in
+[07 §9](docs/07-wave-methode.md#9-evaluatie-wat-de-methode-heeft-opgeleverd).
+
+**Vóór er tegen echte notities getest wordt:** `git init` + commit in de vault
+(afspraak V6a). Schrijftests draaien uitsluitend tegen tijdelijke fixture-vaults.
+
 ## Documenten
 
 | Document | Waarvoor | Status |
@@ -118,8 +133,8 @@ typen toen de bijlage geplakt werd. Alle geautomatiseerde verificatie is groen.
 | [09 – Code-analyse en verbeterplan](docs/09-code-analyse-en-verbeterplan.md) | Bevindingen W0-code als backlog: epics, sprints, taken, agent-inzet | ✅ sprint 1 en 2 verwerkt |
 | [W0 – Goal Document](docs/waves/W0-spike/00-goal.md) | Spike: wil ik hierin typen? | ✅ goedgekeurd |
 | [W0 – Wave Specification](docs/waves/W0-spike/01-spec.md) | Het implementatiecontract voor de spike | ✅ goedgekeurd |
-| **[W0 – Test & Verification Plan](docs/waves/W0-spike/02-testplan.md)** | **Wat er bewezen moet worden vóór er code is** | ⏳ **ter goedkeuring** |
-| [W0 – Bewijsverslag](docs/waves/W0-spike/03-bewijs.md) | Wat er draaide, wat faalde, wat niet getest is | onvolledig — wacht op de doorloop |
+| [W0 – Test & Verification Plan](docs/waves/W0-spike/02-testplan.md) | Wat er bewezen moet worden vóór er code is | ✅ goedgekeurd |
+| [W0 – Bewijsverslag](docs/waves/W0-spike/03-bewijs.md) | Wat er draaide, wat faalde, wat niet getest is | ✅ afgesloten als achterhaald |
 | [W1 – Goal Document](docs/waves/W1-vault-lezen/00-goal.md) | Vault openen en tonen: doel, scope, grenzen | ✅ goedgekeurd |
 | [W1 – Wave Specification](docs/waves/W1-vault-lezen/01-spec.md) | Het implementatiecontract: `app/`, `vault-core`, `app-state` | ✅ goedgekeurd |
 | **[W1 – Test & Verification Plan](docs/waves/W1-vault-lezen/02-testplan.md)** | **Wat er bewezen moet worden, met de schrijfvrij-test als zwaarste eis** | ✅ **vastgesteld, geautomatiseerd bewijs groen** |

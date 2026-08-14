@@ -210,27 +210,39 @@ Daarna de doorloop uit testplan §7 (HF-01), en het oordeel in §11 hieronder.
 Loopt `cargo build` stuk op de Tauri-configuratie, dan is dat een bevinding van mij en
 geen van jou — stuur de foutmelding door.
 
-## 11. Het oordeel van Jos
+## 11. Het oordeel van Jos — afgesloten als achterhaald
 
-*In te vullen na de doorloop.*
+**Besluit van Jos, augustus 2026: W0 wordt gesloten zonder ingevuld oordeel.**
 
-**Wil je hierin typen?**
+De vier vragen hieronder zijn nooit formeel beantwoord, en dat hoeft ook niet meer. Ze
+zijn ingehaald door de feiten: op de editorbasis uit deze spike zijn inmiddels W1 tot en
+met W8 gebouwd, met groene verificatie. De vraag *"wil ik hierin typen?"* is daarmee in
+de praktijk beantwoord door acht waves lang door te bouwen op hetzelfde fundament.
 
-`____________________________________________`
+De oorspronkelijke vragen, voor het archief:
 
-**Zo nee: zit het in de basis, of is het met bijschaven op te lossen?**
+1. Wil je hierin typen?
+2. Zo nee: zit het in de basis, of is het met bijschaven op te lossen?
+3. Wat viel op tijdens het typen — cursor, selectie, plakken, undo?
+4. Doorgaan met `@atomic-editor/editor`, of route b of c uit
+   [D4](../../05-open-vragen.md#d4--editorbasis)?
 
-`____________________________________________`
+**Wat de spike wél heeft opgeleverd,** en wat de reden is dat hij zijn geld waard was:
 
-**Wat viel op tijdens het typen — cursor, selectie, plakken, undo?**
+- De bevestiging dat Tauri v2 met React, CodeMirror 6 en `@atomic-editor/editor` werkt op
+  macOS — een aanname die op papier niet te toetsen was.
+- De CRLF-bevinding (§6.1), die een vormeis aan het opslagmodel bleek te zijn en niet een
+  configuratiedetail.
+- De ontbrekende `icons/`-map, die de Tauri-schil onderuit haalde (§12).
+- De empirische bevestiging dat de mapstructuur binnen een minuut wordt gemist (§6.4),
+  wat W1 als volgende wave bevestigde.
+- Een code-analyse die tot twee uitgevoerde verbetersprints leidde
+  ([09](../../09-code-analyse-en-verbeterplan.md)).
 
-`____________________________________________`
-
-**Doorgaan met `@atomic-editor/editor`, of route b of c uit [D4](../../05-open-vragen.md#d4--editorbasis)?**
-
-`____________________________________________`
-
----
+**Eerlijke kanttekening bij het sluiten.** Een spike hoort te eindigen met een expliciet
+oordeel; dat is de hele reden dat hij bestaat. Hier is dat oordeel impliciet gebleven en
+achteraf afgeleid uit het feit dat er is doorgebouwd. Dat is een zwakkere vorm van bewijs
+dan de methode bedoelt, en het staat hier zo opgeschreven in plaats van weggepoetst.
 
 ## 12. Naschrift na de code-analyse
 
