@@ -104,31 +104,33 @@ export function FullTextSearch({ onOpen, onClose }: FullTextSearchProps) {
   }
 
   return (
-    <div role="dialog" aria-label="Zoeken in alle notities" onKeyDown={onKeyDown}>
-      <input
-        ref={inputRef}
-        type="text"
-        placeholder="Zoek in alle notities…"
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value)
-          setSelectedIndex(0)
-        }}
-      />
-      <ul role="listbox">
-        {query.trim() !== '' && shownResults.length === 0 ? (
-          <li>Geen treffers.</li>
-        ) : (
-          shownResults.map((result, index) => (
-            <li key={result.path} role="option" aria-selected={index === selectedIndex}>
-              <button type="button" onClick={() => openResult(result)}>
-                <strong>{result.title}</strong> <span>{result.path}</span>
-                <p>{renderSnippet(result.snippet)}</p>
-              </button>
-            </li>
-          ))
-        )}
-      </ul>
+    <div className="lapis-overlay">
+      <div role="dialog" aria-label="Zoeken in alle notities" className="lapis-dialog" onKeyDown={onKeyDown}>
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="Zoek in alle notities…"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            setSelectedIndex(0)
+          }}
+        />
+        <ul role="listbox">
+          {query.trim() !== '' && shownResults.length === 0 ? (
+            <li>Geen treffers.</li>
+          ) : (
+            shownResults.map((result, index) => (
+              <li key={result.path} role="option" aria-selected={index === selectedIndex}>
+                <button type="button" onClick={() => openResult(result)}>
+                  <strong>{result.title}</strong> <span>{result.path}</span>
+                  <p>{renderSnippet(result.snippet)}</p>
+                </button>
+              </li>
+            ))
+          )}
+        </ul>
+      </div>
     </div>
   )
 }

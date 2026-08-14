@@ -117,12 +117,34 @@ leeg, precies zoals het PRD voorschrijft. Bewust ontbrekend, want expliciet buit
 is uitsluitend een vaste plek die altijd bereikbaar is, de vinkjes erin waren al klikbaar
 sinds F2. Alle geautomatiseerde verificatie is groen.
 
+Ook W10 (PRD F6, de vorm) is zonder de drie wave-documenten gebouwd. **Dit is bewust de
+eerste versie in code, geen ontwerpvoorstel** (05 §F1/F3): Jos herontwerpt hierna via
+Stitch/Claude Design, en dít wireframe is wat hij daarvoor als vertrekpunt aanwees. Wat
+erin zit: één stylesheet (`app/src/styles.css`) met de vier F6-eisen. Eén venster —
+toolbar, sidebar, editor, geen tabs of panelen. Licht en donker volgend op het systeem via
+`prefers-color-scheme`, uitdrukkelijk geen handmatige thema-schakelaar (die sluit het PRD
+zelf uit). Ruime marges met een beperkte regellengte en royale regelafstand, via de
+theming-contract-variabelen die `@atomic-editor/editor` al bood (`--atomic-editor-*`) —
+de kern van de vorm zit dus juist niet in eigen CSS, maar in het overnemen van een
+bestaand contract, inclusief syntaxkleuren voor codeblokken in beide standen. En een
+instellingenscherm: één scherm, twee regels die zich allebei verantwoorden — de vault
+(tot deze wave was er geen manier om 'm ná het eerste kiezen te wijzigen; dat is een
+functioneel gat, geen decoratie) en de startpagina (W9; hier alleen tonen en wissen,
+instellen blijft bewust via het rechtsklik-contextmenu, zoals F7 voorschrijft). Quick
+switcher, volledige-tekst-zoeken, het contextmenu en de conflictbalk zijn in dezelfde
+stijl meegenomen zonder hun bestaande rollen/tekst te wijzigen — alle 148
+frontend-tests bleven ongewijzigd groen. **Acceptatie is hier bewust geen automatische
+test** (PRD F6 zelf: "Jos beoordeelt dit") — de geautomatiseerde verificatie bewijst dat
+niets kapot is gegaan, niet dat de vorm "goed genoeg" is.
+
 ## Volgende stap
 
-**W10 (de vorm).** Daarna pas is Lapis dagelijks te gebruiken; Jos' oordeel na W8:
-*"ik ga het zo niet kunnen gebruiken, daar zijn W9 en W10 voor nodig."* W9 staat er nu;
-wat overblijft is typografie, licht/donker, lege staten en het instellingenscherm — geen
-afwerking maar de voorwaarde voor de eerste echte gebruikstest.
+**Jos' oordeel over de W10-wireframe, en daarna het herontwerp via Stitch/Claude
+Design.** Jos' oordeel na W8 was: *"ik ga het zo niet kunnen gebruiken, daar zijn W9 en
+W10 voor nodig."* Beide staan er nu in code. Wat volgt is geen nieuwe wave maar de
+voorwaarde uit diezelfde uitspraak: de eerste echte gebruikstest, tegen Jos' eigen vault
+(met de `git init`-voorzorg uit V6a hieronder) — en zijn oordeel over de vorm zelf, die
+volgens principe 7 het onderscheidend vermogen van dit product is.
 
 **Werkwijze vanaf hier:** klein snijden, vaste volgorde, groene verificatie per stap, en
 beslissingen die de PRD raken apart voorleggen — maar zónder de drie formele

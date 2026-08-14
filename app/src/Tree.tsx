@@ -78,7 +78,7 @@ export function Tree({ root, selectedPath, startPage, onSelectFile, actions }: T
 
   return (
     <>
-      <ul role="tree">
+      <ul role="tree" className="lapis-tree">
         {root.children.map((child) => (
           <TreeRow
             key={child.relPath}
@@ -116,6 +116,7 @@ function TreeRow({ node, depth, expanded, onToggle, selectedPath, onSelectFile, 
     <li role="treeitem" aria-expanded={isDir ? isOpen : undefined} aria-selected={isSelected}>
       <button
         type="button"
+        className="lapis-tree-row"
         style={{ paddingLeft: `${depth * 16}px` }}
         // Een klik op een bestand zet hooguit de selectie — er gebeurt geen
         // IPC-aanroep die inhoud leest (Goal §4: dat is W2).

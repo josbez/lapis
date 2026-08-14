@@ -60,17 +60,17 @@ export function NoteEditor({
   )
 
   return (
-    <div>
+    <div className="lapis-editor-host">
       {editor.conflict && (
-        <div role="alert">
+        <div role="alert" className="lapis-conflict">
           <p>Dit bestand is buiten Lapis gewijzigd terwijl jij het bewerkte.</p>
-          <button type="button" onClick={editor.keepMine}>
+          <button type="button" className="lapis-btn" onClick={editor.keepMine}>
             Mijn versie behouden
           </button>
-          <button type="button" onClick={editor.loadTheirs}>
+          <button type="button" className="lapis-btn" onClick={editor.loadTheirs}>
             Hun versie laden
           </button>
-          <button type="button" onClick={editor.keepBoth}>
+          <button type="button" className="lapis-btn" onClick={editor.keepBoth}>
             Beide bewaren
           </button>
         </div>

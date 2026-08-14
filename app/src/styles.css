@@ -1,0 +1,509 @@
+/*
+ * W10 — "de vorm" (PRD F6).
+ *
+ * Dit is de eerste versie in code, geen ontwerpvoorstel (05 §F1/F3): Jos
+ * herontwerpt hierna via Stitch/Claude Design. Wat hier staat is een
+ * wireframe die de vier F6-eisen waarmaakt — één venster, ruime marges met
+ * beperkte regellengte, licht/donker volgend op het systeem (geen
+ * thema-keuze), en een instellingenscherm — met concrete waarden die Jos
+ * vrijelijk kan overschrijven.
+ *
+ * Licht/donker gaat uitsluitend via `prefers-color-scheme`: het PRD sluit
+ * een handmatige thema-keuze expliciet uit.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  color-scheme: light dark;
+
+  --bg: #fbfaf7;
+  --bg-elevated: #ffffff;
+  --bg-surface: #f2efe9;
+  --bg-hover: #e9e5db;
+  --fg: #211f1c;
+  --fg-muted: #6c665c;
+  --fg-faint: #a39c8f;
+  --border: #e2dccf;
+  --accent: #6d4aff;
+  --accent-fg: #ffffff;
+  --danger: #b3392e;
+  --danger-bg: #fbeae7;
+  --radius: 0.5rem;
+  --shadow: 0 12px 32px -12px rgb(0 0 0 / 0.22);
+
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Editor-theming contract van @atomic-editor/editor — elke variabele
+     hieronder heeft daar een eigen fallback, maar zonder deze mapping zou
+     de editor er in donkere modus anders uitzien dan de rest van de app. */
+  --atomic-editor-bg: var(--bg);
+  --atomic-editor-bg-panel: var(--bg-elevated);
+  --atomic-editor-bg-surface: var(--bg-surface);
+  --atomic-editor-fg: var(--fg);
+  --atomic-editor-fg-muted: var(--fg-muted);
+  --atomic-editor-fg-faint: var(--fg-faint);
+  --atomic-editor-border: var(--border);
+  --atomic-editor-accent: var(--accent);
+  --atomic-editor-accent-bright: #8563ff;
+  --atomic-editor-accent-soft: color-mix(in srgb, var(--accent) 55%, white 45%);
+  --atomic-editor-link: var(--accent);
+  --atomic-editor-link-hover: color-mix(in srgb, var(--accent) 80%, black 20%);
+  --atomic-editor-code-bg: var(--bg-surface);
+  --atomic-editor-code-rail: color-mix(in srgb, var(--accent) 45%, var(--border) 55%);
+  --atomic-editor-selection-bg: color-mix(in srgb, var(--accent) 22%, var(--bg) 78%);
+  --atomic-editor-search-bg: color-mix(in srgb, var(--accent) 16%, var(--bg) 84%);
+  --atomic-editor-search-bg-active: color-mix(in srgb, var(--accent) 34%, var(--bg) 66%);
+  --atomic-editor-initial-reveal-bg: color-mix(in srgb, var(--accent) 32%, transparent 68%);
+  --atomic-editor-initial-reveal-bg-strong: color-mix(in srgb, var(--accent) 58%, transparent 42%);
+  --atomic-editor-measure: 68ch;
+  --atomic-editor-radius: var(--radius);
+  --atomic-editor-font: var(--font-sans);
+  --atomic-editor-font-mono: var(--font-mono);
+  --atomic-editor-body-size: 1.0625rem;
+  --atomic-editor-body-leading: 1.7;
+
+  /* Codeblok-syntaxkleuren — bewust bescheiden verzadigd, leesbaar op
+     --bg-surface in beide standen. */
+  --atomic-editor-hl-comment: #8a8375;
+  --atomic-editor-hl-string: #3f7d4a;
+  --atomic-editor-hl-number: #b3591b;
+  --atomic-editor-hl-keyword: #7c4fe0;
+  --atomic-editor-hl-function: #2464b4;
+  --atomic-editor-hl-variable: var(--fg);
+  --atomic-editor-hl-property: #2464b4;
+  --atomic-editor-hl-type: #a3592e;
+  --atomic-editor-hl-tag: #b3591b;
+  --atomic-editor-hl-operator: var(--fg-muted);
+  --atomic-editor-hl-regexp: #3f7d4a;
+  --atomic-editor-hl-escape: #7c4fe0;
+  --atomic-editor-hl-invalid: var(--danger);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1a18;
+    --bg-elevated: #232220;
+    --bg-surface: #262523;
+    --bg-hover: #322f2b;
+    --fg: #e4e1da;
+    --fg-muted: #a39d92;
+    --fg-faint: #6f6a61;
+    --border: #37342f;
+    --accent: #9a85ff;
+    --accent-fg: #14121f;
+    --danger: #e08479;
+    --danger-bg: #3a2320;
+    --shadow: 0 12px 32px -12px rgb(0 0 0 / 0.55);
+
+    --atomic-editor-accent-bright: #b6a6ff;
+    --atomic-editor-hl-comment: #8f897c;
+    --atomic-editor-hl-string: #8fce9c;
+    --atomic-editor-hl-number: #e0a165;
+    --atomic-editor-hl-keyword: #b6a6ff;
+    --atomic-editor-hl-function: #7fb0f0;
+    --atomic-editor-hl-property: #7fb0f0;
+    --atomic-editor-hl-type: #e0a165;
+    --atomic-editor-hl-tag: #e0a165;
+    --atomic-editor-hl-escape: #b6a6ff;
+    --atomic-editor-hl-regexp: #8fce9c;
+  }
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  height: 100vh;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* ── Lege staat (Goal §0/V4) ─────────────────────────────────────────── */
+
+.lapis-empty-state {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+.lapis-empty-state p {
+  color: var(--fg-muted);
+  max-width: 32ch;
+  margin: 0;
+}
+
+/* ── Knoppen ─────────────────────────────────────────────────────────── */
+
+.lapis-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--fg);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.85rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.lapis-btn:hover {
+  background: var(--bg-hover);
+}
+
+.lapis-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.lapis-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lapis-btn:disabled:hover {
+  background: var(--bg-elevated);
+}
+
+.lapis-btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+.lapis-btn-primary:hover {
+  filter: brightness(1.06);
+  background: var(--accent);
+}
+
+.lapis-btn-plain {
+  border: none;
+  background: transparent;
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.lapis-btn-plain:hover {
+  background: var(--bg-hover);
+}
+
+/* ── Het venster: toolbar + sidebar + hoofdinhoud ───────────────────── */
+
+.lapis-app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.lapis-toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.lapis-toolbar-spacer {
+  flex: 1;
+}
+
+.lapis-vault-name {
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 24ch;
+}
+
+.lapis-status {
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+}
+
+.lapis-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.lapis-sidebar {
+  flex: none;
+  width: 260px;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: var(--bg-surface);
+  padding: 0.5rem 0;
+}
+
+.lapis-main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.lapis-main-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-faint);
+  padding: 2rem;
+  text-align: center;
+}
+
+.lapis-editor-host {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── De boom ─────────────────────────────────────────────────────────── */
+
+.lapis-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lapis-tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lapis-tree-row {
+  width: 100%;
+  display: block;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--fg);
+  cursor: pointer;
+  border-radius: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lapis-tree-row:hover {
+  background: var(--bg-hover);
+}
+
+.lapis-tree-row[aria-selected='true'] {
+  background: color-mix(in srgb, var(--accent) 16%, transparent 84%);
+  color: var(--fg);
+  font-weight: 600;
+}
+
+/* ── Contextmenu, quick switcher, zoeken, instellingen: gedeelde
+   overlay/paneel-vorm ───────────────────────────────────────────────── */
+
+.lapis-menu {
+  position: fixed;
+  z-index: 20;
+  min-width: 12rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 0.25rem;
+}
+
+.lapis-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0.4rem 0.6rem;
+  border-radius: calc(var(--radius) - 0.15rem);
+  font-size: 0.875rem;
+  cursor: pointer;
+  color: var(--fg);
+}
+
+.lapis-menu button:hover {
+  background: var(--bg-hover);
+}
+
+.lapis-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgb(0 0 0 / 0.28);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+}
+
+.lapis-dialog {
+  width: min(560px, 92vw);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.lapis-dialog input[type='text'] {
+  border: none;
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  background: transparent;
+  color: var(--fg);
+}
+
+.lapis-dialog input[type='text']:focus {
+  outline: none;
+}
+
+.lapis-dialog ul[role='listbox'] {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem;
+  overflow-y: auto;
+}
+
+.lapis-dialog li[role='option'] {
+  border-radius: calc(var(--radius) - 0.15rem);
+}
+
+.lapis-dialog li[role='option'][aria-selected='true'] {
+  background: color-mix(in srgb, var(--accent) 14%, transparent 86%);
+}
+
+.lapis-dialog li[role='option'] button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0.5rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--fg);
+}
+
+.lapis-dialog li[role='option'] span {
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+  margin-left: 0.4rem;
+}
+
+.lapis-dialog li[role='option'] p {
+  margin: 0.2rem 0 0;
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+}
+
+.lapis-dialog li[role='option'] mark {
+  background: color-mix(in srgb, var(--accent) 35%, transparent 65%);
+  color: inherit;
+  border-radius: 0.2em;
+  padding: 0 0.1em;
+}
+
+.lapis-dialog > ul[role='listbox'] > li:not([role='option']) {
+  padding: 0.6rem 0.75rem;
+  color: var(--fg-muted);
+  font-size: 0.875rem;
+}
+
+/* ── Instellingen ────────────────────────────────────────────────────── */
+
+.lapis-settings {
+  padding: 0.5rem 1.25rem 1.25rem;
+  overflow-y: auto;
+}
+
+.lapis-settings h2 {
+  font-size: 1rem;
+  margin: 1rem 0 0.25rem;
+}
+
+.lapis-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.lapis-settings-row:last-child {
+  border-bottom: none;
+}
+
+.lapis-settings-row-text {
+  min-width: 0;
+}
+
+.lapis-settings-row-label {
+  font-size: 0.875rem;
+}
+
+.lapis-settings-row-value {
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Conflictbalk (W3/W4, PRD §10) ──────────────────────────────────── */
+
+.lapis-conflict {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 1rem;
+  background: var(--danger-bg);
+  border-bottom: 1px solid var(--border);
+  color: var(--fg);
+  font-size: 0.875rem;
+}
+
+.lapis-conflict p {
+  margin: 0;
+  flex: 1;
+  min-width: 20ch;
+}

@@ -36,7 +36,7 @@ export function ContextMenu({ x, y, actions, onClose }: ContextMenuProps) {
   }, [onClose])
 
   return (
-    <div role="menu" ref={ref} style={{ position: 'fixed', left: x, top: y }}>
+    <div role="menu" ref={ref} className="lapis-menu" style={{ position: 'fixed', left: x, top: y }}>
       {actions.map((action) => (
         <button
           key={action.label}

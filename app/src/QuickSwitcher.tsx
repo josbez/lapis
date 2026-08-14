@@ -87,30 +87,32 @@ export function QuickSwitcher({ files, recentPaths, onOpen, onClose }: QuickSwit
   }
 
   return (
-    <div role="dialog" aria-label="Snel een notitie openen" onKeyDown={onKeyDown}>
-      <input
-        ref={inputRef}
-        type="text"
-        placeholder="Typ om te zoeken…"
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value)
-          setSelectedIndex(0)
-        }}
-      />
-      <ul role="listbox">
-        {results.length === 0 ? (
-          <li>Geen notities gevonden.</li>
-        ) : (
-          results.map((file, index) => (
-            <li key={file.relPath} role="option" aria-selected={index === selectedIndex}>
-              <button type="button" onClick={() => onOpen(file.relPath)}>
-                {file.name} <span>{file.relPath}</span>
-              </button>
-            </li>
-          ))
-        )}
-      </ul>
+    <div className="lapis-overlay">
+      <div role="dialog" aria-label="Snel een notitie openen" className="lapis-dialog" onKeyDown={onKeyDown}>
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="Typ om te zoeken…"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            setSelectedIndex(0)
+          }}
+        />
+        <ul role="listbox">
+          {results.length === 0 ? (
+            <li>Geen notities gevonden.</li>
+          ) : (
+            results.map((file, index) => (
+              <li key={file.relPath} role="option" aria-selected={index === selectedIndex}>
+                <button type="button" onClick={() => onOpen(file.relPath)}>
+                  {file.name} <span>{file.relPath}</span>
+                </button>
+              </li>
+            ))
+          )}
+        </ul>
+      </div>
     </div>
   )
 }

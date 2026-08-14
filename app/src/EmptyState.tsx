@@ -1,4 +1,4 @@
-import { open } from '@tauri-apps/plugin-dialog'
+import { pickFolder } from './pickFolder'
 
 /**
  * De lege staat (Goal §0/V4): één knop en één regel uitleg, nooit
@@ -11,17 +11,16 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ onPick, message }: EmptyStateProps) {
-  const pickFolder = async () => {
-    const picked = await open({ directory: true, multiple: false })
-    if (typeof picked === 'string') {
-      onPick(picked)
-    }
+  const handlePick = () => {
+    void pickFolder().then((picked) => {
+      if (picked) onPick(picked)
+    })
   }
 
   return (
-    <div>
+    <div className="lapis-empty-state">
       <p>{message}</p>
-      <button type="button" onClick={() => void pickFolder()}>
+      <button type="button" className="lapis-btn lapis-btn-primary" onClick={handlePick}>
         Kies map
       </button>
     </div>

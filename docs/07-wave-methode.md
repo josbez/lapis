@@ -289,10 +289,11 @@ isolation in de gegeven vorm) staat in §3 en §4; die analyse blijft geldig als
 | W7 · Bestandsbeheer | ✅ |
 | W8 · Bijlagen | ✅ |
 | W9 · Vaste eerste pagina | ✅ |
-| **W10 · De vorm** | ⬜ **volgende, en de reden dat het product bestaat** |
+| **W10 · De vorm** | 🟡 **eerste versie (wireframe) in code — wacht op Jos' oordeel en het herontwerp via Stitch/Claude Design** |
 
 Alle geautomatiseerde verificatie is groen. Wat nergens is gebeurd: een handmatige
 doorloop door Jos tegen zijn eigen notities. Zijn oordeel na W8: *"ik ga het zo niet
-kunnen gebruiken; daar zijn W9 en W10 voor nodig."* W9 staat er nu; W10 is dus geen
-afwerking maar de voorwaarde voor de eerste echte gebruikstest — en daarmee voor het
-succescriterium uit [PRD §6](03-prd.md#6-succescriteria).
+kunnen gebruiken; daar zijn W9 en W10 voor nodig."* Beide staan er nu in code. W10's
+eigen acceptatiecriterium (PRD F6) is uitdrukkelijk geen geautomatiseerde test — "Jos
+beoordeelt dit" — dus die stap staat nog open, en pas daarna is er iets om echt tegen te
+gebruikstesten en te toetsen aan het succescriterium uit [PRD §6](03-prd.md#6-succescriteria).

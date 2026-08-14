@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
+import { open } from '@tauri-apps/plugin-dialog'
 import App from '../App'
 import * as ipc from '../ipc'
 import type { VaultView } from '../ipc'
@@ -7,6 +8,7 @@ import { useDraftNote, type UseDraftNoteResult } from '../useDraftNote'
 
 vi.mock('../ipc')
 vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn() }))
+const mockedOpen = vi.mocked(open)
 // W7 — alleen gemockt om onCreated rechtstreeks te kunnen aanroepen; de
 // hook zelf (debounce, ⌘S, blur, de create_note-race) is al uitputtend
 // getest in useDraftNote.test.ts. Zonder mock zou "een concept wordt bij de
@@ -598,5 +600,90 @@ describe('App', () => {
     await waitFor(() => expect(mockedIpc.setStartPage).toHaveBeenCalledWith(null))
     fireEvent.contextMenu(screen.getByText(/notitie\.md/))
     expect(screen.getByText('Als startpagina instellen')).toBeTruthy()
+  })
+
+  // W10 — het instellingenscherm (PRD F6).
+
+  it('"Instellingen" opent het instellingenscherm met de huidige vault en startpagina', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.getStartPage.mockResolvedValue('notitie.md')
+    mockedIpc.readNote.mockResolvedValue({ content: 'inhoud', modifiedMs: 1000 })
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/inhoud/)).toBeTruthy())
+
+    fireEvent.click(screen.getByText('Instellingen'))
+
+    const dialog = screen.getByRole('dialog', { name: 'Instellingen' })
+    expect(within(dialog).getByText('/tmp/vault')).toBeTruthy()
+    expect(within(dialog).getByText('notitie.md')).toBeTruthy()
+  })
+
+  it('Escape sluit het instellingenscherm', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.click(screen.getByText('Instellingen'))
+    expect(screen.getByRole('dialog', { name: 'Instellingen' })).toBeTruthy()
+
+    fireEvent.keyDown(window, { key: 'Escape' })
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('"Andere map kiezen" in Instellingen wisselt de vault en sluit het scherm', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedOpen.mockResolvedValue('/tmp/andere-vault')
+    const andereBoom: VaultView = {
+      rootDisplay: '/tmp/andere-vault',
+      tree: { name: 'vault', relPath: '', kind: 'dir', readable: true, children: [] },
+    }
+    mockedIpc.openVault.mockResolvedValue(andereBoom)
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.click(screen.getByText('Instellingen'))
+    fireEvent.click(screen.getByRole('button', { name: 'Andere map kiezen' }))
+
+    await waitFor(() => expect(mockedIpc.openVault).toHaveBeenCalledWith('/tmp/andere-vault'))
+    await waitFor(() => expect(screen.getByText('/tmp/andere-vault')).toBeTruthy())
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('"Startpagina wissen" in Instellingen roept setStartPage(null) aan', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.getStartPage.mockResolvedValue('notitie.md')
+    mockedIpc.readNote.mockResolvedValue({ content: 'inhoud', modifiedMs: 1000 })
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/inhoud/)).toBeTruthy())
+
+    fireEvent.click(screen.getByText('Instellingen'))
+    fireEvent.click(screen.getByRole('button', { name: 'Wissen' }))
+
+    await waitFor(() => expect(mockedIpc.setStartPage).toHaveBeenCalledWith(null))
+  })
+
+  it('⌘K sluit een openstaand instellingenscherm en opent de quick switcher', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.click(screen.getByText('Instellingen'))
+    expect(screen.getByRole('dialog', { name: 'Instellingen' })).toBeTruthy()
+
+    fireEvent.keyDown(window, { key: 'k', metaKey: true })
+
+    expect(screen.queryByRole('dialog', { name: 'Instellingen' })).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'Snel een notitie openen' })).toBeTruthy()
   })
 })
