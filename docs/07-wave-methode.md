@@ -1,8 +1,9 @@
 # 07 – De wave-methode toegepast op Lapis
 
-**Status:** werkwijze vastgesteld (G1 t/m G6 beantwoord). De wave-indeling in §5 is een
-voorstel dat nog goedgekeurd moet worden; daarna kan het eerste Goal Document geschreven
-worden.
+**Status:** de wave-indeling in §5 is goedgekeurd en grotendeels uitgevoerd. De formele
+drie-documenten-werkwijze is na W1 losgelaten — zie de evaluatie in
+[§9](#9-evaluatie-wat-de-methode-heeft-opgeleverd). Wat blijft: klein snijden, vaste
+volgorde, groene verificatie per stap, en beslissingen die de PRD raken apart voorleggen.
 
 ---
 
@@ -114,8 +115,8 @@ dataverlies leidt.
 ## 5. Voorstel wave-indeling
 
 Afgeleid uit F1 t/m F7 van [PRD v1.1](03-prd.md#4-scope-v1), klein gesneden zoals
-afgesproken in G1, en afgestemd op uitvoering door agents. **Voorstel — nog niet
-goedgekeurd.**
+afgesproken in G1, en afgestemd op uitvoering door agents. **Goedgekeurd; W0 t/m W8 zijn
+uitgevoerd.**
 
 | Wave | Capability | Levert | Afhankelijk van |
 |---|---|---|---|
@@ -242,15 +243,56 @@ Zo bevat het bord nooit taken die uit een nog niet bestaand document zijn verzon
 bord toont alleen de stand. Zodra kaarten inhoud gaan bevatten die niet in de documenten
 staat, lopen ze uit elkaar en is het bord schadelijk in plaats van nuttig.
 
-## 9. Waar we staan
+## 9. Evaluatie: wat de methode heeft opgeleverd
 
-| Stap | Stand |
+**Besluit van Jos, augustus 2026, na W0 tot en met W8:**
+
+> "De wave-opzet is een experiment en ik denk dat het overkill is voor wat we nu maken,
+> al is de stapsgewijze versie van werken wel heel positief voor de uitkomst. Dit werkt,
+> en dat is veel."
+
+Daarmee is de methode geëvalueerd en aangepast. Wat blijft en wat vervalt:
+
+| Onderdeel | Besluit |
 |---|---|
-| Probleem, scope en stack vastgesteld | ✅ [PRD v1.1](03-prd.md) |
-| Wave-indeling goedgekeurd | ✅ elf waves, §5 |
-| Wave-issues aangemaakt | ✅ `#1`–`#11` |
-| Bord aangemaakt in GitHub Projects | ⬜ handmatig, zie §8 |
-| Goal Document W0 | ✅ [goedgekeurd](waves/W0-spike/00-goal.md) |
-| Wave Specification W0 | ✅ [goedgekeurd](waves/W0-spike/01-spec.md) |
-| **Test & Verification Plan W0** | ⏳ [geschreven, wacht op goedkeuring](waves/W0-spike/02-testplan.md) |
-| Implementatie W0 | ⬜ na goedkeuring, en na antwoord op de CRLF-vraag |
+| **Klein snijden, één capability per stap** | **Blijft.** Aantoonbaar de grootste bijdrage aan de uitkomst |
+| **Bouwen in een vaste volgorde met afhankelijkheden** | **Blijft.** Lezen vóór schrijven, index na schrijven |
+| **Geautomatiseerde verificatie per stap, groen vóór de volgende** | **Blijft.** Dit is wat "dit werkt" mogelijk maakt |
+| **Beslissingen die de PRD raken apart voorleggen** | **Blijft.** Zie de conflictafhandeling in W3 en de bijlagenvraag in W8 |
+| **Drie formele documenten per wave** (Goal · Spec · Testplan) | **Vervalt** voor dit project. Alleen W0 en W1 hebben ze; W2 t/m W8 zijn zonder gebouwd, op verzoek, met groene verificatie als resultaat |
+
+**De eerlijke lezing hiervan.** De drie documenten kostten per wave meer dan ze opleverden
+bij een project van deze omvang, met één beslisser die direct bereikbaar is. Waar ze voor
+bedoeld zijn — voorkomen dat een uitvoerder gaten zelf invult — werd hier ook bereikt door
+kort te overleggen op het moment dat een gat opdook.
+
+**Wat we daarmee opgeven, en waar dat zich kan wreken.** De documenten dwingen drie dingen
+af die nu van discipline afhangen in plaats van van vorm: een expliciete *out of scope* per
+stap, een testplan dat vóór de implementatie is geschreven, en een moment waarop iemand
+"af" zegt. Verdwijnt een van die drie stilletjes, dan is de scope-creep waar dit hele
+project tegen bedoeld is terug — zonder dat iets erover klaagt.
+
+Het gedeelte van de gidsen dat niet van toepassing bleek (API-tests, autorisatie, domain
+isolation in de gegeven vorm) staat in §3 en §4; die analyse blijft geldig als naslag.
+
+## 10. Waar we staan
+
+| Wave | Stand |
+|---|---|
+| W0 · Spike | ✅ afgesloten — [als achterhaald](waves/W0-spike/03-bewijs.md#11-het-oordeel-van-jos--afgesloten-als-achterhaald), oordeel nooit formeel gegeven |
+| W1 · Vault openen en tonen | ✅ met alle drie de documenten |
+| W2 · Notitie lezen | ✅ zonder wave-documenten, op verzoek |
+| W3 · Notitie schrijven | ✅ inclusief het focusmodel dat als W4 gepland stond |
+| W4 · Focusmodel | ⤳ opgegaan in W3. Gemelde afwijking, zie README |
+| W5 · Quick switcher | ✅ |
+| W6 · Full-text search | ✅ |
+| W7 · Bestandsbeheer | ✅ |
+| W8 · Bijlagen | ✅ |
+| **W9 · Vaste eerste pagina** | ⬜ **volgende** |
+| **W10 · De vorm** | ⬜ **volgende, en de reden dat het product bestaat** |
+
+Alle geautomatiseerde verificatie is groen. Wat nergens is gebeurd: een handmatige
+doorloop door Jos tegen zijn eigen notities. Zijn oordeel daarover: *"ik ga het zo niet
+kunnen gebruiken; daar zijn W9 en W10 voor nodig."* Die twee waves zijn dus geen
+afwerking maar de voorwaarde voor de eerste echte gebruikstest — en daarmee voor het
+succescriterium uit [PRD §6](03-prd.md#6-succescriteria).

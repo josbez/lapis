@@ -38,6 +38,9 @@ webview staat, plus de volledige frontend-bundel.
 Dat betekent dat de Tauri-configuratie (`tauri.conf.json`, `capabilities/default.json`,
 `main.rs`) hier **niet geverifieerd is**. Dat is het eerste dat op de Mac kan stuklopen.
 
+> **Naschrift.** Dat vermoeden klopte, en het stond ook fout: de schil compileerde
+> niet. Zie [§12](#12-naschrift-na-de-code-analyse) — inmiddels wél, en in CI.
+
 ## 3. Geïnstalleerde pakketten
 
 De Wave Specification verbood het invullen van een pakketnaam op basis van een aanname.
@@ -207,22 +210,74 @@ Daarna de doorloop uit testplan §7 (HF-01), en het oordeel in §11 hieronder.
 Loopt `cargo build` stuk op de Tauri-configuratie, dan is dat een bevinding van mij en
 geen van jou — stuur de foutmelding door.
 
-## 11. Het oordeel van Jos
+## 11. Het oordeel van Jos — afgesloten als achterhaald
 
-*In te vullen na de doorloop.*
+**Besluit van Jos, augustus 2026: W0 wordt gesloten zonder ingevuld oordeel.**
 
-**Wil je hierin typen?**
+De vier vragen hieronder zijn nooit formeel beantwoord, en dat hoeft ook niet meer. Ze
+zijn ingehaald door de feiten: op de editorbasis uit deze spike zijn inmiddels W1 tot en
+met W8 gebouwd, met groene verificatie. De vraag *"wil ik hierin typen?"* is daarmee in
+de praktijk beantwoord door acht waves lang door te bouwen op hetzelfde fundament.
 
-`____________________________________________`
+De oorspronkelijke vragen, voor het archief:
 
-**Zo nee: zit het in de basis, of is het met bijschaven op te lossen?**
+1. Wil je hierin typen?
+2. Zo nee: zit het in de basis, of is het met bijschaven op te lossen?
+3. Wat viel op tijdens het typen — cursor, selectie, plakken, undo?
+4. Doorgaan met `@atomic-editor/editor`, of route b of c uit
+   [D4](../../05-open-vragen.md#d4--editorbasis)?
 
-`____________________________________________`
+**Wat de spike wél heeft opgeleverd,** en wat de reden is dat hij zijn geld waard was:
 
-**Wat viel op tijdens het typen — cursor, selectie, plakken, undo?**
+- De bevestiging dat Tauri v2 met React, CodeMirror 6 en `@atomic-editor/editor` werkt op
+  macOS — een aanname die op papier niet te toetsen was.
+- De CRLF-bevinding (§6.1), die een vormeis aan het opslagmodel bleek te zijn en niet een
+  configuratiedetail.
+- De ontbrekende `icons/`-map, die de Tauri-schil onderuit haalde (§12).
+- De empirische bevestiging dat de mapstructuur binnen een minuut wordt gemist (§6.4),
+  wat W1 als volgende wave bevestigde.
+- Een code-analyse die tot twee uitgevoerde verbetersprints leidde
+  ([09](../../09-code-analyse-en-verbeterplan.md)).
 
-`____________________________________________`
+**Eerlijke kanttekening bij het sluiten.** Een spike hoort te eindigen met een expliciet
+oordeel; dat is de hele reden dat hij bestaat. Hier is dat oordeel impliciet gebleven en
+achteraf afgeleid uit het feit dat er is doorgebouwd. Dat is een zwakkere vorm van bewijs
+dan de methode bedoelt, en het staat hier zo opgeschreven in plaats van weggepoetst.
 
-**Doorgaan met `@atomic-editor/editor`, of route b of c uit [D4](../../05-open-vragen.md#d4--editorbasis)?**
+## 12. Naschrift na de code-analyse
 
-`____________________________________________`
+*Toegevoegd bij de verwerking van [09 – Code-analyse en verbeterplan](../../09-code-analyse-en-verbeterplan.md).
+Dit verslag zelf is niet herschreven: het beschrijft de stand van dat moment.*
+
+**De Tauri-schil is nu wél gecompileerd, en dat was geen formaliteit.** §2 noemde de
+schil "het eerste dat op de Mac kan stuklopen". Dat was hij ook, en om een reden die
+niemand vermoedde: `src-tauri/icons/` ontbrak volledig. `tauri::generate_context!`
+gaat bij het compileren op zoek naar `icons/icon.png`, vindt niets en stopt de build —
+op iedere machine, ook op die van Jos.
+
+```
+error: proc macro panicked
+  --> src/main.rs:72:14
+   = help: message: failed to open icon .../src-tauri/icons/icon.png:
+           No such file or directory (os error 2)
+```
+
+De spike had dus nooit gestart. Er staan nu vier effen PNG's in `src-tauri/icons/`
+(lapis lazuli, `#26619C`) — plaatsvervangers tot W10, niet het ontwerp.
+
+Waarom dit een bevinding is en geen voetnoot: de code-analyse van Fable las de code en
+vond twintig dingen, maar las de code — hij compileerde hem niet. Een fout die alleen
+de compiler ziet, ziet alleen de compiler. Dat is precies het argument voor CI uit
+bevinding B15, aangetoond op de dag dat CI werd ingevoerd.
+
+| Wat | Toen | Nu |
+|---|:-:|:-:|
+| `cargo check` van de Tauri-schil | ❌ niet uitgevoerd | ✅ in CI, op elke push |
+| `cargo test` | ✅ 14 (in `vault-core`) | ✅ 20 (hele workspace) |
+| `vitest run` | ✅ 10 | ✅ 15 |
+| Isolatiechecks | handmatige grep | ✅ script met zelftest, in CI |
+| `npm run tauri dev` | ❌ | ❌ blijft nodig op de Mac |
+| HF-01, HF-02, PP-01…PP-04, PP-10 | ❌ | ❌ blijft nodig op de Mac |
+
+De doorloop uit §10 blijft dus staan, met één wijziging: `npm run tauri dev` heeft nu
+een kans om iets te tonen in plaats van te stoppen op een ontbrekend icoon.

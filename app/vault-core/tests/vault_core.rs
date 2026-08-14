@@ -1,0 +1,1361 @@
+//! Integratietests voor `vault-core`, als apart bestand onder `tests/` in
+//! plaats van een `#[cfg(test)] mod tests` in `src/lib.rs`.
+//!
+//! Deze opzet dateert uit W1, toen `vault-core` nog geen enkele
+//! schrijfaanroep mocht bevatten (Goal W1 §11) en de isolatiecheck
+//! `src/` als platte tekst scande — een testfixture met `fs::write` zou de
+//! crate dan valselijk hebben laten falen. Die regel is in W3 bewust
+//! ingetrokken (`vault-core` schrijft nu zelf ook, atomair), maar de tests
+//! blijven hier: ze draaien uitsluitend tegen de publieke API (alles
+//! hieronder gebruikt uitsluitend `pub` items van `vault-core`), en dat is
+//! op zichzelf al reden genoeg om ze als integratietest te laten staan in
+//! plaats van terug te verhuizen naar `src/`.
+//!
+//! **Schrijftests draaien uitsluitend tegen tijdelijke mappen, nooit tegen
+//! een echte vault** (afspraak V6b, 08-vervolgvragen.md) — elke test hier
+//! bouwt zijn eigen `temp_dir()`.
+
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::{Duration, Instant, SystemTime};
+use vault_core::*;
+
+fn temp_dir(label: &str) -> PathBuf {
+    static COUNTER: AtomicUsize = AtomicUsize::new(0);
+    let n = COUNTER.fetch_add(1, Ordering::SeqCst);
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("target/test-tmp")
+        .join(format!("{label}-{n}"));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).expect("kon testmap niet aanmaken");
+    dir
+}
+
+fn temp_dir_met_ouder(label: &str) -> (PathBuf, PathBuf) {
+    let parent = temp_dir(label);
+    let dir = parent.join("vault");
+    fs::create_dir_all(&dir).expect("kon vault-map niet aanmaken");
+    (parent, dir)
+}
+
+fn write(dir: &Path, rel: &str, content: &str) {
+    let path = dir.join(rel);
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).unwrap();
+    }
+    fs::write(path, content).unwrap();
+}
+
+fn names_of(nodes: &[TreeNode]) -> Vec<&str> {
+    nodes.iter().map(|n| n.name.as_str()).collect()
+}
+
+fn find<'a>(nodes: &'a [TreeNode], name: &str) -> &'a TreeNode {
+    nodes
+        .iter()
+        .find(|n| n.name == name)
+        .unwrap_or_else(|| panic!("knooppunt {name} niet gevonden"))
+}
+
+// W2 — read_note. Dezelfde randgevallen als W0's BE-01, nu voor lezen.
+fn fixture_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures")
+}
+
+fn copy_fixture(into: &Path, name: &str) -> PathBuf {
+    let target = into.join(name);
+    fs::copy(fixture_dir().join(name), &target).expect("kon fixture niet kopiëren");
+    target
+}
+
+const FIXTURES: [&str; 7] = [
+    "simpel.md",
+    "crlf.md",
+    "lone-cr.md",
+    "geen-eind-newline.md",
+    "emoji-en-accenten.md",
+    "frontmatter.md",
+    "tabellen-en-code.md",
+];
+
+// Bewijst dat het Display-contract voor alle varianten intact is, ook
+// voor gevallen die W1 zelf niet produceert maar die Goal §9 als
+// onderscheidbaar eist voor latere waves.
+#[test]
+fn display_dekt_alle_varianten() {
+    let varianten = [
+        VaultError::OutsideRoot,
+        VaultError::InvalidPath,
+        VaultError::NoVaultSelected,
+        VaultError::NotFound,
+        VaultError::NotADirectory,
+        VaultError::PermissionDenied,
+        VaultError::AlreadyExists,
+        VaultError::Io("x".into()),
+    ];
+    for v in varianten {
+        assert!(!v.to_string().is_empty());
+    }
+}
+
+// V1 — een leeg pad, een pad naar de vault-root zelf, moet netjes stranden.
+#[test]
+fn v1_leeg_pad_geeft_invalid_path() {
+    let dir = temp_dir("v1a");
+    assert_eq!(resolve_in_root(&dir, ""), Err(VaultError::InvalidPath));
+}
+
+#[test]
+fn v1_punt_geeft_invalid_path() {
+    let dir = temp_dir("v1b");
+    assert_eq!(resolve_in_root(&dir, "."), Err(VaultError::InvalidPath));
+}
+
+// ".."-componenten worden altijd geweigerd (OutsideRoot), ook wanneer ze
+// per saldo op root zouden uitkomen — dat is bestaand W0-gedrag en blijft
+// zo. Om een pad te krijgen dat ná resolutie op root zelf uitkomt zonder
+// een ".."-component, gebruiken we een symlink die naar root zelf wijst.
+#[test]
+#[cfg(unix)]
+fn v1_pad_dat_via_symlink_naar_root_zelf_resolveert_geeft_invalid_path() {
+    let dir = temp_dir("v1c");
+    std::os::unix::fs::symlink(&dir, dir.join("naar-mezelf")).unwrap();
+    assert_eq!(
+        resolve_in_root(&dir, "naar-mezelf"),
+        Err(VaultError::InvalidPath)
+    );
+}
+
+#[test]
+fn v1_dubbele_punt_component_geeft_outside_root_niet_invalid_path() {
+    // Vastgelegd gedrag, geen verrassing: ".."-componenten worden altijd
+    // als OutsideRoot geweigerd, vóórdat er iets gecanonicaliseerd wordt.
+    let dir = temp_dir("v1d");
+    fs::create_dir_all(dir.join("sub")).unwrap();
+    assert_eq!(
+        resolve_in_root(&dir, "sub/.."),
+        Err(VaultError::OutsideRoot)
+    );
+}
+
+// V2 — een symlink die buiten de vault wijst, bestaat niet voor Lapis.
+#[test]
+#[cfg(unix)]
+fn v2_symlink_naar_bestand_buiten_vault_niet_in_boom() {
+    let (ouder, dir) = temp_dir_met_ouder("v2");
+    write(&ouder, "geheim.md", "geheim");
+    std::os::unix::fs::symlink(ouder.join("geheim.md"), dir.join("ontsnapping.md")).unwrap();
+    write(&dir, "gewoon.md", "x");
+
+    let tree = scan_tree(&dir).unwrap();
+    assert_eq!(names_of(&tree.children), vec!["gewoon.md"]);
+}
+
+#[test]
+#[cfg(unix)]
+fn v2_symlink_naar_map_wordt_niet_gevolgd() {
+    let dir = temp_dir("v2b");
+    fs::create_dir_all(dir.join("echt")).unwrap();
+    write(&dir, "echt/binnen.md", "x");
+    std::os::unix::fs::symlink(dir.join("echt"), dir.join("gekoppeld")).unwrap();
+
+    let tree = scan_tree(&dir).unwrap();
+    // De symlink zelf is een map-achtige entry die niet gevolgd wordt:
+    // hij verschijnt niet in de boom, zoals een symlink naar buiten.
+    assert!(
+        tree.children.iter().all(|n| n.name != "gekoppeld"),
+        "symlink naar een map had niet gevolgd moeten worden"
+    );
+    assert_eq!(names_of(&tree.children), vec!["echt"]);
+}
+
+// V3 — hoofdletter-ongevoelig.
+#[test]
+fn v3_hoofdletter_ongevoelige_md_herkenning() {
+    let dir = temp_dir("v3");
+    write(&dir, "a.md", "x");
+    write(&dir, "B.MD", "x");
+    write(&dir, "c.Md", "x");
+    write(&dir, "genegeerd.txt", "x");
+
+    let tree = scan_tree(&dir).unwrap();
+    assert_eq!(names_of(&tree.children), vec!["a.md", "B.MD", "c.Md"]);
+}
+
+// Verborgen mappen en bestanden.
+#[test]
+fn verborgen_entries_worden_overgeslagen() {
+    let dir = temp_dir("verborgen");
+    fs::create_dir_all(dir.join(".git")).unwrap();
+    write(&dir, ".git/config", "x");
+    fs::create_dir_all(dir.join(".obsidian")).unwrap();
+    write(&dir, ".obsidian/workspace.json", "x");
+    write(&dir, ".verborgen.md", "x");
+    write(&dir, "zichtbaar.md", "x");
+
+    let tree = scan_tree(&dir).unwrap();
+    assert_eq!(names_of(&tree.children), vec!["zichtbaar.md"]);
+}
+
+// Boomstructuur: geneste mappen, lege submap, submap zonder .md.
+#[test]
+fn boomstructuur_geneste_en_lege_mappen() {
+    let dir = temp_dir("boom");
+    fs::create_dir_all(dir.join("leeg")).unwrap();
+    fs::create_dir_all(dir.join("zonder-md")).unwrap();
+    write(&dir, "zonder-md/notitie.txt", "x");
+    write(&dir, "diep/nog-dieper/notitie.md", "x");
+
+    let tree = scan_tree(&dir).unwrap();
+    assert_eq!(names_of(&tree.children), vec!["diep", "leeg", "zonder-md"]);
+
+    let leeg = find(&tree.children, "leeg");
+    assert!(leeg.children.is_empty());
+
+    let zonder_md = find(&tree.children, "zonder-md");
+    assert!(zonder_md.children.is_empty());
+
+    let diep = find(&tree.children, "diep");
+    let nog_dieper = find(&diep.children, "nog-dieper");
+    let notitie = find(&nog_dieper.children, "notitie.md");
+    assert_eq!(notitie.rel_path, "diep/nog-dieper/notitie.md");
+    assert_eq!(notitie.kind, NodeKind::File);
+}
+
+// Sortering: mappen vóór bestanden, allebei hoofdletter-ongevoelig.
+#[test]
+fn sortering_mappen_voor_bestanden() {
+    let dir = temp_dir("sortering");
+    write(&dir, "aardbei.md", "x");
+    fs::create_dir_all(dir.join("Zebra")).unwrap();
+    write(&dir, "banaan.md", "x");
+    fs::create_dir_all(dir.join("appel")).unwrap();
+
+    let tree = scan_tree(&dir).unwrap();
+    assert_eq!(
+        names_of(&tree.children),
+        vec!["appel", "Zebra", "aardbei.md", "banaan.md"]
+    );
+}
+
+// Padveiligheid — voortzetting van W0's bewijs op de recursieve scan.
+#[test]
+fn ne_read_buiten_root_faalt() {
+    let (ouder, dir) = temp_dir_met_ouder("ne1");
+    write(&ouder, "buiten.md", "geheim");
+    assert_eq!(
+        resolve_in_root(&dir, "../buiten.md"),
+        Err(VaultError::OutsideRoot)
+    );
+}
+
+#[test]
+fn ne_absoluut_pad_faalt() {
+    let dir = temp_dir("ne2");
+    let elders = temp_dir("ne2-elders");
+    assert_eq!(
+        resolve_in_root(&dir, elders.to_str().unwrap()),
+        Err(VaultError::OutsideRoot)
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn ne_symlink_buiten_root_faalt_bij_resolve() {
+    let (ouder, dir) = temp_dir_met_ouder("ne3");
+    write(&ouder, "geheim.md", "geheim");
+    std::os::unix::fs::symlink(ouder.join("geheim.md"), dir.join("link.md")).unwrap();
+    assert_eq!(
+        resolve_in_root(&dir, "link.md"),
+        Err(VaultError::OutsideRoot)
+    );
+}
+
+// Negatieve tests uit Spec §14.6 / Testplan §9.6.
+#[test]
+fn scan_tree_op_niet_bestaande_map_geeft_not_found() {
+    let dir = temp_dir("neg1").join("bestaat-niet");
+    assert_eq!(scan_tree(&dir), Err(VaultError::NotFound));
+}
+
+#[test]
+fn scan_tree_op_bestand_geeft_not_a_directory() {
+    let dir = temp_dir("neg2");
+    write(&dir, "bestand.md", "x");
+    assert_eq!(
+        scan_tree(&dir.join("bestand.md")),
+        Err(VaultError::NotADirectory)
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn onleesbare_submap_faalt_lokaal_niet_globaal() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = temp_dir("permissie");
+    fs::create_dir_all(dir.join("ontoegankelijk")).unwrap();
+    write(&dir, "ontoegankelijk/geheim.md", "x");
+    write(&dir, "zichtbaar.md", "x");
+
+    let mut perms = fs::metadata(dir.join("ontoegankelijk"))
+        .unwrap()
+        .permissions();
+    perms.set_mode(0o000);
+    fs::set_permissions(dir.join("ontoegankelijk"), perms).unwrap();
+
+    // Root draait tests vaak als root en negeert permissiebits; sla de
+    // assertie dan over in plaats van een vals-positieve/negatieve test.
+    let is_root = std::env::var("USER").as_deref() == Ok("root") || unsafe { libc_geteuid() } == 0;
+
+    let result = scan_tree(&dir);
+
+    // Herstel de rechten sowieso, ook als de assertie hieronder afwijkt,
+    // zodat de testmap achteraf opgeruimd kan worden.
+    let mut restore = fs::metadata(dir.join("ontoegankelijk"))
+        .unwrap()
+        .permissions();
+    restore.set_mode(0o755);
+    let _ = fs::set_permissions(dir.join("ontoegankelijk"), restore);
+
+    if is_root {
+        return;
+    }
+
+    let tree = result.expect("een onleesbare submap mag de hele scan niet laten falen");
+    assert_eq!(
+        names_of(&tree.children),
+        vec!["ontoegankelijk", "zichtbaar.md"]
+    );
+    let ontoegankelijk = find(&tree.children, "ontoegankelijk");
+    assert!(!ontoegankelijk.readable);
+    assert!(ontoegankelijk.children.is_empty());
+}
+
+#[cfg(unix)]
+unsafe fn libc_geteuid() -> u32 {
+    extern "C" {
+        fn geteuid() -> u32;
+    }
+    geteuid()
+}
+
+// Session
+#[test]
+fn sessie_open_geeft_boom_en_onthoudt_root() {
+    let dir = temp_dir("sessie1");
+    write(&dir, "notitie.md", "x");
+
+    let sessie = Session::new();
+    let view = sessie.open(&dir).unwrap();
+    assert_eq!(
+        view.root_display,
+        fs::canonicalize(&dir).unwrap().to_string_lossy()
+    );
+    assert_eq!(names_of(&view.tree.children), vec!["notitie.md"]);
+}
+
+#[test]
+fn sessie_open_op_niet_bestaande_map_laat_geen_sessie_achter() {
+    let dir = temp_dir("sessie2").join("weg");
+    let sessie = Session::new();
+    assert_eq!(sessie.open(&dir), Err(VaultError::NotFound));
+    assert_eq!(sessie.rescan(), Err(VaultError::NoVaultSelected));
+}
+
+#[test]
+fn sessie_rescan_vereist_geopende_sessie() {
+    let sessie = Session::new();
+    assert_eq!(sessie.rescan(), Err(VaultError::NoVaultSelected));
+}
+
+#[test]
+fn sessie_rescan_ziet_nieuwe_bestanden() {
+    let dir = temp_dir("sessie3");
+    let sessie = Session::new();
+    sessie.open(&dir).unwrap();
+    write(&dir, "later.md", "x");
+    let view = sessie.rescan().unwrap();
+    assert_eq!(names_of(&view.tree.children), vec!["later.md"]);
+}
+
+#[test]
+fn sessie_restore_op_verdwenen_pad_geeft_none() {
+    let dir = temp_dir("sessie4").join("weg");
+    let sessie = Session::new();
+    assert_eq!(sessie.restore(&dir), Ok(None));
+}
+
+#[test]
+fn sessie_restore_op_bestand_in_plaats_van_map_geeft_none() {
+    let dir = temp_dir("sessie5");
+    write(&dir, "was-een-map.md", "x");
+    let sessie = Session::new();
+    assert_eq!(sessie.restore(&dir.join("was-een-map.md")), Ok(None));
+}
+
+#[test]
+fn sessie_restore_op_geldig_pad_geeft_boom() {
+    let dir = temp_dir("sessie6");
+    write(&dir, "notitie.md", "x");
+    let sessie = Session::new();
+    let view = sessie.restore(&dir).unwrap().unwrap();
+    assert_eq!(names_of(&view.tree.children), vec!["notitie.md"]);
+}
+
+// Schrijfvrij — het belangrijkste bewijs van deze wave.
+#[test]
+fn schrijfvrij_scan_laat_geen_spoor_achter() {
+    let dir = temp_dir("schrijfvrij");
+    write(&dir, "a.md", "inhoud a");
+    write(&dir, "sub/b.md", "inhoud b");
+    fs::create_dir_all(dir.join("leeg")).unwrap();
+
+    fn snapshot(dir: &Path) -> Vec<(String, std::time::SystemTime)> {
+        fn walk(dir: &Path, out: &mut Vec<(String, std::time::SystemTime)>) {
+            let mut entries: Vec<_> = fs::read_dir(dir).unwrap().map(|e| e.unwrap()).collect();
+            entries.sort_by_key(|e| e.path());
+            for entry in entries {
+                let meta = entry.metadata().unwrap();
+                out.push((
+                    entry.path().to_string_lossy().into_owned(),
+                    meta.modified().unwrap(),
+                ));
+                if meta.is_dir() {
+                    walk(&entry.path(), out);
+                }
+            }
+        }
+        let mut out = Vec::new();
+        walk(dir, &mut out);
+        out
+    }
+
+    let voor = snapshot(&dir);
+    for _ in 0..3 {
+        scan_tree(&dir).unwrap();
+    }
+    let na = snapshot(&dir);
+
+    assert_eq!(voor, na, "de scan heeft sporen achtergelaten in de vault");
+}
+
+// Prestatie — Goal §9: 5.000+ notities binnen 500 ms.
+#[test]
+fn prestatie_5000_notities_onder_500ms() {
+    let dir = temp_dir("prestatie");
+    let mut geteld = 0usize;
+    'buiten: for map in 0..50 {
+        let submap = dir.join(format!("map-{map:03}"));
+        fs::create_dir_all(&submap).unwrap();
+        for bestand in 0..110 {
+            write(&submap, &format!("notitie-{bestand:04}.md"), "x");
+            geteld += 1;
+            if geteld >= 5_500 {
+                break 'buiten;
+            }
+        }
+    }
+    assert!(geteld >= 5_000, "fixture heeft niet genoeg bestanden");
+
+    let start = Instant::now();
+    let tree = scan_tree(&dir).unwrap();
+    let duur = start.elapsed();
+
+    let totaal: usize = tree
+        .children
+        .iter()
+        .map(|submap| submap.children.len())
+        .sum();
+    assert_eq!(totaal, geteld);
+
+    eprintln!("prestatie_5000_notities_onder_500ms: {geteld} bestanden in {duur:?}");
+    assert!(
+        duur.as_millis() < 500,
+        "scan duurde {duur:?}, budget is 500ms (Goal W1 §9)"
+    );
+}
+
+// W2 — read_note geeft de inhoud terug precies zoals ze op schijf staat,
+// voor elke fixture die een bekende manier is om tekst stilletjes te
+// beschadigen (dezelfde randgevallen als W0's BE-01/BE-03).
+#[test]
+fn w2_read_note_geeft_inhoud_byte_voor_byte_als_string() {
+    for name in FIXTURES {
+        let dir = temp_dir("w2-lezen");
+        let path = copy_fixture(&dir, name);
+        let op_schijf = fs::read(&path).unwrap();
+
+        let gelezen = read_note(&dir, name).unwrap();
+
+        assert_eq!(
+            gelezen.as_bytes(),
+            op_schijf.as_slice(),
+            "fixture {name} is niet byte-identiek uit read_note gekomen"
+        );
+    }
+}
+
+#[test]
+fn w2_read_note_normaliseert_regeleindes_niet() {
+    let dir = temp_dir("w2-regeleindes");
+    copy_fixture(&dir, "crlf.md");
+    copy_fixture(&dir, "geen-eind-newline.md");
+    copy_fixture(&dir, "lone-cr.md");
+
+    let crlf = read_note(&dir, "crlf.md").unwrap();
+    assert!(crlf.contains("\r\n"), "regeleindes zijn omgezet");
+
+    let geen_newline = read_note(&dir, "geen-eind-newline.md").unwrap();
+    assert!(
+        !geen_newline.ends_with('\n'),
+        "er is een newline toegevoegd aan het eind"
+    );
+
+    let lone_cr = read_note(&dir, "lone-cr.md").unwrap();
+    assert!(lone_cr.contains('\r'), "de losse CR is verdwenen");
+    assert!(!lone_cr.contains('\n'), "er is een LF bijgekomen");
+}
+
+#[test]
+fn w2_read_note_op_niet_bestaand_bestand_geeft_nette_fout() {
+    let dir = temp_dir("w2-ontbreekt");
+    assert_eq!(
+        read_note(&dir, "bestaat-niet.md"),
+        Err(VaultError::NotFound)
+    );
+}
+
+#[test]
+fn w2_read_note_buiten_root_faalt() {
+    let (ouder, dir) = temp_dir_met_ouder("w2-buiten");
+    write(&ouder, "geheim.md", "geheim");
+    assert_eq!(
+        read_note(&dir, "../geheim.md"),
+        Err(VaultError::OutsideRoot)
+    );
+}
+
+// V1 geldt ook voor read_note, via dezelfde resolve_in_root.
+#[test]
+fn w2_read_note_op_leeg_pad_geeft_invalid_path() {
+    let dir = temp_dir("w2-leeg-pad");
+    assert_eq!(read_note(&dir, ""), Err(VaultError::InvalidPath));
+}
+
+#[test]
+fn w2_read_note_op_ongeldige_utf8_geeft_nette_fout() {
+    let dir = temp_dir("w2-utf8");
+    fs::write(dir.join("kapot.md"), [0x66, 0x6f, 0xff, 0x6f]).unwrap();
+    assert_eq!(read_note(&dir, "kapot.md"), Err(VaultError::InvalidUtf8));
+}
+
+#[test]
+fn w2_sessie_read_note_werkt_op_de_geopende_vault() {
+    let dir = temp_dir("w2-sessie");
+    write(&dir, "notitie.md", "inhoud van de notitie");
+
+    let sessie = Session::new();
+    sessie.open(&dir).unwrap();
+
+    assert_eq!(
+        sessie.read_note("notitie.md").unwrap(),
+        "inhoud van de notitie"
+    );
+}
+
+#[test]
+fn w2_sessie_read_note_vereist_geopende_sessie() {
+    let sessie = Session::new();
+    assert_eq!(
+        sessie.read_note("notitie.md"),
+        Err(VaultError::NoVaultSelected)
+    );
+}
+
+// Zelfbewaking van de fixtures, zoals W0's be_01b/be_06 dat deden — anders
+// zou een test kunnen slagen op een fixture die zijn kenmerk al kwijt is.
+#[test]
+fn w2_crlf_fixture_bevat_daadwerkelijk_crlf() {
+    let bytes = fs::read(fixture_dir().join("crlf.md")).unwrap();
+    assert!(bytes.windows(2).any(|w| w == b"\r\n"));
+}
+
+#[test]
+fn w2_lone_cr_fixture_bevat_losse_cr_en_geen_lf() {
+    let bytes = fs::read(fixture_dir().join("lone-cr.md")).unwrap();
+    assert!(bytes.contains(&b'\r'));
+    assert!(!bytes.contains(&b'\n'));
+}
+
+// W3 — write_note: atomair schrijven, mtime-conflictcontrole (PRD F3/C4).
+
+fn mtime(path: &Path) -> SystemTime {
+    fs::metadata(path).unwrap().modified().unwrap()
+}
+
+/// Zet de wijzigingstijd van `path` expliciet, zodat conflicttests niet
+/// afhangen van de tijdresolutie van het bestandssysteem (geen slaap-hack).
+fn zet_mtime(path: &Path, t: SystemTime) {
+    let file = fs::OpenOptions::new().write(true).open(path).unwrap();
+    file.set_modified(t).unwrap();
+}
+
+fn dir_entries(dir: &Path) -> Vec<String> {
+    let mut names: Vec<String> = fs::read_dir(dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort();
+    names
+}
+
+#[test]
+fn w3_write_note_schrijft_atomair_en_laat_geen_temp_bestand_achter() {
+    let dir = temp_dir("w3-atomair");
+    write(&dir, "notitie.md", "oude inhoud");
+    let voor = mtime(&dir.join("notitie.md"));
+
+    let uitkomst = write_note(&dir, "notitie.md", "nieuwe inhoud", Some(voor)).unwrap();
+
+    assert!(matches!(uitkomst, WriteOutcome::Saved(_)));
+    assert_eq!(
+        fs::read_to_string(dir.join("notitie.md")).unwrap(),
+        "nieuwe inhoud"
+    );
+    assert_eq!(
+        dir_entries(&dir),
+        vec!["notitie.md"],
+        "er is een tijdelijk bestand achtergebleven"
+    );
+}
+
+#[test]
+fn w3_write_note_geeft_de_nieuwe_mtime_terug() {
+    let dir = temp_dir("w3-mtime");
+    write(&dir, "notitie.md", "x");
+    let voor = mtime(&dir.join("notitie.md"));
+
+    let uitkomst = write_note(&dir, "notitie.md", "y", Some(voor)).unwrap();
+
+    let WriteOutcome::Saved(teruggegeven) = uitkomst else {
+        panic!("verwacht Saved, kreeg {uitkomst:?}");
+    };
+    assert_eq!(teruggegeven, mtime(&dir.join("notitie.md")));
+}
+
+#[test]
+fn w3_write_note_conflict_wanneer_extern_gewijzigd() {
+    let dir = temp_dir("w3-conflict");
+    write(&dir, "notitie.md", "origineel");
+    let baseline = mtime(&dir.join("notitie.md"));
+
+    // "Extern" gewijzigd: andere inhoud, en een expliciet afwijkende mtime
+    // zodat de test niet leunt op de tijdresolutie van het bestandssysteem.
+    write(&dir, "notitie.md", "extern gewijzigd");
+    zet_mtime(&dir.join("notitie.md"), baseline + Duration::from_secs(60));
+
+    let uitkomst = write_note(&dir, "notitie.md", "mijn versie", Some(baseline)).unwrap();
+
+    assert_eq!(uitkomst, WriteOutcome::Conflict);
+    assert_eq!(
+        fs::read_to_string(dir.join("notitie.md")).unwrap(),
+        "extern gewijzigd",
+        "een conflict mag niets overschrijven"
+    );
+    assert_eq!(
+        dir_entries(&dir),
+        vec!["notitie.md"],
+        "geen zwervend tijdelijk bestand"
+    );
+}
+
+#[test]
+fn w3_write_note_zonder_expected_negeert_het_conflict_bewust() {
+    let dir = temp_dir("w3-force");
+    write(&dir, "notitie.md", "origineel");
+    let baseline = mtime(&dir.join("notitie.md"));
+    write(&dir, "notitie.md", "extern gewijzigd");
+    zet_mtime(&dir.join("notitie.md"), baseline + Duration::from_secs(60));
+
+    // "Mijn versie behouden": expected = None, forceert het schrijven.
+    let uitkomst = write_note(&dir, "notitie.md", "mijn versie wint", None).unwrap();
+
+    assert!(matches!(uitkomst, WriteOutcome::Saved(_)));
+    assert_eq!(
+        fs::read_to_string(dir.join("notitie.md")).unwrap(),
+        "mijn versie wint"
+    );
+}
+
+#[test]
+fn w3_write_note_maakt_geen_nieuw_bestand_aan() {
+    let dir = temp_dir("w3-nieuw");
+    assert_eq!(
+        write_note(&dir, "bestaat-niet.md", "x", None),
+        Err(VaultError::NotFound)
+    );
+    assert!(!dir.join("bestaat-niet.md").exists());
+}
+
+#[test]
+fn w3_write_note_buiten_root_faalt_en_schrijft_niets() {
+    let (ouder, dir) = temp_dir_met_ouder("w3-buiten");
+    write(&ouder, "doelwit.md", "origineel");
+    assert_eq!(
+        write_note(&dir, "../doelwit.md", "x", None),
+        Err(VaultError::OutsideRoot)
+    );
+    assert_eq!(
+        fs::read_to_string(ouder.join("doelwit.md")).unwrap(),
+        "origineel"
+    );
+}
+
+#[test]
+fn w3_write_note_op_leeg_pad_geeft_invalid_path() {
+    let dir = temp_dir("w3-leeg-pad");
+    assert_eq!(
+        write_note(&dir, "", "x", None),
+        Err(VaultError::InvalidPath)
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn w3_write_note_zonder_schrijfrechten_laat_geen_zwervend_bestand_achter() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = temp_dir("w3-permissie");
+    write(&dir, "notitie.md", "origineel");
+    let baseline = mtime(&dir.join("notitie.md"));
+
+    let mut perms = fs::metadata(&dir).unwrap().permissions();
+    perms.set_mode(0o555); // map alleen-lezen: geen nieuw bestand erin
+    fs::set_permissions(&dir, perms).unwrap();
+
+    let is_root = std::env::var("USER").as_deref() == Ok("root") || unsafe { libc_geteuid() } == 0;
+    let uitkomst = write_note(&dir, "notitie.md", "nieuwe inhoud", Some(baseline));
+
+    let mut restore = fs::metadata(&dir).unwrap().permissions();
+    restore.set_mode(0o755);
+    fs::set_permissions(&dir, restore).unwrap();
+
+    if is_root {
+        return;
+    }
+
+    assert!(
+        uitkomst.is_err(),
+        "schrijven in een alleen-lezen map had moeten falen"
+    );
+    assert_eq!(
+        fs::read_to_string(dir.join("notitie.md")).unwrap(),
+        "origineel",
+        "een mislukte schrijfpoging mag de inhoud niet veranderen"
+    );
+    assert_eq!(
+        dir_entries(&dir),
+        vec!["notitie.md"],
+        "een mislukte schrijfpoging mag geen tijdelijk bestand achterlaten"
+    );
+}
+
+// W3 — write_note_as_copy: "beide bewaren" bij een conflict.
+
+#[test]
+fn w3_write_note_as_copy_maakt_een_niet_bestaand_bestand_aan() {
+    let dir = temp_dir("w3-kopie");
+    write(&dir, "notitie.md", "origineel, onaangeroerd");
+
+    let kopie_pad = write_note_as_copy(&dir, "notitie.md", "mijn versie").unwrap();
+
+    assert_eq!(kopie_pad, "notitie (conflict).md");
+    assert_eq!(
+        fs::read_to_string(dir.join("notitie (conflict).md")).unwrap(),
+        "mijn versie"
+    );
+    assert_eq!(
+        fs::read_to_string(dir.join("notitie.md")).unwrap(),
+        "origineel, onaangeroerd",
+        "het origineel mag niet veranderen"
+    );
+}
+
+#[test]
+fn w3_write_note_as_copy_telt_op_bij_een_naamsbotsing() {
+    let dir = temp_dir("w3-kopie-botsing");
+    write(&dir, "notitie.md", "x");
+    write(&dir, "notitie (conflict).md", "al bezet");
+
+    let kopie_pad = write_note_as_copy(&dir, "notitie.md", "mijn versie").unwrap();
+
+    assert_eq!(kopie_pad, "notitie (conflict 2).md");
+    assert_eq!(
+        fs::read_to_string(dir.join("notitie (conflict 2).md")).unwrap(),
+        "mijn versie"
+    );
+}
+
+// W3 — Session-methodes.
+
+#[test]
+fn w3_sessie_write_note_werkt_op_de_geopende_vault() {
+    let dir = temp_dir("w3-sessie");
+    write(&dir, "notitie.md", "oud");
+    let baseline = mtime(&dir.join("notitie.md"));
+
+    let sessie = Session::new();
+    sessie.open(&dir).unwrap();
+
+    let uitkomst = sessie
+        .write_note("notitie.md", "nieuw", Some(baseline))
+        .unwrap();
+    assert!(matches!(uitkomst, WriteOutcome::Saved(_)));
+    assert_eq!(fs::read_to_string(dir.join("notitie.md")).unwrap(), "nieuw");
+}
+
+#[test]
+fn w3_sessie_write_note_vereist_geopende_sessie() {
+    let sessie = Session::new();
+    assert_eq!(
+        sessie.write_note("notitie.md", "x", None),
+        Err(VaultError::NoVaultSelected)
+    );
+}
+
+#[test]
+fn w3_sessie_read_note_with_mtime_geeft_inhoud_en_tijd() {
+    let dir = temp_dir("w3-sessie-mtime");
+    write(&dir, "notitie.md", "inhoud");
+
+    let sessie = Session::new();
+    sessie.open(&dir).unwrap();
+
+    let gelezen = sessie.read_note_with_mtime("notitie.md").unwrap();
+    assert_eq!(gelezen.content, "inhoud");
+    assert_eq!(gelezen.modified, mtime(&dir.join("notitie.md")));
+}
+
+// W6 — TreeNode.modified, voor search-index's sync().
+#[test]
+fn w6_bestanden_hebben_een_mtime_mappen_niet() {
+    let dir = temp_dir("w6-mtime");
+    write(&dir, "notitie.md", "inhoud");
+    write(&dir, "map/andere.md", "meer inhoud");
+
+    let boom = scan_tree(&dir).unwrap();
+    assert_eq!(boom.modified, None);
+
+    let notitie = find(&boom.children, "notitie.md");
+    assert_eq!(notitie.modified, Some(mtime(&dir.join("notitie.md"))));
+
+    let map = find(&boom.children, "map");
+    assert_eq!(map.modified, None);
+    let andere = find(&map.children, "andere.md");
+    assert_eq!(andere.modified, Some(mtime(&dir.join("map/andere.md"))));
+}
+
+#[test]
+fn w6_mtime_verandert_na_herschrijven() {
+    let dir = temp_dir("w6-mtime-verandert");
+    write(&dir, "notitie.md", "eerste versie");
+    let eerste = find(&scan_tree(&dir).unwrap().children, "notitie.md")
+        .modified
+        .unwrap();
+
+    zet_mtime(&dir.join("notitie.md"), eerste + Duration::from_secs(5));
+
+    let tweede = find(&scan_tree(&dir).unwrap().children, "notitie.md")
+        .modified
+        .unwrap();
+    assert_ne!(eerste, tweede);
+}
+
+// W7 — create_note: de "eerste opslag" uit C5+V3.
+
+#[test]
+fn w7_create_note_gebruikt_de_eerste_kopregel_als_naam() {
+    let dir = temp_dir("w7-create-kop");
+    let created = create_note(&dir, "", "# Boodschappenlijst\n\nMelk, brood.").unwrap();
+
+    assert_eq!(created.rel_path, "Boodschappenlijst.md");
+    assert_eq!(
+        fs::read_to_string(dir.join("Boodschappenlijst.md")).unwrap(),
+        "# Boodschappenlijst\n\nMelk, brood."
+    );
+    assert_eq!(created.modified, mtime(&dir.join("Boodschappenlijst.md")));
+}
+
+#[test]
+fn w7_create_note_valt_terug_op_untitled_zonder_kopregel() {
+    let dir = temp_dir("w7-create-untitled");
+    let created = create_note(&dir, "", "gewone tekst, geen kop").unwrap();
+    assert_eq!(created.rel_path, "Untitled.md");
+}
+
+#[test]
+fn w7_create_note_valt_terug_op_untitled_bij_lege_inhoud() {
+    let dir = temp_dir("w7-create-leeg");
+    let created = create_note(&dir, "", "").unwrap();
+    assert_eq!(created.rel_path, "Untitled.md");
+}
+
+#[test]
+fn w7_create_note_telt_op_bij_naamsbotsing() {
+    let dir = temp_dir("w7-create-botsing");
+    write(&dir, "Boodschappenlijst.md", "al bestaand");
+
+    let created = create_note(&dir, "", "# Boodschappenlijst\n\ninhoud").unwrap();
+
+    assert_eq!(created.rel_path, "Boodschappenlijst 2.md");
+    assert_eq!(
+        fs::read_to_string(dir.join("Boodschappenlijst.md")).unwrap(),
+        "al bestaand",
+        "het bestaande bestand mag niet zijn aangeraakt"
+    );
+}
+
+#[test]
+fn w7_create_note_in_een_submap() {
+    let dir = temp_dir("w7-create-submap");
+    fs::create_dir_all(dir.join("dagboek")).unwrap();
+
+    let created = create_note(&dir, "dagboek", "# Vandaag").unwrap();
+
+    assert_eq!(created.rel_path, "dagboek/Vandaag.md");
+}
+
+#[test]
+fn w7_create_note_buiten_root_faalt() {
+    let dir = temp_dir("w7-create-buiten-root");
+    let err = create_note(&dir, "../buiten", "# X").unwrap_err();
+    assert_eq!(err, VaultError::OutsideRoot);
+}
+
+#[test]
+fn w7_create_note_in_niet_bestaande_map_geeft_nette_fout() {
+    let dir = temp_dir("w7-create-geen-map");
+    let err = create_note(&dir, "spookmap", "# X").unwrap_err();
+    assert_eq!(err, VaultError::NotADirectory);
+}
+
+#[test]
+fn w7_create_note_schrijft_atomair_en_laat_geen_temp_bestand_achter() {
+    let dir = temp_dir("w7-create-atomair");
+    create_note(&dir, "", "# Notitie").unwrap();
+    assert_eq!(dir_entries(&dir), vec!["Notitie.md"]);
+}
+
+#[test]
+fn w7_create_note_ontsmet_illegale_tekens_in_de_kop() {
+    let dir = temp_dir("w7-create-ontsmet");
+    let created = create_note(&dir, "", "# Rapport: Q1/Q2 resultaten").unwrap();
+    // `/` en `:` zijn geen geldige tekens in een bestandsnaam.
+    assert!(!created.rel_path.contains('/') || created.rel_path == "Rapport Q1 Q2 resultaten.md");
+    assert_eq!(created.rel_path, "Rapport Q1 Q2 resultaten.md");
+}
+
+// W7 — create_folder.
+
+#[test]
+fn w7_create_folder_maakt_een_lege_map() {
+    let dir = temp_dir("w7-folder-nieuw");
+    let rel = create_folder(&dir, "", "Projecten").unwrap();
+
+    assert_eq!(rel, "Projecten");
+    assert!(dir.join("Projecten").is_dir());
+}
+
+#[test]
+fn w7_create_folder_in_een_submap() {
+    let dir = temp_dir("w7-folder-submap");
+    fs::create_dir_all(dir.join("a")).unwrap();
+
+    let rel = create_folder(&dir, "a", "b").unwrap();
+    assert_eq!(rel, "a/b");
+}
+
+#[test]
+fn w7_create_folder_botst_met_bestaande_naam() {
+    let dir = temp_dir("w7-folder-botsing");
+    fs::create_dir_all(dir.join("Projecten")).unwrap();
+
+    let err = create_folder(&dir, "", "Projecten").unwrap_err();
+    assert_eq!(err, VaultError::AlreadyExists);
+}
+
+#[test]
+fn w7_create_folder_met_lege_naam_geeft_invalid_path() {
+    let dir = temp_dir("w7-folder-leeg");
+    let err = create_folder(&dir, "", "").unwrap_err();
+    assert_eq!(err, VaultError::InvalidPath);
+}
+
+#[test]
+fn w7_create_folder_met_slash_in_naam_geeft_invalid_path() {
+    let dir = temp_dir("w7-folder-slash");
+    let err = create_folder(&dir, "", "a/b").unwrap_err();
+    assert_eq!(err, VaultError::InvalidPath);
+}
+
+// W7 — move_note: dekt zowel hernoemen als verplaatsen.
+
+#[test]
+fn w7_move_note_hernoemt_binnen_dezelfde_map() {
+    let dir = temp_dir("w7-move-hernoemen");
+    write(&dir, "oud.md", "inhoud");
+
+    move_note(&dir, "oud.md", "nieuw.md").unwrap();
+
+    assert!(!dir.join("oud.md").exists());
+    assert_eq!(fs::read_to_string(dir.join("nieuw.md")).unwrap(), "inhoud");
+}
+
+#[test]
+fn w7_move_note_verplaatst_naar_andere_map() {
+    let dir = temp_dir("w7-move-verplaatsen");
+    write(&dir, "notitie.md", "inhoud");
+    fs::create_dir_all(dir.join("archief")).unwrap();
+
+    move_note(&dir, "notitie.md", "archief/notitie.md").unwrap();
+
+    assert!(!dir.join("notitie.md").exists());
+    assert_eq!(
+        fs::read_to_string(dir.join("archief/notitie.md")).unwrap(),
+        "inhoud"
+    );
+}
+
+#[test]
+fn w7_move_note_overschrijft_nooit_een_bestaand_bestand() {
+    let dir = temp_dir("w7-move-overschrijft-niet");
+    write(&dir, "a.md", "van a");
+    write(&dir, "b.md", "van b");
+
+    let err = move_note(&dir, "a.md", "b.md").unwrap_err();
+
+    assert_eq!(err, VaultError::AlreadyExists);
+    assert_eq!(fs::read_to_string(dir.join("a.md")).unwrap(), "van a");
+    assert_eq!(fs::read_to_string(dir.join("b.md")).unwrap(), "van b");
+}
+
+#[test]
+fn w7_move_note_op_niet_bestaand_bestand_geeft_not_found() {
+    let dir = temp_dir("w7-move-ontbreekt");
+    let err = move_note(&dir, "spook.md", "nieuw.md").unwrap_err();
+    assert_eq!(err, VaultError::NotFound);
+}
+
+#[test]
+fn w7_move_note_buiten_root_faalt_en_verandert_niets() {
+    let dir = temp_dir("w7-move-buiten-root");
+    write(&dir, "notitie.md", "inhoud");
+
+    let err = move_note(&dir, "notitie.md", "../buiten.md").unwrap_err();
+
+    assert_eq!(err, VaultError::OutsideRoot);
+    assert!(dir.join("notitie.md").exists());
+}
+
+// W7 — trash_note: systeem-prullenbak, nooit permanent (PRD C7).
+
+#[test]
+fn w7_trash_note_haalt_het_bestand_van_zijn_plek() {
+    let dir = temp_dir("w7-trash");
+    write(&dir, "weg.md", "verdwijnt");
+
+    trash_note(&dir, "weg.md").unwrap();
+
+    assert!(!dir.join("weg.md").exists());
+}
+
+#[test]
+fn w7_trash_note_op_niet_bestaand_bestand_geeft_not_found() {
+    let dir = temp_dir("w7-trash-ontbreekt");
+    let err = trash_note(&dir, "spook.md").unwrap_err();
+    assert_eq!(err, VaultError::NotFound);
+}
+
+#[test]
+fn w7_trash_note_buiten_root_faalt() {
+    let (parent, dir) = temp_dir_met_ouder("w7-trash-buiten-root");
+    fs::write(parent.join("buiten.md"), "x").unwrap();
+
+    let err = trash_note(&dir, "../buiten.md").unwrap_err();
+
+    assert_eq!(err, VaultError::OutsideRoot);
+    assert!(parent.join("buiten.md").exists());
+}
+
+// W7 — Session-methodes.
+
+#[test]
+fn w7_sessie_create_note_werkt_op_de_geopende_vault() {
+    let dir = temp_dir("w7-sessie-create");
+    let sessie = Session::new();
+    sessie.open(&dir).unwrap();
+
+    let created = sessie.create_note("", "# Nieuw").unwrap();
+    assert_eq!(created.rel_path, "Nieuw.md");
+}
+
+#[test]
+fn w7_sessie_create_note_vereist_geopende_sessie() {
+    let sessie = Session::new();
+    let err = sessie.create_note("", "# X").unwrap_err();
+    assert_eq!(err, VaultError::NoVaultSelected);
+}
+
+#[test]
+fn w7_sessie_move_note_werkt_op_de_geopende_vault() {
+    let dir = temp_dir("w7-sessie-move");
+    write(&dir, "oud.md", "inhoud");
+    let sessie = Session::new();
+    sessie.open(&dir).unwrap();
+
+    sessie.move_note("oud.md", "nieuw.md").unwrap();
+    assert!(dir.join("nieuw.md").exists());
+}
+
+#[test]
+fn w7_sessie_trash_note_werkt_op_de_geopende_vault() {
+    let dir = temp_dir("w7-sessie-trash");
+    write(&dir, "weg.md", "x");
+    let sessie = Session::new();
+    sessie.open(&dir).unwrap();
+
+    sessie.trash_note("weg.md").unwrap();
+    assert!(!dir.join("weg.md").exists());
+}
+
+#[test]
+fn w7_sessie_create_folder_werkt_op_de_geopende_vault() {
+    let dir = temp_dir("w7-sessie-folder");
+    let sessie = Session::new();
+    sessie.open(&dir).unwrap();
+
+    let rel = sessie.create_folder("", "Nieuwe map").unwrap();
+    assert_eq!(rel, "Nieuwe map");
+    assert!(dir.join("Nieuwe map").is_dir());
+}
+
+// W8 — write_attachment: de eerste bijlage migreert de notitie naar haar
+// eigen map (PRD F5/C8).
+
+#[test]
+fn w8_write_attachment_eerste_bijlage_migreert_notitie() {
+    let dir = temp_dir("w8-eerste-bijlage");
+    write(&dir, "Notitie.md", "# Notitie\n\ninhoud");
+
+    let outcome = write_attachment(&dir, "Notitie.md", "foto.png", b"pngbytes").unwrap();
+
+    assert!(outcome.note_moved);
+    assert_eq!(outcome.note_rel_path, "Notitie/Notitie.md");
+    assert_eq!(outcome.attachment_rel_path, "Notitie/foto.png");
+    assert!(!dir.join("Notitie.md").exists());
+    assert_eq!(
+        fs::read_to_string(dir.join("Notitie/Notitie.md")).unwrap(),
+        "# Notitie\n\ninhoud"
+    );
+    assert_eq!(fs::read(dir.join("Notitie/foto.png")).unwrap(), b"pngbytes");
+}
+
+#[test]
+fn w8_write_attachment_tweede_bijlage_blijft_in_dezelfde_map() {
+    let dir = temp_dir("w8-tweede-bijlage");
+    write(&dir, "Notitie.md", "# Notitie");
+    let eerste = write_attachment(&dir, "Notitie.md", "foto.png", b"1").unwrap();
+    assert!(eerste.note_moved);
+
+    let tweede = write_attachment(&dir, &eerste.note_rel_path, "schema.png", b"2").unwrap();
+
+    assert!(!tweede.note_moved);
+    assert_eq!(tweede.note_rel_path, "Notitie/Notitie.md");
+    assert_eq!(tweede.attachment_rel_path, "Notitie/schema.png");
+    assert!(dir.join("Notitie/foto.png").exists());
+    assert!(dir.join("Notitie/schema.png").exists());
+}
+
+#[test]
+fn w8_write_attachment_botst_op_bijlagenaam() {
+    let dir = temp_dir("w8-bijlage-botsing");
+    write(&dir, "Notitie.md", "# Notitie");
+    let eerste = write_attachment(&dir, "Notitie.md", "foto.png", b"1").unwrap();
+
+    let tweede = write_attachment(&dir, &eerste.note_rel_path, "foto.png", b"2").unwrap();
+
+    assert!(!tweede.note_moved);
+    assert_eq!(tweede.attachment_rel_path, "Notitie/foto 2.png");
+    assert_eq!(fs::read(dir.join("Notitie/foto.png")).unwrap(), b"1");
+    assert_eq!(fs::read(dir.join("Notitie/foto 2.png")).unwrap(), b"2");
+}
+
+#[test]
+fn w8_write_attachment_notitie_al_in_gelijknamige_map_geen_migratie() {
+    let dir = temp_dir("w8-al-gemigreerd");
+    fs::create_dir_all(dir.join("Notitie")).unwrap();
+    write(&dir, "Notitie/Notitie.md", "# Notitie");
+
+    let outcome = write_attachment(&dir, "Notitie/Notitie.md", "foto.png", b"x").unwrap();
+
+    assert!(!outcome.note_moved);
+    assert_eq!(outcome.note_rel_path, "Notitie/Notitie.md");
+    assert_eq!(outcome.attachment_rel_path, "Notitie/foto.png");
+}
+
+#[test]
+fn w8_write_attachment_migratiemap_botst_met_niet_gerelateerde_map() {
+    let dir = temp_dir("w8-migratie-botsing");
+    fs::create_dir_all(dir.join("Notitie")).unwrap();
+    write(&dir, "Notitie/anders.md", "niet deze notitie");
+    write(&dir, "Notitie.md", "# Notitie");
+
+    let outcome = write_attachment(&dir, "Notitie.md", "foto.png", b"x").unwrap();
+
+    assert!(outcome.note_moved);
+    assert_eq!(outcome.note_rel_path, "Notitie 2/Notitie.md");
+    assert_eq!(outcome.attachment_rel_path, "Notitie 2/foto.png");
+    // De niet-gerelateerde map blijft ongemoeid.
+    assert_eq!(
+        fs::read_to_string(dir.join("Notitie/anders.md")).unwrap(),
+        "niet deze notitie"
+    );
+}
+
+#[test]
+fn w8_write_attachment_in_een_submap() {
+    let dir = temp_dir("w8-submap");
+    fs::create_dir_all(dir.join("dagboek")).unwrap();
+    write(&dir, "dagboek/Vandaag.md", "# Vandaag");
+
+    let outcome = write_attachment(&dir, "dagboek/Vandaag.md", "foto.png", b"x").unwrap();
+
+    assert_eq!(outcome.note_rel_path, "dagboek/Vandaag/Vandaag.md");
+    assert_eq!(outcome.attachment_rel_path, "dagboek/Vandaag/foto.png");
+}
+
+#[test]
+fn w8_write_attachment_op_niet_bestaande_notitie_geeft_not_found() {
+    let dir = temp_dir("w8-not-found");
+    let err = write_attachment(&dir, "spook.md", "foto.png", b"x").unwrap_err();
+    assert_eq!(err, VaultError::NotFound);
+}
+
+#[test]
+fn w8_write_attachment_buiten_root_faalt() {
+    let (parent, dir) = temp_dir_met_ouder("w8-buiten-root");
+    fs::write(parent.join("buiten.md"), "x").unwrap();
+
+    let err = write_attachment(&dir, "../buiten.md", "foto.png", b"x").unwrap_err();
+    assert_eq!(err, VaultError::OutsideRoot);
+}
+
+#[test]
+fn w8_write_attachment_ontsmet_bestandsnaam_met_padscheiding() {
+    let dir = temp_dir("w8-naam-padscheiding");
+    write(&dir, "Notitie.md", "# Notitie");
+
+    let err = write_attachment(&dir, "Notitie.md", "sub/foto.png", b"x").unwrap_err();
+
+    assert_eq!(err, VaultError::InvalidPath);
+    // Niets aangeraakt: geen migratie, geen halve map.
+    assert!(dir.join("Notitie.md").exists());
+    assert!(!dir.join("Notitie").exists());
+}
+
+#[test]
+fn w8_write_attachment_lege_bestandsnaam_geeft_invalid_path() {
+    let dir = temp_dir("w8-naam-leeg");
+    write(&dir, "Notitie.md", "# Notitie");
+
+    let err = write_attachment(&dir, "Notitie.md", "  ", b"x").unwrap_err();
+    assert_eq!(err, VaultError::InvalidPath);
+}
+
+// W8 — read_attachment: opgelost relatief aan de map van de notitie, mag
+// (anders dan een notitiepad) `..` bevatten.
+
+#[test]
+fn w8_read_attachment_leest_bytes_relatief_aan_notitiemap() {
+    let dir = temp_dir("w8-read");
+    fs::create_dir_all(dir.join("Notitie")).unwrap();
+    write(&dir, "Notitie/Notitie.md", "# Notitie");
+    fs::write(dir.join("Notitie/foto.png"), b"pngbytes").unwrap();
+
+    let bytes = read_attachment(&dir, "Notitie/Notitie.md", "foto.png").unwrap();
+    assert_eq!(bytes, b"pngbytes");
+}
+
+#[test]
+fn w8_read_attachment_ondersteunt_dubbele_punt_naar_buurmap() {
+    let dir = temp_dir("w8-read-buurmap");
+    fs::create_dir_all(dir.join("sub")).unwrap();
+    fs::create_dir_all(dir.join("gedeeld")).unwrap();
+    write(&dir, "sub/Notitie.md", "# Notitie");
+    fs::write(dir.join("gedeeld/foto.png"), b"gedeeld").unwrap();
+
+    let bytes = read_attachment(&dir, "sub/Notitie.md", "../gedeeld/foto.png").unwrap();
+    assert_eq!(bytes, b"gedeeld");
+}
+
+#[test]
+fn w8_read_attachment_buiten_root_faalt() {
+    let (parent, dir) = temp_dir_met_ouder("w8-read-buiten-root");
+    fs::create_dir_all(dir.join("sub")).unwrap();
+    write(&dir, "sub/Notitie.md", "# Notitie");
+    fs::write(parent.join("stiekem.png"), b"x").unwrap();
+
+    let err = read_attachment(&dir, "sub/Notitie.md", "../../stiekem.png").unwrap_err();
+    assert_eq!(err, VaultError::OutsideRoot);
+}
+
+#[test]
+fn w8_read_attachment_op_niet_bestaande_bijlage_geeft_not_found() {
+    let dir = temp_dir("w8-read-not-found");
+    write(&dir, "Notitie.md", "# Notitie");
+
+    let err = read_attachment(&dir, "Notitie.md", "spook.png").unwrap_err();
+    assert_eq!(err, VaultError::NotFound);
+}
+
+// W8 — Session-methodes.
+
+#[test]
+fn w8_sessie_write_attachment_werkt_op_de_geopende_vault() {
+    let dir = temp_dir("w8-sessie-write");
+    write(&dir, "Notitie.md", "# Notitie");
+    let sessie = Session::new();
+    sessie.open(&dir).unwrap();
+
+    let outcome = sessie
+        .write_attachment("Notitie.md", "foto.png", b"x")
+        .unwrap();
+    assert!(outcome.note_moved);
+    assert!(dir.join("Notitie/foto.png").exists());
+}
+
+#[test]
+fn w8_sessie_write_attachment_vereist_geopende_sessie() {
+    let sessie = Session::new();
+    let err = sessie
+        .write_attachment("Notitie.md", "foto.png", b"x")
+        .unwrap_err();
+    assert_eq!(err, VaultError::NoVaultSelected);
+}
+
+#[test]
+fn w8_sessie_read_attachment_werkt_op_de_geopende_vault() {
+    let dir = temp_dir("w8-sessie-read");
+    fs::create_dir_all(dir.join("Notitie")).unwrap();
+    write(&dir, "Notitie/Notitie.md", "# Notitie");
+    fs::write(dir.join("Notitie/foto.png"), b"x").unwrap();
+    let sessie = Session::new();
+    sessie.open(&dir).unwrap();
+
+    let bytes = sessie
+        .read_attachment("Notitie/Notitie.md", "foto.png")
+        .unwrap();
+    assert_eq!(bytes, b"x");
+}

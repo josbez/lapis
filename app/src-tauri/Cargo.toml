@@ -1,0 +1,28 @@
+[package]
+name = "lapis"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+# Bijlagen gaan als base64 over de IPC-grens (W8) — compacter dan een
+# JSON-array van getallen, en simpeler dan Tauri's raw-request-mechanisme
+# voor iets dat maar in twee commands gebeurt.
+base64 = "0.22"
+
+# Alle bestandslogica zit in deze drie crates. Deze crate is een dunne schil
+# (07 §4.3): geen fs::, geen File::create, geen OpenOptions hier — ook niet
+# voor de zoekindex, die zijn eigen bestand via `search-index::Index::open`
+# beheert.
+vault-core = { path = "../vault-core" }
+app-state = { path = "../app-state" }
+search-index = { path = "../search-index" }
+
+[dev-dependencies]
+serde_json = "1"

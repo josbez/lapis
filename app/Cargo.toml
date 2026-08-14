@@ -1,0 +1,6 @@
+# Eén workspace voor de vier crates van de app, naar het patroon van
+# spike/Cargo.toml (bevinding B18): een apart workspace per project, met één
+# gecommitte lock, zodat de build reproduceerbaar is.
+[workspace]
+resolver = "2"
+members = ["vault-core", "app-state", "search-index", "src-tauri"]
