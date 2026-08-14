@@ -26,6 +26,12 @@ pub struct Settings {
     pub sidebar_visible: bool,
     /// Meest recent geopende notitie eerst, gededupliceerd.
     pub recent_paths: Vec<String>,
+    /// De vaste eerste pagina (W9, PRD F7) — het relatieve pad van de
+    /// notitie die bij het starten opent. Verdwijnt die notitie, dan is het
+    /// aan de aanroeper om dit stilzwijgend terug te zetten naar `None`; deze
+    /// crate controleert zelf niet of het pad nog bestaat (dat is vaultkennis,
+    /// die hier niet hoort).
+    pub start_page: Option<String>,
 }
 
 impl Default for Settings {
@@ -34,6 +40,7 @@ impl Default for Settings {
             vault_root: None,
             sidebar_visible: true,
             recent_paths: Vec::new(),
+            start_page: None,
         }
     }
 }
@@ -47,6 +54,10 @@ struct SettingsDto {
     // dan ook vault_root en sidebar_visible stilzwijgend kwijtraken.
     #[serde(default)]
     recent_paths: Vec<String>,
+    // Een `Option`-veld dat ontbreekt in een settings.json van vóór W9
+    // deserialiseert vanzelf naar `None` (serde's eigen gedrag voor Option),
+    // net als `vault_root` hierboven al deed.
+    start_page: Option<String>,
 }
 
 impl From<&Settings> for SettingsDto {
@@ -58,6 +69,7 @@ impl From<&Settings> for SettingsDto {
                 .map(|p| p.to_string_lossy().into_owned()),
             sidebar_visible: s.sidebar_visible,
             recent_paths: s.recent_paths.clone(),
+            start_page: s.start_page.clone(),
         }
     }
 }
@@ -68,6 +80,7 @@ impl From<SettingsDto> for Settings {
             vault_root: dto.vault_root.map(PathBuf::from),
             sidebar_visible: dto.sidebar_visible,
             recent_paths: dto.recent_paths,
+            start_page: dto.start_page,
         }
     }
 }
@@ -149,6 +162,14 @@ impl Store {
         settings.recent_paths.retain(|p| p != rel_path);
         settings.recent_paths.insert(0, rel_path.to_string());
         settings.recent_paths.truncate(MAX_RECENT_PATHS);
+        self.save(&settings)
+    }
+
+    /// Wijst `rel_path` aan als vaste eerste pagina (W9, PRD F7), of trekt de
+    /// aanwijzing in met `None`.
+    pub fn save_start_page(&self, rel_path: Option<&str>) -> io::Result<()> {
+        let mut settings = self.load();
+        settings.start_page = rel_path.map(str::to_string);
         self.save(&settings)
     }
 }
@@ -290,5 +311,50 @@ mod tests {
         assert_eq!(settings.vault_root, Some(PathBuf::from("/tmp/oude-vault")));
         assert!(!settings.sidebar_visible);
         assert_eq!(settings.recent_paths, Vec::<String>::new());
+    }
+
+    // W9 — de vaste eerste pagina.
+
+    #[test]
+    fn start_page_is_leeg_zonder_bestaand_instellingenbestand() {
+        let store = temp_store("start-page-default");
+        assert_eq!(store.load().start_page, None);
+    }
+
+    #[test]
+    fn save_start_page_en_load_rondom() {
+        let store = temp_store("start-page");
+        store.save_start_page(Some("dagboek/vandaag.md")).unwrap();
+        assert_eq!(
+            store.load().start_page,
+            Some("dagboek/vandaag.md".to_string())
+        );
+    }
+
+    #[test]
+    fn save_start_page_none_trekt_de_aanwijzing_in() {
+        let store = temp_store("start-page-none");
+        store.save_start_page(Some("a.md")).unwrap();
+        store.save_start_page(None).unwrap();
+        assert_eq!(store.load().start_page, None);
+    }
+
+    #[test]
+    fn een_settingsbestand_van_voor_w9_blijft_bruikbaar() {
+        // Simuleert een settings.json geschreven door W1-W8-code, zonder het
+        // start_page-veld — moet nog steeds de rest opleveren, niet
+        // stilzwijgend terugvallen op de volledige default.
+        let store = temp_store("start-page-oud-bestand");
+        fs::create_dir_all(store.path.parent().unwrap()).unwrap();
+        fs::write(
+            &store.path,
+            r#"{"vault_root":"/tmp/oude-vault","sidebar_visible":true,"recent_paths":["a.md"]}"#,
+        )
+        .unwrap();
+
+        let settings = store.load();
+        assert_eq!(settings.vault_root, Some(PathBuf::from("/tmp/oude-vault")));
+        assert_eq!(settings.recent_paths, vec!["a.md".to_string()]);
+        assert_eq!(settings.start_page, None);
     }
 }

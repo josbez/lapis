@@ -288,11 +288,11 @@ isolation in de gegeven vorm) staat in §3 en §4; die analyse blijft geldig als
 | W6 · Full-text search | ✅ |
 | W7 · Bestandsbeheer | ✅ |
 | W8 · Bijlagen | ✅ |
-| **W9 · Vaste eerste pagina** | ⬜ **volgende** |
+| W9 · Vaste eerste pagina | ✅ |
 | **W10 · De vorm** | ⬜ **volgende, en de reden dat het product bestaat** |
 
 Alle geautomatiseerde verificatie is groen. Wat nergens is gebeurd: een handmatige
-doorloop door Jos tegen zijn eigen notities. Zijn oordeel daarover: *"ik ga het zo niet
-kunnen gebruiken; daar zijn W9 en W10 voor nodig."* Die twee waves zijn dus geen
+doorloop door Jos tegen zijn eigen notities. Zijn oordeel na W8: *"ik ga het zo niet
+kunnen gebruiken; daar zijn W9 en W10 voor nodig."* W9 staat er nu; W10 is dus geen
 afwerking maar de voorwaarde voor de eerste echte gebruikstest — en daarmee voor het
 succescriterium uit [PRD §6](03-prd.md#6-succescriteria).

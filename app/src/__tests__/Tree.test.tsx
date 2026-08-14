@@ -17,6 +17,8 @@ function actionsStub(overrides: Partial<TreeActions> = {}): TreeActions {
     onTrashFile: vi.fn(),
     onNewNoteInDir: vi.fn(),
     onNewFolderInDir: vi.fn(),
+    onSetStartPage: vi.fn(),
+    onClearStartPage: vi.fn(),
     ...overrides,
   }
 }
@@ -31,7 +33,7 @@ describe('Tree', () => {
       dir('sub', 'sub', [file('binnen.md', 'sub/binnen.md')]),
       file('boven.md', 'boven.md'),
     ])
-    render(<Tree root={root} selectedPath={null} onSelectFile={() => {}} actions={actionsStub()} />)
+    render(<Tree root={root} selectedPath={null} startPage={null} onSelectFile={() => {}} actions={actionsStub()} />)
 
     expect(screen.getByText(/sub/)).toBeTruthy()
     expect(screen.getByText(/boven\.md/)).toBeTruthy()
@@ -40,7 +42,7 @@ describe('Tree', () => {
 
   it('klikken op een map klapt uit, nogmaals klikken klapt in', () => {
     const root = dir('vault', '', [dir('sub', 'sub', [file('binnen.md', 'sub/binnen.md')])])
-    render(<Tree root={root} selectedPath={null} onSelectFile={() => {}} actions={actionsStub()} />)
+    render(<Tree root={root} selectedPath={null} startPage={null} onSelectFile={() => {}} actions={actionsStub()} />)
 
     const subKnop = screen.getByText(/sub/)
     fireEvent.click(subKnop)
@@ -53,7 +55,9 @@ describe('Tree', () => {
   it('klikken op een bestand zet de selectie, roept geen IPC aan', () => {
     const root = dir('vault', '', [file('notitie.md', 'notitie.md')])
     const onSelectFile = vi.fn()
-    render(<Tree root={root} selectedPath={null} onSelectFile={onSelectFile} actions={actionsStub()} />)
+    render(
+      <Tree root={root} selectedPath={null} startPage={null} onSelectFile={onSelectFile} actions={actionsStub()} />,
+    )
 
     fireEvent.click(screen.getByText(/notitie\.md/))
     expect(onSelectFile).toHaveBeenCalledTimes(1)
@@ -62,7 +66,7 @@ describe('Tree', () => {
 
   it('markeert een onleesbare map (Spec §5.3, punt 5)', () => {
     const root = dir('vault', '', [dir('geheim', 'geheim', [], false)])
-    render(<Tree root={root} selectedPath={null} onSelectFile={() => {}} actions={actionsStub()} />)
+    render(<Tree root={root} selectedPath={null} startPage={null} onSelectFile={() => {}} actions={actionsStub()} />)
     expect(screen.getByText(/geen toegang/)).toBeTruthy()
   })
 
@@ -70,7 +74,7 @@ describe('Tree', () => {
 
   it('rechtsklik op een bestand toont hernoemen/verplaatsen/prullenbak', () => {
     const root = dir('vault', '', [file('notitie.md', 'notitie.md')])
-    render(<Tree root={root} selectedPath={null} onSelectFile={() => {}} actions={actionsStub()} />)
+    render(<Tree root={root} selectedPath={null} startPage={null} onSelectFile={() => {}} actions={actionsStub()} />)
 
     fireEvent.contextMenu(screen.getByText(/notitie\.md/))
 
@@ -82,7 +86,7 @@ describe('Tree', () => {
 
   it('rechtsklik op een map toont nieuwe notitie/nieuwe map hier', () => {
     const root = dir('vault', '', [dir('sub', 'sub')])
-    render(<Tree root={root} selectedPath={null} onSelectFile={() => {}} actions={actionsStub()} />)
+    render(<Tree root={root} selectedPath={null} startPage={null} onSelectFile={() => {}} actions={actionsStub()} />)
 
     fireEvent.contextMenu(screen.getByText(/sub/))
 
@@ -97,6 +101,7 @@ describe('Tree', () => {
       <Tree
         root={root}
         selectedPath={null}
+        startPage={null}
         onSelectFile={() => {}}
         actions={actionsStub({ onRenameFile })}
       />,
@@ -116,6 +121,7 @@ describe('Tree', () => {
       <Tree
         root={root}
         selectedPath={null}
+        startPage={null}
         onSelectFile={() => {}}
         actions={actionsStub({ onNewNoteInDir })}
       />,
@@ -127,6 +133,76 @@ describe('Tree', () => {
     expect(onNewNoteInDir).toHaveBeenCalledWith('projecten')
   })
 
+  // W9 — de vaste eerste pagina.
+
+  it('rechtsklik op een bestand dat geen startpagina is toont "Als startpagina instellen"', () => {
+    const root = dir('vault', '', [file('notitie.md', 'notitie.md')])
+    render(
+      <Tree root={root} selectedPath={null} startPage={null} onSelectFile={() => {}} actions={actionsStub()} />,
+    )
+
+    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+
+    expect(screen.getByText('Als startpagina instellen')).toBeTruthy()
+    expect(screen.queryByText('Startpagina wissen')).toBeNull()
+  })
+
+  it('rechtsklik op de huidige startpagina toont "Startpagina wissen" in plaats daarvan', () => {
+    const root = dir('vault', '', [file('notitie.md', 'notitie.md')])
+    render(
+      <Tree
+        root={root}
+        selectedPath={null}
+        startPage="notitie.md"
+        onSelectFile={() => {}}
+        actions={actionsStub()}
+      />,
+    )
+
+    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+
+    expect(screen.getByText('Startpagina wissen')).toBeTruthy()
+    expect(screen.queryByText('Als startpagina instellen')).toBeNull()
+  })
+
+  it('"Als startpagina instellen" roept onSetStartPage aan met het pad van het bestand', () => {
+    const root = dir('vault', '', [file('notitie.md', 'notitie.md')])
+    const onSetStartPage = vi.fn()
+    render(
+      <Tree
+        root={root}
+        selectedPath={null}
+        startPage={null}
+        onSelectFile={() => {}}
+        actions={actionsStub({ onSetStartPage })}
+      />,
+    )
+
+    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.click(screen.getByText('Als startpagina instellen'))
+
+    expect(onSetStartPage).toHaveBeenCalledWith('notitie.md')
+  })
+
+  it('"Startpagina wissen" roept onClearStartPage aan', () => {
+    const root = dir('vault', '', [file('notitie.md', 'notitie.md')])
+    const onClearStartPage = vi.fn()
+    render(
+      <Tree
+        root={root}
+        selectedPath={null}
+        startPage="notitie.md"
+        onSelectFile={() => {}}
+        actions={actionsStub({ onClearStartPage })}
+      />,
+    )
+
+    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.click(screen.getByText('Startpagina wissen'))
+
+    expect(onClearStartPage).toHaveBeenCalledTimes(1)
+  })
+
   it('Escape sluit het contextmenu zonder een actie te kiezen', () => {
     const root = dir('vault', '', [file('notitie.md', 'notitie.md')])
     const onTrashFile = vi.fn()
@@ -134,6 +210,7 @@ describe('Tree', () => {
       <Tree
         root={root}
         selectedPath={null}
+        startPage={null}
         onSelectFile={() => {}}
         actions={actionsStub({ onTrashFile })}
       />,

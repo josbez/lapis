@@ -102,12 +102,27 @@ opslaan, dan de bijlage wegschrijven, en bij een migratie het geopende notitiepa
 bijwerken — zonder de editor zelf te laten remounten, want de gebruiker was nog aan het
 typen toen de bijlage geplakt werd. Alle geautomatiseerde verificatie is groen.
 
+Ook W9 (PRD F7, de vaste eerste pagina) is zonder de drie wave-documenten gebouwd, op
+hetzelfde expliciete verzoek. Een notitie is aan te wijzen als startpagina via het
+rechtsklik-contextmenu op de boom ("Als startpagina instellen"; rechtsklikken op de
+huidige startpagina toont in plaats daarvan "Startpagina wissen"). `app-state` onthoudt
+het relatieve pad ernaartoe, buiten de vault (principe 1) — hetzelfde bestand en dezelfde
+vorm als `vault_root` en `recent_paths`, een `Option<String>` die bij een oud
+instellingenbestand vanzelf op `None` uitkomt. Lapis start op met die notitie al open;
+`⌘⇧H` brengt je er vanaf elk moment naartoe, ook vanuit een andere open notitie, en doet
+niets zonder ingestelde startpagina. Is de aangewezen notitie inmiddels verdwenen, dan
+vervalt de aanwijzing stilzwijgend — geen foutmelding, geen dialoog, Lapis opent gewoon
+leeg, precies zoals het PRD voorschrijft. Bewust ontbrekend, want expliciet buiten scope
+(PRD F7): geen todo-systeem, geen verzamelscherm van alle `- [ ]`-regels — een startpagina
+is uitsluitend een vaste plek die altijd bereikbaar is, de vinkjes erin waren al klikbaar
+sinds F2. Alle geautomatiseerde verificatie is groen.
+
 ## Volgende stap
 
-**W9 (vaste eerste pagina) en W10 (de vorm).** Daarna pas is Lapis dagelijks te
-gebruiken; Jos' oordeel na W8: *"ik ga het zo niet kunnen gebruiken, daar zijn W9 en W10
-voor nodig."* Die twee waves zijn dus geen afwerking maar de voorwaarde voor de eerste
-echte gebruikstest.
+**W10 (de vorm).** Daarna pas is Lapis dagelijks te gebruiken; Jos' oordeel na W8:
+*"ik ga het zo niet kunnen gebruiken, daar zijn W9 en W10 voor nodig."* W9 staat er nu;
+wat overblijft is typografie, licht/donker, lege staten en het instellingenscherm — geen
+afwerking maar de voorwaarde voor de eerste echte gebruikstest.
 
 **Werkwijze vanaf hier:** klein snijden, vaste volgorde, groene verificatie per stap, en
 beslissingen die de PRD raken apart voorleggen — maar zónder de drie formele
