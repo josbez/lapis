@@ -40,6 +40,10 @@ describe('App', () => {
     // als het recente-paden-gedrag zelf getest wordt.
     mockedIpc.getRecentPaths.mockResolvedValue([])
     mockedIpc.recordNoteOpened.mockResolvedValue(undefined)
+    // W9 — idem: alleen tests die zelf de startpagina zetten/wissen
+    // overschrijven dit.
+    mockedIpc.getStartPage.mockResolvedValue(null)
+    mockedIpc.setStartPage.mockResolvedValue(undefined)
     // W7 — idem: alleen tests die zelf "Nieuwe notitie" aanklikken
     // overschrijven dit.
     mockedUseDraftNote.mockReturnValue(draftStub())
@@ -473,5 +477,126 @@ describe('App', () => {
         expect.objectContaining({ dir: 'dagboek' }),
       ),
     )
+  })
+
+  // W9 — de vaste eerste pagina (PRD F7).
+
+  it('opent de vaste eerste pagina automatisch bij het starten', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.getStartPage.mockResolvedValue('notitie.md')
+    mockedIpc.readNote.mockResolvedValue({ content: 'de startpagina-inhoud', modifiedMs: 1000 })
+
+    render(<App />)
+
+    await waitFor(() => expect(screen.getByText(/de startpagina-inhoud/)).toBeTruthy())
+    expect(mockedIpc.readNote).toHaveBeenCalledWith('notitie.md')
+    expect(mockedIpc.recordNoteOpened).toHaveBeenCalledWith('notitie.md')
+  })
+
+  it('geen vaste eerste pagina ingesteld opent gewoon leeg, geen dialoog', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.getStartPage.mockResolvedValue(null)
+
+    render(<App />)
+
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+    expect(screen.getByText('Kies een notitie in de boom.')).toBeTruthy()
+    expect(mockedIpc.readNote).not.toHaveBeenCalled()
+  })
+
+  it('een verdwenen startpagina vervalt stilzwijgend, geen foutmelding', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.getStartPage.mockResolvedValue('weg.md')
+    mockedIpc.readNote.mockRejectedValue(new Error('bestaat niet'))
+
+    render(<App />)
+
+    await waitFor(() => expect(screen.getByText('Kies een notitie in de boom.')).toBeTruthy())
+    // Stilzwijgend (PRD F7): geen statusregel met een foutmelding, en de
+    // aanwijzing wordt ingetrokken zodat een volgende start niet opnieuw
+    // faalt.
+    expect(screen.queryByText(/mislukt/)).toBeNull()
+    await waitFor(() => expect(mockedIpc.setStartPage).toHaveBeenCalledWith(null))
+  })
+
+  it('⌘⇧H springt naar de vaste eerste pagina, ook vanuit een andere notitie', async () => {
+    mockedIpc.restoreVault.mockResolvedValue({
+      rootDisplay: '/tmp/vault',
+      tree: {
+        name: 'vault',
+        relPath: '',
+        kind: 'dir',
+        readable: true,
+        children: [
+          { name: 'a.md', relPath: 'a.md', kind: 'file', readable: true, children: [] },
+          { name: 'start.md', relPath: 'start.md', kind: 'file', readable: true, children: [] },
+        ],
+      },
+    })
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.getStartPage.mockResolvedValue('start.md')
+    mockedIpc.readNote.mockImplementation((relPath: string) =>
+      Promise.resolve({ content: `inhoud van ${relPath}`, modifiedMs: 1000 }),
+    )
+
+    render(<App />)
+    // De startpagina opent al bij het starten; klik naar een andere notitie.
+    await waitFor(() => expect(screen.getByText(/inhoud van start\.md/)).toBeTruthy())
+    fireEvent.click(screen.getByText(/a\.md/))
+    await waitFor(() => expect(screen.getByText(/inhoud van a\.md/)).toBeTruthy())
+
+    fireEvent.keyDown(window, { key: 'h', metaKey: true, shiftKey: true })
+
+    await waitFor(() => expect(screen.getByText(/inhoud van start\.md/)).toBeTruthy())
+  })
+
+  it('⌘⇧H doet niets zonder ingestelde startpagina', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.getStartPage.mockResolvedValue(null)
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.keyDown(window, { key: 'h', metaKey: true, shiftKey: true })
+
+    expect(mockedIpc.readNote).not.toHaveBeenCalled()
+  })
+
+  it('"Als startpagina instellen" via het contextmenu wijst de notitie aan', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.click(screen.getByText('Als startpagina instellen'))
+
+    await waitFor(() => expect(mockedIpc.setStartPage).toHaveBeenCalledWith('notitie.md'))
+    // Nogmaals rechtsklikken toont nu "wissen" — bewijst dat de eigen
+    // React-state is bijgewerkt, niet alleen de IPC-aanroep gedaan.
+    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    expect(screen.getByText('Startpagina wissen')).toBeTruthy()
+  })
+
+  it('"Startpagina wissen" via het contextmenu trekt de aanwijzing in', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.getStartPage.mockResolvedValue('notitie.md')
+    mockedIpc.readNote.mockResolvedValue({ content: 'inhoud', modifiedMs: 1000 })
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/inhoud/)).toBeTruthy())
+
+    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.click(screen.getByText('Startpagina wissen'))
+
+    await waitFor(() => expect(mockedIpc.setStartPage).toHaveBeenCalledWith(null))
+    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    expect(screen.getByText('Als startpagina instellen')).toBeTruthy()
   })
 })

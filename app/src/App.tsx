@@ -10,6 +10,7 @@ import {
   createFolder,
   getRecentPaths,
   getSidebarVisible,
+  getStartPage,
   moveNote,
   openVault,
   readNote,
@@ -17,6 +18,7 @@ import {
   rescanVault,
   restoreVault,
   setSidebarVisible,
+  setStartPage,
   trashNote,
   type NoteContent,
   type VaultView,
@@ -42,6 +44,9 @@ export default function App() {
   const [status, setStatus] = useState('')
   const [ready, setReady] = useState(false)
   const [recentPaths, setRecentPaths] = useState<string[]>([])
+  // W9: het relatieve pad van de vaste eerste pagina, of `null` als er geen
+  // ingesteld is.
+  const [startPage, setStartPageState] = useState<string | null>(null)
   const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false)
   const [fullTextSearchOpen, setFullTextSearchOpen] = useState(false)
   // W7: `null` zolang er geen concept openstaat, anders de map waarin het
@@ -56,19 +61,60 @@ export default function App() {
   // niet nodig — dat gebeurt zonder IPC-aanroep (Spec W1 §5.6).
   const gate = useRef(createRequestGate())
 
+  /**
+   * Opent de vaste eerste pagina (W9, PRD F7) — bij het starten van Lapis en
+   * via de sneltoets. `isLatest` komt van de aanroeper in plaats van hier
+   * zelf een nieuw gate-token te starten: de opstart-effect hieronder geeft
+   * zijn eigen token door, zodat die zijn eigen `setReady` daarna nog kan
+   * laten winnen (laatst-gestarte-wint, zie requestGate.ts) — een nieuw
+   * token hier zou dat token meteen ongeldig maken.
+   *
+   * Is de aangewezen notitie inmiddels verdwenen, dan vervalt de instelling
+   * stilzwijgend — geen foutmelding, geen dialoog (PRD F7).
+   */
+  const openStartPageIfPresent = useCallback((relPath: string, isLatest: () => boolean) => {
+    setSelectedPath(relPath)
+    setNoteContent(null)
+    setRevealText(null)
+    setQuickSwitcherOpen(false)
+    setFullTextSearchOpen(false)
+    void (async () => {
+      try {
+        const content = await readNote(relPath)
+        if (!isLatest()) return
+        setNoteContent(content)
+        setStatus('')
+        setRecentPaths((prev) => [relPath, ...prev.filter((p) => p !== relPath)].slice(0, MAX_RECENT_PATHS))
+        void recordNoteOpened(relPath)
+      } catch {
+        if (!isLatest()) return
+        setSelectedPath(null)
+        setStartPageState(null)
+        void setStartPage(null).catch(() => {})
+      }
+    })()
+  }, [])
+
   useEffect(() => {
     const isLatest = gate.current.start()
     void (async () => {
       try {
-        const [restored, visible, recent] = await Promise.all([
+        const [restored, visible, recent, savedStartPage] = await Promise.all([
           restoreVault(),
           getSidebarVisible(),
           getRecentPaths(),
+          getStartPage(),
         ])
         if (!isLatest()) return
         setView(restored)
         setSidebarVisibleState(visible)
         setRecentPaths(recent)
+        setStartPageState(savedStartPage)
+        // PRD F7: "Lapis starten opent de aangewezen notitie" — alleen
+        // zinvol als er ook een vault onthouden is.
+        if (restored && savedStartPage) {
+          openStartPageIfPresent(savedStartPage, isLatest)
+        }
       } catch (e) {
         if (!isLatest()) return
         setStatus(`herstellen mislukt: ${e}`)
@@ -76,7 +122,7 @@ export default function App() {
         if (isLatest()) setReady(true)
       }
     })()
-  }, [])
+  }, [openStartPageIfPresent])
 
   const pickFolder = useCallback((picked: string) => {
     const isLatest = gate.current.start()
@@ -119,6 +165,18 @@ export default function App() {
         setStatus(`notitie openen mislukt: ${e}`)
       }
     })()
+  }, [])
+
+  /** Rechtsklik → "Als startpagina instellen" (W9). */
+  const setAsStartPage = useCallback((relPath: string) => {
+    setStartPageState(relPath)
+    void setStartPage(relPath).catch((e: unknown) => setStatus(`startpagina instellen mislukt: ${e}`))
+  }, [])
+
+  /** Rechtsklik → "Startpagina wissen" (W9). */
+  const clearStartPage = useCallback(() => {
+    setStartPageState(null)
+    void setStartPage(null).catch((e: unknown) => setStatus(`startpagina wissen mislukt: ${e}`))
   }, [])
 
   const refresh = useCallback(() => {
@@ -269,8 +327,10 @@ export default function App() {
       onTrashFile: trashFile,
       onNewNoteInDir: newNote,
       onNewFolderInDir: newFolder,
+      onSetStartPage: setAsStartPage,
+      onClearStartPage: clearStartPage,
     }),
-    [renameFile, moveFile, trashFile, newNote, newFolder],
+    [renameFile, moveFile, trashFile, newNote, newFolder, setAsStartPage, clearStartPage],
   )
 
   const toggleSidebar = useCallback(() => {
@@ -283,9 +343,10 @@ export default function App() {
 
   const files = useMemo(() => (view ? flattenFiles(view.tree) : []), [view])
 
-  // ⌘K: de quick switcher (W5). ⌘⇧F: volledige tekst zoeken (W6). Werken
-  // ook terwijl er in een notitie getypt wordt — CodeMirror bindt geen van
-  // beide zelf, dus dit komt gewoon door.
+  // ⌘K: de quick switcher (W5). ⌘⇧F: volledige tekst zoeken (W6). ⌘⇧H: naar
+  // de vaste eerste pagina (W9) — doet niets zonder ingestelde startpagina.
+  // Werken ook terwijl er in een notitie getypt wordt — CodeMirror bindt
+  // geen van drieën zelf, dus dit komt gewoon door.
   useEffect(() => {
     if (!view) return
     const onKeyDown = (e: KeyboardEvent) => {
@@ -295,11 +356,16 @@ export default function App() {
       } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
         e.preventDefault()
         setFullTextSearchOpen((open) => !open)
+      } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'h') {
+        e.preventDefault()
+        if (startPage) {
+          openStartPageIfPresent(startPage, gate.current.start())
+        }
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [view])
+  }, [view, startPage, openStartPageIfPresent])
 
   // Nog niets te tonen vóórdat restoreVault() en getSidebarVisible()
   // terugkomen — anders flitst de lege staat even op bij elke start.
@@ -337,7 +403,13 @@ export default function App() {
       <div style={{ display: 'flex' }}>
         {sidebarVisible && (
           <nav aria-label="Vault">
-            <Tree root={view.tree} selectedPath={selectedPath} onSelectFile={openNote} actions={treeActions} />
+            <Tree
+              root={view.tree}
+              selectedPath={selectedPath}
+              startPage={startPage}
+              onSelectFile={openNote}
+              actions={treeActions}
+            />
           </nav>
         )}
         <main>

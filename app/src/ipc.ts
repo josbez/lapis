@@ -160,3 +160,13 @@ export interface SearchResult {
  * vault-open.
  */
 export const searchNotes = (query: string): Promise<SearchResult[]> => invoke('search_notes', { query })
+
+/**
+ * De vaste eerste pagina (W9, PRD F7). `null` betekent: geen startpagina
+ * ingesteld, Lapis opent leeg — geen dialoog, geen suggestie.
+ */
+export const getStartPage = (): Promise<string | null> => invoke('get_start_page')
+
+/** Wijst `relPath` aan als vaste eerste pagina, of trekt de aanwijzing in met `null`. */
+export const setStartPage = (relPath: string | null): Promise<void> =>
+  invoke('set_start_page', { path: relPath })

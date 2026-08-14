@@ -19,11 +19,16 @@ export interface TreeActions {
   onTrashFile: (relPath: string) => void
   onNewNoteInDir: (dirRelPath: string) => void
   onNewFolderInDir: (dirRelPath: string) => void
+  /** W9: wijst een bestand aan als vaste eerste pagina, of trekt dat in. */
+  onSetStartPage: (relPath: string) => void
+  onClearStartPage: () => void
 }
 
 interface TreeProps {
   root: TreeNode
   selectedPath: string | null
+  /** W9: het relatieve pad van de huidige vaste eerste pagina, of `null`. */
+  startPage: string | null
   onSelectFile: (relPath: string) => void
   actions: TreeActions
 }
@@ -34,7 +39,7 @@ interface MenuState {
   node: TreeNode
 }
 
-export function Tree({ root, selectedPath, onSelectFile, actions }: TreeProps) {
+export function Tree({ root, selectedPath, startPage, onSelectFile, actions }: TreeProps) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [menu, setMenu] = useState<MenuState | null>(null)
 
@@ -61,6 +66,9 @@ export function Tree({ root, selectedPath, onSelectFile, actions }: TreeProps) {
           { label: 'Hernoemen', onSelect: () => actions.onRenameFile(menu.node.relPath) },
           { label: 'Verplaatsen naar…', onSelect: () => actions.onMoveFile(menu.node.relPath) },
           { label: 'Naar prullenbak', onSelect: () => actions.onTrashFile(menu.node.relPath) },
+          menu.node.relPath === startPage
+            ? { label: 'Startpagina wissen', onSelect: () => actions.onClearStartPage() }
+            : { label: 'Als startpagina instellen', onSelect: () => actions.onSetStartPage(menu.node.relPath) },
         ]
       : [
           { label: 'Nieuwe notitie hier', onSelect: () => actions.onNewNoteInDir(menu.node.relPath) },

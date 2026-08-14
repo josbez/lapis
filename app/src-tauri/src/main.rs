@@ -541,6 +541,23 @@ fn set_sidebar_visible(visible: bool) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// De vaste eerste pagina (W9, PRD F7) — `None` betekent: geen startpagina
+/// ingesteld, Lapis opent leeg. Of het pad nog bestaat, controleert dit
+/// command niet — dat is aan de aanroeper, ná een `read_note`-poging.
+#[tauri::command]
+fn get_start_page() -> Result<Option<String>, String> {
+    Ok(store().load().start_page)
+}
+
+/// Wijst `path` aan als vaste eerste pagina, of trekt de aanwijzing in met
+/// `None`.
+#[tauri::command]
+fn set_start_page(path: Option<String>) -> Result<(), String> {
+    store()
+        .save_start_page(path.as_deref())
+        .map_err(|e| e.to_string())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -563,7 +580,9 @@ fn main() {
             get_recent_paths,
             record_note_opened,
             get_sidebar_visible,
-            set_sidebar_visible
+            set_sidebar_visible,
+            get_start_page,
+            set_start_page
         ])
         .run(tauri::generate_context!())
         .expect("kon de Tauri-app niet starten");
