@@ -336,7 +336,9 @@ describe('App', () => {
 
     expect(mockedIpc.recordNoteOpened).toHaveBeenCalledWith('Boodschappen.md')
     await waitFor(() => expect(mockedIpc.rescanVault).toHaveBeenCalled())
-    await waitFor(() => expect(screen.getByText(/Boodschappen/)).toBeTruthy())
+    // Exacte match: de broodkruimel toont intussen ook "Boodschappen.md",
+    // dit bewijst specifiek dat de kopregel in de editor zelf staat.
+    await waitFor(() => expect(screen.getByText(/^Boodschappen$/)).toBeTruthy())
     // readNote wordt hier nooit aangeroepen — de inhoud van het net
     // aangemaakte bestand is al bekend uit onCreated's argumenten.
     expect(mockedIpc.readNote).not.toHaveBeenCalled()
@@ -406,7 +408,7 @@ describe('App', () => {
     fireEvent.click(screen.getByText(/notitie\.md/))
     await waitFor(() => expect(mockedIpc.readNote).toHaveBeenCalledTimes(1))
 
-    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.contextMenu(within(screen.getByRole('tree')).getByText(/notitie\.md/))
     fireEvent.click(screen.getByText('Hernoemen'))
 
     await waitFor(() =>
@@ -431,7 +433,7 @@ describe('App', () => {
     fireEvent.click(screen.getByText(/notitie\.md/))
     await waitFor(() => expect(screen.getByText(/inhoud/)).toBeTruthy())
 
-    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.contextMenu(within(screen.getByRole('tree')).getByText(/notitie\.md/))
     fireEvent.click(screen.getByText('Naar prullenbak'))
 
     await waitFor(() => expect(mockedIpc.trashNote).toHaveBeenCalledWith('notitie.md'))
@@ -446,7 +448,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
-    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.contextMenu(within(screen.getByRole('tree')).getByText(/notitie\.md/))
     fireEvent.click(screen.getByText('Naar prullenbak'))
 
     expect(mockedIpc.trashNote).not.toHaveBeenCalled()
@@ -575,13 +577,13 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
-    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.contextMenu(within(screen.getByRole('tree')).getByText(/notitie\.md/))
     fireEvent.click(screen.getByText('Als startpagina instellen'))
 
     await waitFor(() => expect(mockedIpc.setStartPage).toHaveBeenCalledWith('notitie.md'))
     // Nogmaals rechtsklikken toont nu "wissen" — bewijst dat de eigen
     // React-state is bijgewerkt, niet alleen de IPC-aanroep gedaan.
-    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.contextMenu(within(screen.getByRole('tree')).getByText(/notitie\.md/))
     expect(screen.getByText('Startpagina wissen')).toBeTruthy()
   })
 
@@ -594,11 +596,11 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/inhoud/)).toBeTruthy())
 
-    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.contextMenu(within(screen.getByRole('tree')).getByText(/notitie\.md/))
     fireEvent.click(screen.getByText('Startpagina wissen'))
 
     await waitFor(() => expect(mockedIpc.setStartPage).toHaveBeenCalledWith(null))
-    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.contextMenu(within(screen.getByRole('tree')).getByText(/notitie\.md/))
     expect(screen.getByText('Als startpagina instellen')).toBeTruthy()
   })
 

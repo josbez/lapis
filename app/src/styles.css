@@ -1,15 +1,20 @@
 /*
  * W10 — "de vorm" (PRD F6).
  *
- * Dit is de eerste versie in code, geen ontwerpvoorstel (05 §F1/F3): Jos
- * herontwerpt hierna via Stitch/Claude Design. Wat hier staat is een
- * wireframe die de vier F6-eisen waarmaakt — één venster, ruime marges met
- * beperkte regellengte, licht/donker volgend op het systeem (geen
- * thema-keuze), en een instellingenscherm — met concrete waarden die Jos
- * vrijelijk kan overschrijven.
+ * De wireframe (zie git-historie) is vervangen door het ontwerp dat via
+ * Stitch tot stand kwam, na drie terugkoppelrondes (zie de Stitch-briefing).
+ * Eén punt uit die rondes — een verzonnen "Drafts/Projects/Archive/Trash"-
+ * navigatielaag boven de mapboom — is bewust nooit overgenomen: Lapis kent
+ * die concepten niet, en principe 3 staat geen tweede navigatiesysteem naast
+ * de mapboom toe. De rest van het ontwerp (kleuren, typografie, spacing,
+ * vorm) is hieronder zo getrouw mogelijk overgenomen uit het aangeleverde
+ * design-tokenbestand.
  *
  * Licht/donker gaat uitsluitend via `prefers-color-scheme`: het PRD sluit
- * een handmatige thema-keuze expliciet uit.
+ * een handmatige thema-keuze expliciet uit. Het tokenbestand gaf alleen
+ * losse aanwijzingen voor donker (basiskleuren, "vermijd puur zwart"); de
+ * volledige donkere set hieronder is daarvan mijn eigen afleiding, met
+ * dezelfde kleurverhoudingen als licht.
  */
 
 *,
@@ -21,28 +26,36 @@
 :root {
   color-scheme: light dark;
 
-  --bg: #fbfaf7;
+  /* Kleuren — licht, rechtstreeks uit het design-tokenbestand. */
+  --bg: #f9f9ff;
   --bg-elevated: #ffffff;
-  --bg-surface: #f2efe9;
-  --bg-hover: #e9e5db;
-  --fg: #211f1c;
-  --fg-muted: #6c665c;
-  --fg-faint: #a39c8f;
-  --border: #e2dccf;
-  --accent: #6d4aff;
+  --bg-surface: #f0f3ff;
+  --bg-hover: #e7eefe;
+  --fg: #151c27;
+  --fg-muted: #43474c;
+  --fg-faint: #74777d;
+  --border: #e2e8f0;
+  --accent: #172839;
   --accent-fg: #ffffff;
-  --danger: #b3392e;
-  --danger-bg: #fbeae7;
-  --radius: 0.5rem;
-  --shadow: 0 12px 32px -12px rgb(0 0 0 / 0.22);
+  --danger: #ba1a1a;
+  --danger-bg: #ffdad6;
+  --radius: 0.25rem;
 
-  --font-sans:
-    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+  /* Typografie — drie families met elk hun eigen rol (Brand & Style /
+     Typography in het tokenbestand): Geist voor de chrome eromheen (sidebar,
+     toolbar, menu's, instellingen), Source Serif 4 voor de notitie-inhoud
+     zelf, Hanken Grotesk uitsluitend voor een klein aantal echte
+     app-titels (het instellingenscherm) — niet voor koppen ín een notitie,
+     want die horen bij dezelfde lopende tekst als de rest van die notitie
+     (zie de kanttekening in de briefing, sectie 11). */
+  --font-sans: 'Geist Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-serif: 'Source Serif 4', ui-serif, Georgia, serif;
+  --font-display: 'Hanken Grotesk', var(--font-sans);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   /* Editor-theming contract van @atomic-editor/editor — elke variabele
      hieronder heeft daar een eigen fallback, maar zonder deze mapping zou
-     de editor er in donkere modus anders uitzien dan de rest van de app. */
+     de editor er anders uitzien dan de rest van de app. */
   --atomic-editor-bg: var(--bg);
   --atomic-editor-bg-panel: var(--bg-elevated);
   --atomic-editor-bg-surface: var(--bg-surface);
@@ -51,68 +64,72 @@
   --atomic-editor-fg-faint: var(--fg-faint);
   --atomic-editor-border: var(--border);
   --atomic-editor-accent: var(--accent);
-  --atomic-editor-accent-bright: #8563ff;
+  --atomic-editor-accent-bright: #37485b;
   --atomic-editor-accent-soft: color-mix(in srgb, var(--accent) 55%, white 45%);
   --atomic-editor-link: var(--accent);
-  --atomic-editor-link-hover: color-mix(in srgb, var(--accent) 80%, black 20%);
+  --atomic-editor-link-hover: color-mix(in srgb, var(--accent) 75%, black 25%);
   --atomic-editor-code-bg: var(--bg-surface);
   --atomic-editor-code-rail: color-mix(in srgb, var(--accent) 45%, var(--border) 55%);
-  --atomic-editor-selection-bg: color-mix(in srgb, var(--accent) 22%, var(--bg) 78%);
-  --atomic-editor-search-bg: color-mix(in srgb, var(--accent) 16%, var(--bg) 84%);
-  --atomic-editor-search-bg-active: color-mix(in srgb, var(--accent) 34%, var(--bg) 66%);
-  --atomic-editor-initial-reveal-bg: color-mix(in srgb, var(--accent) 32%, transparent 68%);
-  --atomic-editor-initial-reveal-bg-strong: color-mix(in srgb, var(--accent) 58%, transparent 42%);
-  --atomic-editor-measure: 68ch;
+  --atomic-editor-selection-bg: color-mix(in srgb, var(--accent) 18%, var(--bg) 82%);
+  --atomic-editor-search-bg: color-mix(in srgb, var(--accent) 12%, var(--bg) 88%);
+  --atomic-editor-search-bg-active: color-mix(in srgb, var(--accent) 26%, var(--bg) 74%);
+  --atomic-editor-initial-reveal-bg: color-mix(in srgb, var(--accent) 28%, transparent 72%);
+  --atomic-editor-initial-reveal-bg-strong: color-mix(in srgb, var(--accent) 50%, transparent 50%);
+  --atomic-editor-measure: 720px;
   --atomic-editor-radius: var(--radius);
-  --atomic-editor-font: var(--font-sans);
+  --atomic-editor-font: var(--font-serif);
   --atomic-editor-font-mono: var(--font-mono);
-  --atomic-editor-body-size: 1.0625rem;
-  --atomic-editor-body-leading: 1.7;
+  --atomic-editor-body-size: 1.125rem;
+  --atomic-editor-body-leading: 1.778;
 
-  /* Codeblok-syntaxkleuren — bewust bescheiden verzadigd, leesbaar op
-     --bg-surface in beide standen. */
-  --atomic-editor-hl-comment: #8a8375;
-  --atomic-editor-hl-string: #3f7d4a;
-  --atomic-editor-hl-number: #b3591b;
-  --atomic-editor-hl-keyword: #7c4fe0;
-  --atomic-editor-hl-function: #2464b4;
+  /* Codeblok-syntaxkleuren — "low-contrast", geen regenboog (Components in
+     het tokenbestand). */
+  --atomic-editor-hl-comment: #74777d;
+  --atomic-editor-hl-string: #37485b;
+  --atomic-editor-hl-number: #43474c;
+  --atomic-editor-hl-keyword: #172839;
+  --atomic-editor-hl-function: #2d3e50;
   --atomic-editor-hl-variable: var(--fg);
-  --atomic-editor-hl-property: #2464b4;
-  --atomic-editor-hl-type: #a3592e;
-  --atomic-editor-hl-tag: #b3591b;
+  --atomic-editor-hl-property: #2d3e50;
+  --atomic-editor-hl-type: #43474c;
+  --atomic-editor-hl-tag: #37485b;
   --atomic-editor-hl-operator: var(--fg-muted);
-  --atomic-editor-hl-regexp: #3f7d4a;
-  --atomic-editor-hl-escape: #7c4fe0;
+  --atomic-editor-hl-regexp: #37485b;
+  --atomic-editor-hl-escape: #172839;
   --atomic-editor-hl-invalid: var(--danger);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #1b1a18;
-    --bg-elevated: #232220;
-    --bg-surface: #262523;
-    --bg-hover: #322f2b;
-    --fg: #e4e1da;
-    --fg-muted: #a39d92;
-    --fg-faint: #6f6a61;
-    --border: #37342f;
-    --accent: #9a85ff;
-    --accent-fg: #14121f;
-    --danger: #e08479;
+    /* Donker — eigen afleiding op basis van de losse aanwijzingen in het
+       tokenbestand (§Colors: "#1A1B1E surfaces, #D1D5DB tekst, vermijd puur
+       zwart", §Layout: "#2D2E32"-randen) en de bestaande "fixed"/"container"-
+       varianten uit de kleurentabel, zodat het accent ook op een donkere
+       ondergrond leesbaar blijft. */
+    --bg: #1a1b1e;
+    --bg-elevated: #201f23;
+    --bg-surface: #201f23;
+    --bg-hover: #2a292e;
+    --fg: #d1d5db;
+    --fg-muted: #9aa0a8;
+    --fg-faint: #6b7078;
+    --border: #2d2e32;
+    --accent: #b6c8df;
+    --accent-fg: #0a1d2d;
+    --danger: #ffb4ab;
     --danger-bg: #3a2320;
-    --shadow: 0 12px 32px -12px rgb(0 0 0 / 0.55);
 
-    --atomic-editor-accent-bright: #b6a6ff;
-    --atomic-editor-hl-comment: #8f897c;
-    --atomic-editor-hl-string: #8fce9c;
-    --atomic-editor-hl-number: #e0a165;
-    --atomic-editor-hl-keyword: #b6a6ff;
-    --atomic-editor-hl-function: #7fb0f0;
-    --atomic-editor-hl-property: #7fb0f0;
-    --atomic-editor-hl-type: #e0a165;
-    --atomic-editor-hl-tag: #e0a165;
-    --atomic-editor-hl-escape: #b6a6ff;
-    --atomic-editor-hl-regexp: #8fce9c;
+    --atomic-editor-accent-bright: #d2e4fb;
+    --atomic-editor-hl-comment: #9aa0a8;
+    --atomic-editor-hl-string: #b6c8df;
+    --atomic-editor-hl-number: #d1d5db;
+    --atomic-editor-hl-keyword: #d2e4fb;
+    --atomic-editor-hl-function: #b6c8df;
+    --atomic-editor-hl-property: #b6c8df;
+    --atomic-editor-hl-type: #d1d5db;
+    --atomic-editor-hl-tag: #d2e4fb;
+    --atomic-editor-hl-escape: #d2e4fb;
+    --atomic-editor-hl-regexp: #b6c8df;
   }
 }
 
@@ -139,6 +156,10 @@ button {
   color: inherit;
 }
 
+svg {
+  display: block;
+}
+
 /* ── Lege staat (Goal §0/V4) ─────────────────────────────────────────── */
 
 .lapis-empty-state {
@@ -159,15 +180,21 @@ button {
 }
 
 /* ── Knoppen ─────────────────────────────────────────────────────────── */
+/* "Solide primary voor hoofdacties, ghost-knoppen met 1px rand voor
+   secundaire acties" (Components). */
 
 .lapis-btn {
   appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   border: 1px solid var(--border);
   background: var(--bg-elevated);
   color: var(--fg);
   border-radius: var(--radius);
-  padding: 0.4rem 0.85rem;
-  font-size: 0.875rem;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -196,7 +223,7 @@ button {
 }
 
 .lapis-btn-primary:hover {
-  filter: brightness(1.06);
+  filter: brightness(1.1);
   background: var(--accent);
 }
 
@@ -224,7 +251,7 @@ button {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.3rem;
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--border);
   background: var(--bg-elevated);
@@ -236,7 +263,7 @@ button {
 
 .lapis-vault-name {
   color: var(--fg-muted);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -245,7 +272,7 @@ button {
 
 .lapis-status {
   color: var(--fg-muted);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
 }
 
 .lapis-body {
@@ -288,6 +315,32 @@ button {
   flex-direction: column;
 }
 
+/* Broodkruimel boven de editor (Components: "breadcrumbs... label-caps"). */
+.lapis-breadcrumb {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.65rem 1.5rem 0;
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+  max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.lapis-breadcrumb-sep {
+  color: var(--fg-faint);
+}
+
+.lapis-breadcrumb-current {
+  color: var(--fg-muted);
+}
+
 /* ── De boom ─────────────────────────────────────────────────────────── */
 
 .lapis-tree {
@@ -303,16 +356,21 @@ button {
 }
 
 .lapis-tree-row {
-  width: 100%;
-  display: block;
+  width: calc(100% - 0.6rem);
+  margin-inline: 0.3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   text-align: left;
   background: transparent;
   border: none;
-  padding: 0.3rem 0.75rem;
-  font-size: 0.875rem;
+  padding: 0.32rem 0.5rem;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 400;
   color: var(--fg);
   cursor: pointer;
-  border-radius: 0;
+  border-radius: var(--radius);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -323,13 +381,34 @@ button {
 }
 
 .lapis-tree-row[aria-selected='true'] {
-  background: color-mix(in srgb, var(--accent) 16%, transparent 84%);
+  background: color-mix(in srgb, var(--accent) 12%, transparent 88%);
   color: var(--fg);
   font-weight: 600;
 }
 
+.lapis-tree-icon {
+  flex: none;
+  color: var(--fg-faint);
+}
+
+.lapis-tree-row[aria-selected='true'] .lapis-tree-icon {
+  color: var(--accent);
+}
+
+.lapis-tree-chevron {
+  flex: none;
+  color: var(--fg-faint);
+}
+
+.lapis-tree-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ── Contextmenu, quick switcher, zoeken, instellingen: gedeelde
    overlay/paneel-vorm ───────────────────────────────────────────────── */
+/* "Level 2 (modals/popovers): scherpe 1px rand, geen ambient blur" —
+   bewust geen schaduw (Elevation & Depth). */
 
 .lapis-menu {
   position: fixed;
@@ -338,7 +417,6 @@ button {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
   padding: 0.25rem;
 }
 
@@ -349,14 +427,18 @@ button {
   background: transparent;
   border: none;
   padding: 0.4rem 0.6rem;
-  border-radius: calc(var(--radius) - 0.15rem);
-  font-size: 0.875rem;
+  border-radius: calc(var(--radius) - 0.05rem);
+  font-size: 0.8125rem;
   cursor: pointer;
   color: var(--fg);
 }
 
 .lapis-menu button:hover {
   background: var(--bg-hover);
+}
+
+.lapis-menu button.lapis-menu-danger {
+  color: var(--danger);
 }
 
 .lapis-overlay {
@@ -378,7 +460,6 @@ button {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
   overflow: hidden;
 }
 
@@ -403,11 +484,11 @@ button {
 }
 
 .lapis-dialog li[role='option'] {
-  border-radius: calc(var(--radius) - 0.15rem);
+  border-radius: var(--radius);
 }
 
 .lapis-dialog li[role='option'][aria-selected='true'] {
-  background: color-mix(in srgb, var(--accent) 14%, transparent 86%);
+  background: color-mix(in srgb, var(--accent) 10%, transparent 90%);
 }
 
 .lapis-dialog li[role='option'] button {
@@ -418,24 +499,24 @@ button {
   border: none;
   padding: 0.5rem 0.6rem;
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: var(--fg);
 }
 
 .lapis-dialog li[role='option'] span {
   color: var(--fg-muted);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   margin-left: 0.4rem;
 }
 
 .lapis-dialog li[role='option'] p {
   margin: 0.2rem 0 0;
   color: var(--fg-muted);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
 }
 
 .lapis-dialog li[role='option'] mark {
-  background: color-mix(in srgb, var(--accent) 35%, transparent 65%);
+  background: color-mix(in srgb, var(--accent) 30%, transparent 70%);
   color: inherit;
   border-radius: 0.2em;
   padding: 0 0.1em;
@@ -444,7 +525,7 @@ button {
 .lapis-dialog > ul[role='listbox'] > li:not([role='option']) {
   padding: 0.6rem 0.75rem;
   color: var(--fg-muted);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
 }
 
 /* ── Instellingen ────────────────────────────────────────────────────── */
@@ -455,6 +536,8 @@ button {
 }
 
 .lapis-settings h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 1rem;
   margin: 1rem 0 0.25rem;
 }
@@ -477,12 +560,12 @@ button {
 }
 
 .lapis-settings-row-label {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
 }
 
 .lapis-settings-row-value {
   color: var(--fg-muted);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -499,7 +582,7 @@ button {
   background: var(--danger-bg);
   border-bottom: 1px solid var(--border);
   color: var(--fg);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
 }
 
 .lapis-conflict p {

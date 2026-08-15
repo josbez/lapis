@@ -70,7 +70,7 @@ export function NoteEditor({
           <button type="button" className="lapis-btn" onClick={editor.loadTheirs}>
             Hun versie laden
           </button>
-          <button type="button" className="lapis-btn" onClick={editor.keepBoth}>
+          <button type="button" className="lapis-btn lapis-btn-primary" onClick={editor.keepBoth}>
             Beide bewaren
           </button>
         </div>

@@ -137,14 +137,29 @@ frontend-tests bleven ongewijzigd groen. **Acceptatie is hier bewust geen automa
 test** (PRD F6 zelf: "Jos beoordeelt dit") — de geautomatiseerde verificatie bewijst dat
 niets kapot is gegaan, niet dat de vorm "goed genoeg" is.
 
+Het echte ontwerp is daarna via Stitch tot stand gekomen en heeft de wireframe hierboven
+vervangen. Drie terugkoppelrondes (vastgelegd in de Stitch-briefing, die niet in de repo
+staat) haalden drie problemen eruit vóór Jos akkoord gaf: lopende tekst in een
+codelettertype (leest als een IDE, niet als proza — precies wat de doelzone tussen Bear
+en iA Writer uitsluit), een toolbar van ongelabelde iconen (letterlijk Jos' eigen klacht
+over Obsidian), en een verzonnen navigatielaag ("Drafts/Projects/Archive/Trash") die
+principe 3 schendt — Lapis kent geen concepten, projecten, archief of in-app
+prullenbak-scherm, de mapboom is de enige navigatie. Dat laatste punt is in de code
+stilzwijgend weggelaten in plaats van in Stitch opgelost, op Jos' eigen instructie.
+Overgenomen: drie lettertypefamilies met een eigen rol (Geist voor de chrome, Source
+Serif 4 voor notitie-inhoud, Hanken Grotesk uitsluitend voor het instellingenscherm — een
+notitie-kop blijft bewust in dezelfde serif als de rest van diezelfde notitie), een
+kleurenpalet met borders in plaats van schaduwen voor elke laag, 4px-afronding, en een
+broodkruimel boven de editor die het echte pad toont. Alle drie de lettertypes zijn
+zelf-gehost via `@fontsource` (geen Google Fonts-CDN op runtime — PRD §8 eist "volledig
+offline"). Alle 148 frontend-tests bleven groen.
+
 ## Volgende stap
 
-**Jos' oordeel over de W10-wireframe, en daarna het herontwerp via Stitch/Claude
-Design.** Jos' oordeel na W8 was: *"ik ga het zo niet kunnen gebruiken, daar zijn W9 en
-W10 voor nodig."* Beide staan er nu in code. Wat volgt is geen nieuwe wave maar de
-voorwaarde uit diezelfde uitspraak: de eerste echte gebruikstest, tegen Jos' eigen vault
-(met de `git init`-voorzorg uit V6a hieronder) — en zijn oordeel over de vorm zelf, die
-volgens principe 7 het onderscheidend vermogen van dit product is.
+De eerste echte gebruikstest, tegen Jos' eigen vault — met de `git init`-voorzorg uit
+V6a hieronder vooraf. Jos' oordeel na W8 was: *"ik ga het zo niet kunnen gebruiken, daar
+zijn W9 en W10 voor nodig."* Beide staan er nu, inclusief het echte ontwerp — dit is dus
+het moment waarop dat oordeel voor het eerst echt getoetst kan worden.
 
 **Werkwijze vanaf hier:** klein snijden, vaste volgorde, groene verificatie per stap, en
 beslissingen die de PRD raken apart voorleggen — maar zónder de drie formele

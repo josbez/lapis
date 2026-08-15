@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ContextMenu, type ContextMenuAction } from './ContextMenu'
+import { IconChevron, IconFile, IconFolder } from './Icons'
 import type { TreeNode } from './ipc'
 
 /**
@@ -65,7 +66,7 @@ export function Tree({ root, selectedPath, startPage, onSelectFile, actions }: T
       ? [
           { label: 'Hernoemen', onSelect: () => actions.onRenameFile(menu.node.relPath) },
           { label: 'Verplaatsen naar…', onSelect: () => actions.onMoveFile(menu.node.relPath) },
-          { label: 'Naar prullenbak', onSelect: () => actions.onTrashFile(menu.node.relPath) },
+          { label: 'Naar prullenbak', onSelect: () => actions.onTrashFile(menu.node.relPath), danger: true },
           menu.node.relPath === startPage
             ? { label: 'Startpagina wissen', onSelect: () => actions.onClearStartPage() }
             : { label: 'Als startpagina instellen', onSelect: () => actions.onSetStartPage(menu.node.relPath) },
@@ -123,8 +124,11 @@ function TreeRow({ node, depth, expanded, onToggle, selectedPath, onSelectFile, 
         onClick={() => (isDir ? onToggle(node.relPath) : onSelectFile(node.relPath))}
         onContextMenu={(e) => onContextMenu(e, node)}
       >
-        {isDir ? (isOpen ? '▾ ' : '▸ ') : '  '}
-        {node.name}
+        <span className="lapis-tree-chevron" style={{ width: 12 }}>
+          {isDir && <IconChevron open={isOpen} />}
+        </span>
+        <span className="lapis-tree-icon">{isDir ? <IconFolder /> : <IconFile />}</span>
+        <span className="lapis-tree-name">{node.name}</span>
         {isDir && !node.readable ? ' (geen toegang)' : ''}
       </button>
       {isDir && isOpen && (

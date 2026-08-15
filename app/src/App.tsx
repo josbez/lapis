@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Breadcrumb } from './Breadcrumb'
 import { EmptyState } from './EmptyState'
 import { FullTextSearch } from './FullTextSearch'
+import { IconFilePlus, IconFolderPlus, IconRefresh, IconSettings, IconSidebar } from './Icons'
 import { NoteDraft } from './NoteDraft'
 import { NoteEditor } from './NoteEditor'
 import { QuickSwitcher, flattenFiles } from './QuickSwitcher'
@@ -405,16 +407,20 @@ export default function App() {
     <div className="lapis-app">
       <div className="lapis-toolbar">
         <button type="button" className="lapis-btn" onClick={toggleSidebar}>
-          {sidebarVisible ? 'Sidebar verbergen' : 'Sidebar tonen'}
+          <IconSidebar />
+          <span>{sidebarVisible ? 'Sidebar verbergen' : 'Sidebar tonen'}</span>
         </button>
         <button type="button" className="lapis-btn" onClick={refresh}>
-          Verversen
+          <IconRefresh />
+          <span>Verversen</span>
         </button>
         <button type="button" className="lapis-btn" onClick={() => newNote()}>
-          Nieuwe notitie
+          <IconFilePlus />
+          <span>Nieuwe notitie</span>
         </button>
         <button type="button" className="lapis-btn" onClick={() => newFolder()}>
-          Nieuwe map
+          <IconFolderPlus />
+          <span>Nieuwe map</span>
         </button>
         <button
           type="button"
@@ -425,7 +431,8 @@ export default function App() {
             setSettingsOpen(true)
           }}
         >
-          Instellingen
+          <IconSettings />
+          <span>Instellingen</span>
         </button>
         <span className="lapis-toolbar-spacer" />
         <span className="lapis-vault-name">{view.rootDisplay}</span>
@@ -449,14 +456,17 @@ export default function App() {
           ) : selectedPath === null ? (
             <p className="lapis-main-placeholder">Kies een notitie in de boom.</p>
           ) : noteContent !== null ? (
-            <NoteEditor
-              relPath={selectedPath}
-              initial={noteContent}
-              revealText={revealText}
-              onStatus={setStatus}
-              onCopySaved={refresh}
-              onNoteMoved={handleNoteMoved}
-            />
+            <>
+              <Breadcrumb relPath={selectedPath} />
+              <NoteEditor
+                relPath={selectedPath}
+                initial={noteContent}
+                revealText={revealText}
+                onStatus={setStatus}
+                onCopySaved={refresh}
+                onNoteMoved={handleNoteMoved}
+              />
+            </>
           ) : (
             <p className="lapis-main-placeholder">{status || 'laden…'}</p>
           )}

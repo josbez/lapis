@@ -3,6 +3,8 @@ import { useEffect, useRef } from 'react'
 export interface ContextMenuAction {
   label: string
   onSelect: () => void
+  /** W10: signaleert een destructieve actie (naar de prullenbak) in rood. */
+  danger?: boolean
 }
 
 interface ContextMenuProps {
@@ -42,6 +44,7 @@ export function ContextMenu({ x, y, actions, onClose }: ContextMenuProps) {
           key={action.label}
           type="button"
           role="menuitem"
+          className={action.danger ? 'lapis-menu-danger' : undefined}
           onClick={() => {
             onClose()
             action.onSelect()
