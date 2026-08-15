@@ -43,11 +43,10 @@
 
   /* Typografie — drie families met elk hun eigen rol (Brand & Style /
      Typography in het tokenbestand): Geist voor de chrome eromheen (sidebar,
-     toolbar, menu's, instellingen), Source Serif 4 voor de notitie-inhoud
-     zelf, Hanken Grotesk uitsluitend voor een klein aantal echte
-     app-titels (het instellingenscherm) — niet voor koppen ín een notitie,
-     want die horen bij dezelfde lopende tekst als de rest van die notitie
-     (zie de kanttekening in de briefing, sectie 11). */
+     toolbar, menu's, instellingen), Source Serif 4 voor lopende tekst in de
+     notitie, Hanken Grotesk voor koppen — zowel het instellingenscherm als
+     de H1/H2 ín een notitie (verderop, op `.cm-atomic-h1`/`h2`), zoals het
+     tokenbestand voorschrijft. */
   --font-sans: 'Geist Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --font-serif: 'Source Serif 4', ui-serif, Georgia, serif;
   --font-display: 'Hanken Grotesk', var(--font-sans);
@@ -149,6 +148,16 @@ body {
 
 #root {
   height: 100vh;
+}
+
+/* Koppen ín een notitie — Hanken Grotesk, net als het instellingenscherm
+   (Typography: "Headlines: Hanken Grotesk for... document titles"). Alleen
+   font-family: @atomic-editor/editor's eigen stylesheet bepaalt al
+   grootte/gewicht per kopniveau, dit overschrijft alleen welk lettertype
+   daarbinnen gebruikt wordt. */
+.cm-atomic-h1,
+.cm-atomic-h2 {
+  font-family: var(--font-display);
 }
 
 button {
