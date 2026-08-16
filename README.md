@@ -169,6 +169,44 @@ wave-documenten. Zie de evaluatie in
 **Vóór er tegen echte notities getest wordt:** `git init` + commit in de vault
 (afspraak V6a). Schrijftests draaien uitsluitend tegen tijdelijke fixture-vaults.
 
+## Zelf bouwen en draaien (macOS)
+
+Eenmalig nodig:
+
+- **Xcode Command Line Tools** — `xcode-select --install`
+- **Rust** — via [rustup.rs](https://rustup.rs)
+- **Node.js 22** — dezelfde versie als CI, bijvoorbeeld via [nvm](https://github.com/nvm-sh/nvm)
+  of [nodejs.org](https://nodejs.org)
+
+Daarna, om Lapis als een echt venster te starten (hot reload op de frontend; de eerste
+keer bouwt cargo de Rust-kant, dat duurt een paar minuten, daarna is het snel):
+
+```bash
+git clone git@github.com:josbez/lapis.git
+cd lapis/app
+npm install
+npm run tauri dev
+```
+
+**Welke branch?** W9 en W10 staan op [PR #22](https://github.com/josbez/lapis/pull/22)
+(`claude/verder-gaan-h13h0z`), nog niet gemerged naar de hoofdbranch. Om die versie te
+bouwen:
+
+```bash
+git checkout claude/verder-gaan-h13h0z
+git pull
+```
+
+Om een `.app` te bouwen die je los kunt starten in plaats van via `tauri dev`:
+
+```bash
+npm run tauri build
+```
+
+Het resultaat staat in `app/src-tauri/target/release/bundle/macos/Lapis.app`. Niet
+gesigned — macOS blokkeert de eerste start, dus rechtsklik → Open in plaats van
+dubbelklikken.
+
 ## Documenten
 
 | Document | Waarvoor | Status |
