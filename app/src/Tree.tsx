@@ -84,7 +84,6 @@ export function Tree({ root, selectedPath, startPage, onSelectFile, actions }: T
           <TreeRow
             key={child.relPath}
             node={child}
-            depth={0}
             expanded={expanded}
             onToggle={toggle}
             selectedPath={selectedPath}
@@ -100,7 +99,6 @@ export function Tree({ root, selectedPath, startPage, onSelectFile, actions }: T
 
 interface RowProps {
   node: TreeNode
-  depth: number
   expanded: Set<string>
   onToggle: (relPath: string) => void
   selectedPath: string | null
@@ -108,7 +106,7 @@ interface RowProps {
   onContextMenu: (e: React.MouseEvent, node: TreeNode) => void
 }
 
-function TreeRow({ node, depth, expanded, onToggle, selectedPath, onSelectFile, onContextMenu }: RowProps) {
+function TreeRow({ node, expanded, onToggle, selectedPath, onSelectFile, onContextMenu }: RowProps) {
   const isDir = node.kind === 'dir'
   const isOpen = isDir && expanded.has(node.relPath)
   const isSelected = !isDir && node.relPath === selectedPath
@@ -118,7 +116,6 @@ function TreeRow({ node, depth, expanded, onToggle, selectedPath, onSelectFile, 
       <button
         type="button"
         className="lapis-tree-row"
-        style={{ paddingLeft: `${depth * 16}px` }}
         // Een klik op een bestand zet hooguit de selectie — er gebeurt geen
         // IPC-aanroep die inhoud leest (Goal §4: dat is W2).
         onClick={() => (isDir ? onToggle(node.relPath) : onSelectFile(node.relPath))}
@@ -132,12 +129,11 @@ function TreeRow({ node, depth, expanded, onToggle, selectedPath, onSelectFile, 
         {isDir && !node.readable ? ' (geen toegang)' : ''}
       </button>
       {isDir && isOpen && (
-        <ul>
+        <ul className="lapis-tree-branch">
           {node.children.map((child) => (
             <TreeRow
               key={child.relPath}
               node={child}
-              depth={depth + 1}
               expanded={expanded}
               onToggle={onToggle}
               selectedPath={selectedPath}

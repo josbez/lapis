@@ -289,7 +289,7 @@ isolation in de gegeven vorm) staat in §3 en §4; die analyse blijft geldig als
 | W7 · Bestandsbeheer | ✅ |
 | W8 · Bijlagen | ✅ |
 | W9 · Vaste eerste pagina | ✅ |
-| **W10 · De vorm** | ✅ **wireframe, daarna een echt ontwerp via Stitch (drie terugkoppelrondes), geïmplementeerd** |
+| **W10 · De vorm** | ✅ **wireframe, daarna een echt ontwerp via Stitch (meerdere terugkoppelrondes), geïmplementeerd — zie `docs/10-stijlgids.md`** |
 
 Alle geautomatiseerde verificatie is groen. Wat nergens is gebeurd: een handmatige
 doorloop door Jos tegen zijn eigen notities. Zijn oordeel na W8: *"ik ga het zo niet

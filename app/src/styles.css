@@ -478,6 +478,17 @@ svg {
   padding: 0;
 }
 
+/* Onderliggende bestanden/mappen (Components: "indent line to visually
+   connect nested files to their parent folder") — een dunne verticale
+   geleidelijn, ingesprongen tot onder het map-icoon van de ouder, zodat de
+   boomstructuur ook zonder de wisselende achtergrondkleur van selectie
+   herkenbaar blijft. */
+.lapis-tree ul.lapis-tree-branch {
+  margin-left: 0.85rem;
+  padding-left: 0.6rem;
+  border-left: 1px solid var(--border);
+}
+
 .lapis-tree-row {
   width: calc(100% - 0.6rem);
   margin-inline: 0.3rem;
