@@ -15,7 +15,9 @@
         "label": "main",
         "title": "Lapis",
         "width": 1100,
-        "height": 760
+        "height": 760,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true
       }
     ],
     "security": {

@@ -151,13 +151,25 @@ body {
 }
 
 /* Koppen ín een notitie — Hanken Grotesk, net als het instellingenscherm
-   (Typography: "Headlines: Hanken Grotesk for... document titles"). Alleen
-   font-family: @atomic-editor/editor's eigen stylesheet bepaalt al
-   grootte/gewicht per kopniveau, dit overschrijft alleen welk lettertype
-   daarbinnen gebruikt wordt. */
-.cm-atomic-h1,
-.cm-atomic-h2 {
+   (Typography: "Headlines: Hanken Grotesk for... document titles"). H1
+   nadrukkelijk groter en verder los van zowel de lopende tekst als H2 —
+   een duidelijke titel, niet nog een tussenkopje. `.lapis-editor-host`
+   erbij: @atomic-editor/editor's eigen `.cm-line.cm-atomic-h1`-regel zet
+   al een font-size, en wint anders op specificiteit ongeacht importvolgorde. */
+.lapis-editor-host .cm-atomic-h1,
+.lapis-editor-host .cm-atomic-h2 {
   font-family: var(--font-display);
+}
+
+.lapis-editor-host .cm-line.cm-atomic-h1 {
+  font-size: 2.1em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.lapis-editor-host .cm-line.cm-atomic-h2 {
+  font-size: 1.3em;
+  font-weight: 600;
 }
 
 button {
@@ -236,16 +248,32 @@ svg {
   background: var(--accent);
 }
 
-.lapis-btn-plain {
+/* Icoon-only toolbar-knoppen (sidebar/verversen/instellingen) — bewust
+   onopvallend, geen rand of vulling zoals .lapis-btn: dit is chrome, geen
+   actie die om aandacht vraagt. Toegankelijke naam komt van aria-label op
+   de knop zelf (er staat geen zichtbare tekst naast het icoon). */
+.lapis-toolbar-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
   border: none;
   background: transparent;
-  padding: 0.3rem 0.5rem;
+  color: var(--fg-muted);
   border-radius: var(--radius);
   cursor: pointer;
 }
 
-.lapis-btn-plain:hover {
+.lapis-toolbar-btn:hover {
   background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.lapis-toolbar-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 /* ── Het venster: toolbar + sidebar + hoofdinhoud ───────────────────── */
@@ -260,23 +288,19 @@ svg {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.5rem 0.75rem;
+  gap: 0.15rem;
+  height: 2.6rem;
+  /* Ruimte voor de macOS-verkeerslichten (titleBarStyle: Overlay, PRD F6 —
+     geen eigen titelbalk, zoals Obsidian/Slack). De hoogte van het
+     systeemvenster-chrome varieert per macOS-versie; deze marge is ruim
+     genoeg gekozen om nooit te overlappen. */
+  padding: 0 0.6rem 0 5rem;
   border-bottom: 1px solid var(--border);
   background: var(--bg-elevated);
 }
 
 .lapis-toolbar-spacer {
   flex: 1;
-}
-
-.lapis-vault-name {
-  color: var(--fg-muted);
-  font-size: 0.75rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 24ch;
 }
 
 .lapis-status {
@@ -293,10 +317,53 @@ svg {
 .lapis-sidebar {
   flex: none;
   width: 260px;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   border-right: 1px solid var(--border);
   background: var(--bg-surface);
+}
+
+.lapis-sidebar-tree {
+  flex: 1;
+  overflow-y: auto;
   padding: 0.5rem 0;
+}
+
+/* "Nieuwe notitie"/"Nieuwe map" als duo-knop onderaan de mappenbalk, in
+   plaats van in de hoofdtoolbar — dichter bij waar ze toegepast worden. */
+.lapis-sidebar-footer {
+  flex: none;
+  display: flex;
+  border-top: 1px solid var(--border);
+}
+
+.lapis-sidebar-footer button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.4rem;
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.lapis-sidebar-footer button:first-child {
+  border-right: 1px solid var(--border);
+}
+
+.lapis-sidebar-footer button:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.lapis-sidebar-footer button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .lapis-main {

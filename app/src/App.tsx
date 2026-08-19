@@ -405,26 +405,32 @@ export default function App() {
 
   return (
     <div className="lapis-app">
-      <div className="lapis-toolbar">
-        <button type="button" className="lapis-btn" onClick={toggleSidebar}>
+      <div className="lapis-toolbar" data-tauri-drag-region="">
+        <button
+          type="button"
+          className="lapis-toolbar-btn"
+          aria-label={sidebarVisible ? 'Sidebar verbergen' : 'Sidebar tonen'}
+          title={sidebarVisible ? 'Sidebar verbergen' : 'Sidebar tonen'}
+          onClick={toggleSidebar}
+        >
           <IconSidebar />
-          <span>{sidebarVisible ? 'Sidebar verbergen' : 'Sidebar tonen'}</span>
-        </button>
-        <button type="button" className="lapis-btn" onClick={refresh}>
-          <IconRefresh />
-          <span>Verversen</span>
-        </button>
-        <button type="button" className="lapis-btn" onClick={() => newNote()}>
-          <IconFilePlus />
-          <span>Nieuwe notitie</span>
-        </button>
-        <button type="button" className="lapis-btn" onClick={() => newFolder()}>
-          <IconFolderPlus />
-          <span>Nieuwe map</span>
         </button>
         <button
           type="button"
-          className="lapis-btn"
+          className="lapis-toolbar-btn"
+          aria-label="Verversen"
+          title="Verversen"
+          onClick={refresh}
+        >
+          <IconRefresh />
+        </button>
+        <span className="lapis-toolbar-spacer" />
+        <span className="lapis-status">{status}</span>
+        <button
+          type="button"
+          className="lapis-toolbar-btn"
+          aria-label="Instellingen"
+          title="Instellingen"
           onClick={() => {
             setQuickSwitcherOpen(false)
             setFullTextSearchOpen(false)
@@ -432,22 +438,30 @@ export default function App() {
           }}
         >
           <IconSettings />
-          <span>Instellingen</span>
         </button>
-        <span className="lapis-toolbar-spacer" />
-        <span className="lapis-vault-name">{view.rootDisplay}</span>
-        <span className="lapis-status">{status}</span>
       </div>
       <div className="lapis-body">
         {sidebarVisible && (
           <nav aria-label="Vault" className="lapis-sidebar">
-            <Tree
-              root={view.tree}
-              selectedPath={selectedPath}
-              startPage={startPage}
-              onSelectFile={openNote}
-              actions={treeActions}
-            />
+            <div className="lapis-sidebar-tree">
+              <Tree
+                root={view.tree}
+                selectedPath={selectedPath}
+                startPage={startPage}
+                onSelectFile={openNote}
+                actions={treeActions}
+              />
+            </div>
+            <div className="lapis-sidebar-footer">
+              <button type="button" onClick={() => newNote()}>
+                <IconFilePlus />
+                <span>Nieuwe notitie</span>
+              </button>
+              <button type="button" onClick={() => newFolder()}>
+                <IconFolderPlus />
+                <span>Nieuwe map</span>
+              </button>
+            </div>
           </nav>
         )}
         <main className="lapis-main">

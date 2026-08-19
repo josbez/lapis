@@ -70,8 +70,10 @@ describe('App', () => {
 
     render(<App />)
 
+    // W10: het vaultpad staat sinds de herziening niet meer in de toolbar
+    // (dat hoort bij Instellingen) — deze test bewijst alleen dat de boom
+    // verschijnt.
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
-    expect(screen.getByText(/\/tmp\/vault/)).toBeTruthy()
   })
 
   it('sidebar verbergen haalt de boom uit beeld en onthoudt de stand', async () => {
@@ -82,13 +84,13 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
-    fireEvent.click(screen.getByText('Sidebar verbergen'))
+    fireEvent.click(screen.getByRole('button', { name: 'Sidebar verbergen' }))
     await waitFor(() => expect(screen.queryByText(/notitie\.md/)).toBeNull())
     expect(mockedIpc.setSidebarVisible).toHaveBeenCalledWith(false)
 
     // De boom-data blijft intact — verbergen is CSS-state, geen her-fetch
     // (Spec §5.6).
-    fireEvent.click(screen.getByText('Sidebar tonen'))
+    fireEvent.click(screen.getByRole('button', { name: 'Sidebar tonen' }))
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
     expect(mockedIpc.rescanVault).not.toHaveBeenCalled()
   })
@@ -99,7 +101,7 @@ describe('App', () => {
 
     render(<App />)
 
-    await waitFor(() => expect(screen.getByText('Sidebar tonen')).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Sidebar tonen' })).toBeTruthy())
     expect(screen.queryByText(/notitie\.md/)).toBeNull()
   })
 
@@ -615,7 +617,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/inhoud/)).toBeTruthy())
 
-    fireEvent.click(screen.getByText('Instellingen'))
+    fireEvent.click(screen.getByRole('button', { name: 'Instellingen' }))
 
     const dialog = screen.getByRole('dialog', { name: 'Instellingen' })
     expect(within(dialog).getByText('/tmp/vault')).toBeTruthy()
@@ -629,7 +631,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
-    fireEvent.click(screen.getByText('Instellingen'))
+    fireEvent.click(screen.getByRole('button', { name: 'Instellingen' }))
     expect(screen.getByRole('dialog', { name: 'Instellingen' })).toBeTruthy()
 
     fireEvent.keyDown(window, { key: 'Escape' })
@@ -650,12 +652,17 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
-    fireEvent.click(screen.getByText('Instellingen'))
+    fireEvent.click(screen.getByRole('button', { name: 'Instellingen' }))
     fireEvent.click(screen.getByRole('button', { name: 'Andere map kiezen' }))
 
     await waitFor(() => expect(mockedIpc.openVault).toHaveBeenCalledWith('/tmp/andere-vault'))
-    await waitFor(() => expect(screen.getByText('/tmp/andere-vault')).toBeTruthy())
-    expect(screen.queryByRole('dialog')).toBeNull()
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    // W10: het pad staat niet meer in de toolbar — heropen Instellingen om
+    // te bewijzen dat de app-state écht is bijgewerkt, niet alleen dat
+    // openVault is aangeroepen.
+    fireEvent.click(screen.getByRole('button', { name: 'Instellingen' }))
+    expect(within(screen.getByRole('dialog')).getByText('/tmp/andere-vault')).toBeTruthy()
   })
 
   it('"Startpagina wissen" in Instellingen roept setStartPage(null) aan', async () => {
@@ -667,7 +674,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/inhoud/)).toBeTruthy())
 
-    fireEvent.click(screen.getByText('Instellingen'))
+    fireEvent.click(screen.getByRole('button', { name: 'Instellingen' }))
     fireEvent.click(screen.getByRole('button', { name: 'Wissen' }))
 
     await waitFor(() => expect(mockedIpc.setStartPage).toHaveBeenCalledWith(null))
@@ -680,7 +687,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
-    fireEvent.click(screen.getByText('Instellingen'))
+    fireEvent.click(screen.getByRole('button', { name: 'Instellingen' }))
     expect(screen.getByRole('dialog', { name: 'Instellingen' })).toBeTruthy()
 
     fireEvent.keyDown(window, { key: 'k', metaKey: true })
