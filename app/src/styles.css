@@ -514,9 +514,12 @@ svg {
   background: var(--bg-hover);
 }
 
-.lapis-tree-row[aria-selected='true'] {
-  background: color-mix(in srgb, var(--accent) 12%, transparent 88%);
-  color: var(--fg);
+/* `aria-selected` staat op de <li role="treeitem">, niet op de knop zelf
+   (correcte ARIA-plek voor treeitem) — vandaar de kindselector i.p.v. een
+   klasse-attribuutselector op `.lapis-tree-row` zelf. */
+li[aria-selected='true'] > .lapis-tree-row {
+  background: var(--accent);
+  color: var(--accent-fg);
   font-weight: 600;
 }
 
@@ -525,8 +528,8 @@ svg {
   color: var(--fg-faint);
 }
 
-.lapis-tree-row[aria-selected='true'] .lapis-tree-icon {
-  color: var(--accent);
+li[aria-selected='true'] > .lapis-tree-row .lapis-tree-icon {
+  color: var(--accent-fg);
 }
 
 .lapis-tree-chevron {
