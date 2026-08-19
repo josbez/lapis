@@ -312,8 +312,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
-    fireEvent.click(screen.getByText('Nieuw'))
-    fireEvent.click(screen.getByText('Nieuwe notitie'))
+    fireEvent.click(screen.getByRole('button', { name: 'Nieuwe notitie' }))
 
     const content = document.querySelector('.cm-content')
     expect(content?.getAttribute('contenteditable')).toBe('true')
@@ -328,8 +327,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
-    fireEvent.click(screen.getByText('Nieuw'))
-    fireEvent.click(screen.getByText('Nieuwe notitie'))
+    fireEvent.click(screen.getByRole('button', { name: 'Nieuwe notitie' }))
 
     // De hook zelf (create_note-aanroep, race met verder typen) is elders
     // getest — hier bewijzen we alleen dat App.tsx de overdracht (onCreated)
@@ -359,8 +357,7 @@ describe('App', () => {
     fireEvent.click(screen.getByText(/notitie\.md/))
     await waitFor(() => expect(screen.getByText(/bestaande inhoud/)).toBeTruthy())
 
-    fireEvent.click(screen.getByText('Nieuw'))
-    fireEvent.click(screen.getByText('Nieuwe notitie'))
+    fireEvent.click(screen.getByRole('button', { name: 'Nieuwe notitie' }))
 
     expect(screen.queryByText(/bestaande inhoud/)).toBeNull()
   })
@@ -377,8 +374,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
-    fireEvent.click(screen.getByText('Nieuw'))
-    fireEvent.click(screen.getByText('Nieuwe map'))
+    fireEvent.click(screen.getByRole('button', { name: 'Nieuwe map' }))
 
     expect(promptSpy).toHaveBeenCalled()
     await waitFor(() => expect(mockedIpc.createFolder).toHaveBeenCalledWith('', 'Projecten'))
@@ -393,8 +389,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
-    fireEvent.click(screen.getByText('Nieuw'))
-    fireEvent.click(screen.getByText('Nieuwe map'))
+    fireEvent.click(screen.getByRole('button', { name: 'Nieuwe map' }))
 
     expect(mockedIpc.createFolder).not.toHaveBeenCalled()
   })

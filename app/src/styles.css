@@ -303,14 +303,6 @@ svg {
   flex: 1;
 }
 
-.lapis-toolbar-divider {
-  flex: none;
-  width: 1px;
-  height: 1.15rem;
-  background: var(--border);
-  margin: 0 0.3rem;
-}
-
 /* Statusregel onderaan het venster (Stitch: "Laatst opgeslagen…" hoort
    thuis in een voettekst, niet naast de toolbar-iconen). Alleen onze eigen
    status — geen taal-/encoding-indicatoren zoals Stitch' mockup liet zien,
@@ -348,22 +340,69 @@ svg {
   padding: 0.5rem 0;
 }
 
-/* "+ Nieuw" onderaan de mappenbalk (NewItemMenu) — een trigger die een
-   popup-menu opent met "Nieuwe notitie"/"Nieuwe map", dichter bij waar ze
-   toegepast worden dan de hoofdtoolbar. */
+/* Onderaan de mappenbalk: twee icoon-knoppen (nieuwe notitie/map) en
+   daaronder Instellingen. Terug naar losse knoppen i.p.v. de eerdere
+   "+ Nieuw"-popup (`NewItemMenu`), en Instellingen hierheen verplaatst
+   vanuit de hoofdtoolbar — beide op verzoek, na een nieuwe
+   Stitch-terugkoppelronde. */
 .lapis-sidebar-footer {
-  position: relative;
   flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.5rem;
   border-top: 1px solid var(--border);
 }
 
-.lapis-sidebar-new-trigger {
-  width: 100%;
+.lapis-sidebar-new-buttons {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.lapis-sidebar-new-buttons button {
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.55rem 0.75rem;
+  justify-content: center;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.lapis-sidebar-new-buttons button:first-child {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+.lapis-sidebar-new-buttons button:first-child:hover {
+  background: color-mix(in srgb, var(--accent) 88%, black 12%);
+}
+
+.lapis-sidebar-new-buttons button:last-child {
+  background: transparent;
+  color: var(--fg-muted);
+}
+
+.lapis-sidebar-new-buttons button:last-child:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.lapis-sidebar-new-buttons button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.lapis-sidebar-settings {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.5rem;
   border: none;
+  border-radius: var(--radius);
   background: transparent;
   color: var(--fg-muted);
   font-family: var(--font-sans);
@@ -371,46 +410,14 @@ svg {
   cursor: pointer;
 }
 
-.lapis-sidebar-new-trigger:hover {
+.lapis-sidebar-settings:hover {
   background: var(--bg-hover);
   color: var(--fg);
 }
 
-.lapis-sidebar-new-trigger:focus-visible {
+.lapis-sidebar-settings:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
-}
-
-.lapis-sidebar-new-menu {
-  position: absolute;
-  bottom: 100%;
-  left: 0.5rem;
-  margin-bottom: 0.4rem;
-  z-index: 20;
-  min-width: 11rem;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.25rem;
-}
-
-.lapis-sidebar-new-menu button {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  text-align: left;
-  background: transparent;
-  border: none;
-  padding: 0.4rem 0.6rem;
-  border-radius: calc(var(--radius) - 0.05rem);
-  font-size: 0.8125rem;
-  cursor: pointer;
-  color: var(--fg);
-}
-
-.lapis-sidebar-new-menu button:hover {
-  background: var(--bg-hover);
 }
 
 .lapis-main {

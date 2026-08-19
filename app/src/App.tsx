@@ -3,7 +3,7 @@ import { Breadcrumb } from './Breadcrumb'
 import { EmptyState } from './EmptyState'
 import { FullTextSearch } from './FullTextSearch'
 import { IconRefresh, IconSettings, IconSidebar } from './Icons'
-import { NewItemMenu } from './NewItemMenu'
+import { NewItemButtons } from './NewItemButtons'
 import { NoteDraft } from './NoteDraft'
 import { NoteEditor } from './NoteEditor'
 import { QuickSwitcher, flattenFiles } from './QuickSwitcher'
@@ -426,20 +426,6 @@ export default function App() {
         >
           <IconRefresh />
         </button>
-        <span className="lapis-toolbar-divider" />
-        <button
-          type="button"
-          className="lapis-toolbar-btn"
-          aria-label="Instellingen"
-          title="Instellingen"
-          onClick={() => {
-            setQuickSwitcherOpen(false)
-            setFullTextSearchOpen(false)
-            setSettingsOpen(true)
-          }}
-        >
-          <IconSettings />
-        </button>
       </div>
       <div className="lapis-body">
         {sidebarVisible && (
@@ -453,7 +439,21 @@ export default function App() {
                 actions={treeActions}
               />
             </div>
-            <NewItemMenu onNewNote={() => newNote()} onNewFolder={() => newFolder()} />
+            <div className="lapis-sidebar-footer">
+              <NewItemButtons onNewNote={() => newNote()} onNewFolder={() => newFolder()} />
+              <button
+                type="button"
+                className="lapis-sidebar-settings"
+                onClick={() => {
+                  setQuickSwitcherOpen(false)
+                  setFullTextSearchOpen(false)
+                  setSettingsOpen(true)
+                }}
+              >
+                <IconSettings />
+                <span>Instellingen</span>
+              </button>
+            </div>
           </nav>
         )}
         <main className="lapis-main">
