@@ -101,3 +101,12 @@ export function IconFolder({ size = 14 }: IconProps) {
     </svg>
   )
 }
+
+export function IconPlus({ size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" {...base} aria-hidden="true">
+      <line x1="10" y1="4" x2="10" y2="16" />
+      <line x1="4" y1="10" x2="16" y2="10" />
+    </svg>
+  )
+}

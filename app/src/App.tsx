@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Breadcrumb } from './Breadcrumb'
 import { EmptyState } from './EmptyState'
 import { FullTextSearch } from './FullTextSearch'
-import { IconFilePlus, IconFolderPlus, IconRefresh, IconSettings, IconSidebar } from './Icons'
+import { IconRefresh, IconSettings, IconSidebar } from './Icons'
+import { NewItemMenu } from './NewItemMenu'
 import { NoteDraft } from './NoteDraft'
 import { NoteEditor } from './NoteEditor'
 import { QuickSwitcher, flattenFiles } from './QuickSwitcher'
@@ -415,6 +416,7 @@ export default function App() {
         >
           <IconSidebar />
         </button>
+        <span className="lapis-toolbar-spacer" />
         <button
           type="button"
           className="lapis-toolbar-btn"
@@ -424,8 +426,7 @@ export default function App() {
         >
           <IconRefresh />
         </button>
-        <span className="lapis-toolbar-spacer" />
-        <span className="lapis-status">{status}</span>
+        <span className="lapis-toolbar-divider" />
         <button
           type="button"
           className="lapis-toolbar-btn"
@@ -452,16 +453,7 @@ export default function App() {
                 actions={treeActions}
               />
             </div>
-            <div className="lapis-sidebar-footer">
-              <button type="button" onClick={() => newNote()}>
-                <IconFilePlus />
-                <span>Nieuwe notitie</span>
-              </button>
-              <button type="button" onClick={() => newFolder()}>
-                <IconFolderPlus />
-                <span>Nieuwe map</span>
-              </button>
-            </div>
+            <NewItemMenu onNewNote={() => newNote()} onNewFolder={() => newFolder()} />
           </nav>
         )}
         <main className="lapis-main">
@@ -485,6 +477,9 @@ export default function App() {
             <p className="lapis-main-placeholder">{status || 'laden…'}</p>
           )}
         </main>
+      </div>
+      <div className="lapis-statusbar">
+        <span>{status}</span>
       </div>
       {quickSwitcherOpen && (
         <QuickSwitcher

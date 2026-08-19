@@ -312,6 +312,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
+    fireEvent.click(screen.getByText('Nieuw'))
     fireEvent.click(screen.getByText('Nieuwe notitie'))
 
     const content = document.querySelector('.cm-content')
@@ -327,6 +328,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
+    fireEvent.click(screen.getByText('Nieuw'))
     fireEvent.click(screen.getByText('Nieuwe notitie'))
 
     // De hook zelf (create_note-aanroep, race met verder typen) is elders
@@ -357,6 +359,7 @@ describe('App', () => {
     fireEvent.click(screen.getByText(/notitie\.md/))
     await waitFor(() => expect(screen.getByText(/bestaande inhoud/)).toBeTruthy())
 
+    fireEvent.click(screen.getByText('Nieuw'))
     fireEvent.click(screen.getByText('Nieuwe notitie'))
 
     expect(screen.queryByText(/bestaande inhoud/)).toBeNull()
@@ -374,6 +377,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
+    fireEvent.click(screen.getByText('Nieuw'))
     fireEvent.click(screen.getByText('Nieuwe map'))
 
     expect(promptSpy).toHaveBeenCalled()
@@ -389,6 +393,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
+    fireEvent.click(screen.getByText('Nieuw'))
     fireEvent.click(screen.getByText('Nieuwe map'))
 
     expect(mockedIpc.createFolder).not.toHaveBeenCalled()
