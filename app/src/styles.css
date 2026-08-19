@@ -555,7 +555,9 @@ svg {
 }
 
 .lapis-menu button {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   width: 100%;
   text-align: left;
   background: transparent;
@@ -571,7 +573,17 @@ svg {
   background: var(--bg-hover);
 }
 
+.lapis-menu-icon {
+  display: flex;
+  flex: none;
+  color: var(--fg-faint);
+}
+
 .lapis-menu button.lapis-menu-danger {
+  color: var(--danger);
+}
+
+.lapis-menu button.lapis-menu-danger .lapis-menu-icon {
   color: var(--danger);
 }
 
@@ -660,6 +672,96 @@ svg {
   padding: 0.6rem 0.75rem;
   color: var(--fg-muted);
   font-size: 0.8125rem;
+}
+
+/* ── Quick switcher (⌘K): zoekbalk met icoon/ESC-badge, resultaatrij met
+   bestandsicoon + submap-pad, en een voettekst met toetsenbordhint —
+   W10-terugkoppeling. Eigen selectorprefix (`.lapis-quickswitcher`, naast
+   de gedeelde `.lapis-dialog`) zodat dit `FullTextSearch` niet raakt. ── */
+
+.lapis-quick-searchrow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--fg-faint);
+}
+
+.lapis-quick-searchrow input[type='text'] {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  border-bottom: none;
+  padding: 0.75rem 0;
+}
+
+.lapis-kbd {
+  flex: none;
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+  border: 1px solid var(--border);
+  border-radius: 0.2rem;
+  padding: 0.05rem 0.4rem;
+  background: var(--bg-surface);
+}
+
+.lapis-quickswitcher .lapis-quick-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.lapis-quickswitcher .lapis-quick-row-icon,
+.lapis-quickswitcher .lapis-quick-row-enter {
+  display: flex;
+  flex: none;
+  margin-left: 0;
+  color: var(--fg-faint);
+}
+
+.lapis-quickswitcher .lapis-quick-row-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.lapis-quickswitcher .lapis-quick-row-name {
+  margin-left: 0;
+  font-size: 0.8125rem;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lapis-quickswitcher .lapis-quick-row-path {
+  margin-left: 0;
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+}
+
+.lapis-dialog.lapis-quickswitcher li[role='option'][aria-selected='true'] {
+  background: var(--accent);
+}
+
+.lapis-dialog.lapis-quickswitcher li[role='option'][aria-selected='true'] .lapis-quick-row-name,
+.lapis-dialog.lapis-quickswitcher li[role='option'][aria-selected='true'] .lapis-quick-row-path,
+.lapis-dialog.lapis-quickswitcher li[role='option'][aria-selected='true'] .lapis-quick-row-icon,
+.lapis-dialog.lapis-quickswitcher li[role='option'][aria-selected='true'] .lapis-quick-row-enter {
+  color: var(--accent-fg);
+}
+
+.lapis-quick-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.6875rem;
+  color: var(--fg-faint);
 }
 
 /* ── Instellingen ────────────────────────────────────────────────────── */

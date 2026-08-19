@@ -11,14 +11,21 @@
 
 import {
   ChevronRight,
+  CornerDownLeft,
   File,
   FilePlus,
   Folder,
+  FolderInput,
   FolderPlus,
   PanelLeft,
+  Pencil,
   Plus,
   RefreshCw,
+  Search,
   Settings,
+  Star,
+  StarOff,
+  Trash2,
 } from 'lucide-react'
 
 interface IconProps {
@@ -66,4 +73,32 @@ export function IconFolder({ size = 14 }: IconProps) {
 
 export function IconPlus({ size = 16 }: IconProps) {
   return <Plus size={size} strokeWidth={1.5} aria-hidden="true" />
+}
+
+export function IconPencil({ size = 16 }: IconProps) {
+  return <Pencil size={size} strokeWidth={1.5} aria-hidden="true" />
+}
+
+export function IconMove({ size = 16 }: IconProps) {
+  return <FolderInput size={size} strokeWidth={1.5} aria-hidden="true" />
+}
+
+export function IconTrash({ size = 16 }: IconProps) {
+  return <Trash2 size={size} strokeWidth={1.5} aria-hidden="true" />
+}
+
+export function IconStar({ size = 16 }: IconProps) {
+  return <Star size={size} strokeWidth={1.5} aria-hidden="true" />
+}
+
+export function IconStarOff({ size = 16 }: IconProps) {
+  return <StarOff size={size} strokeWidth={1.5} aria-hidden="true" />
+}
+
+export function IconSearch({ size = 16 }: IconProps) {
+  return <Search size={size} strokeWidth={1.5} aria-hidden="true" />
+}
+
+export function IconEnter({ size = 14 }: IconProps) {
+  return <CornerDownLeft size={size} strokeWidth={1.5} aria-hidden="true" />
 }

@@ -36,7 +36,7 @@ describe('QuickSwitcher', () => {
   it('filtert fuzzy zodra je typt', () => {
     render(<QuickSwitcher files={files} recentPaths={[]} onOpen={() => {}} onClose={() => {}} />)
 
-    fireEvent.change(screen.getByPlaceholderText('Typ om te zoeken…'), {
+    fireEvent.change(screen.getByPlaceholderText('Zoek notitie…'), {
       target: { value: 'np' },
     })
 
@@ -48,7 +48,7 @@ describe('QuickSwitcher', () => {
   it('toont een lege-staat-bericht als niets matcht', () => {
     render(<QuickSwitcher files={files} recentPaths={[]} onOpen={() => {}} onClose={() => {}} />)
 
-    fireEvent.change(screen.getByPlaceholderText('Typ om te zoeken…'), {
+    fireEvent.change(screen.getByPlaceholderText('Zoek notitie…'), {
       target: { value: 'xyz123' },
     })
 

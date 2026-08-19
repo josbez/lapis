@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { fuzzyFilter } from './fuzzyMatch'
+import { IconEnter, IconFile, IconSearch } from './Icons'
 import type { TreeNode } from './ipc'
 
 export interface QuickSwitcherFile {
@@ -13,6 +14,13 @@ interface QuickSwitcherProps {
   recentPaths: readonly string[]
   onOpen: (relPath: string) => void
   onClose: () => void
+}
+
+/** Het bevattende mappenpad van een bestand, voor de subtitel per rij — leeg voor een bestand in de vaultwortel. */
+function parentPath(relPath: string): string {
+  const parts = relPath.split('/')
+  parts.pop()
+  return parts.join(' / ')
 }
 
 /** Alle `File`-knopen uit de boom, plat, zonder mappen. */
@@ -88,30 +96,60 @@ export function QuickSwitcher({ files, recentPaths, onOpen, onClose }: QuickSwit
 
   return (
     <div className="lapis-overlay">
-      <div role="dialog" aria-label="Snel een notitie openen" className="lapis-dialog" onKeyDown={onKeyDown}>
-        <input
-          ref={inputRef}
-          type="text"
-          placeholder="Typ om te zoeken…"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value)
-            setSelectedIndex(0)
-          }}
-        />
+      <div
+        role="dialog"
+        aria-label="Snel een notitie openen"
+        className="lapis-dialog lapis-quickswitcher"
+        onKeyDown={onKeyDown}
+      >
+        <div className="lapis-quick-searchrow">
+          <IconSearch />
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="Zoek notitie…"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setSelectedIndex(0)
+            }}
+          />
+          <span className="lapis-kbd">ESC</span>
+        </div>
         <ul role="listbox">
           {results.length === 0 ? (
             <li>Geen notities gevonden.</li>
           ) : (
-            results.map((file, index) => (
-              <li key={file.relPath} role="option" aria-selected={index === selectedIndex}>
-                <button type="button" onClick={() => onOpen(file.relPath)}>
-                  {file.name} <span>{file.relPath}</span>
-                </button>
-              </li>
-            ))
+            results.map((file, index) => {
+              const isSelected = index === selectedIndex
+              const subtitle = parentPath(file.relPath)
+              return (
+                <li key={file.relPath} role="option" aria-selected={isSelected}>
+                  <button type="button" onClick={() => onOpen(file.relPath)}>
+                    <span className="lapis-quick-row">
+                      <span className="lapis-quick-row-icon">
+                        <IconFile />
+                      </span>
+                      <span className="lapis-quick-row-text">
+                        <span className="lapis-quick-row-name">{file.name}</span>
+                        {subtitle && <span className="lapis-quick-row-path">{subtitle}</span>}
+                      </span>
+                      {isSelected && (
+                        <span className="lapis-quick-row-enter" aria-hidden="true">
+                          <IconEnter />
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                </li>
+              )
+            })
           )}
         </ul>
+        <div className="lapis-quick-footer">
+          <span>Pijltjestoetsen om te navigeren</span>
+          <span>Lapis Zoeken</span>
+        </div>
       </div>
     </div>
   )

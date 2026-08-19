@@ -1,6 +1,17 @@
 import { useState } from 'react'
 import { ContextMenu, type ContextMenuAction } from './ContextMenu'
-import { IconChevron, IconFile, IconFolder } from './Icons'
+import {
+  IconChevron,
+  IconFile,
+  IconFilePlus,
+  IconFolder,
+  IconFolderPlus,
+  IconMove,
+  IconPencil,
+  IconStar,
+  IconStarOff,
+  IconTrash,
+} from './Icons'
 import type { TreeNode } from './ipc'
 
 /**
@@ -64,16 +75,37 @@ export function Tree({ root, selectedPath, startPage, onSelectFile, actions }: T
   const menuActions: ContextMenuAction[] = menu
     ? menu.node.kind === 'file'
       ? [
-          { label: 'Hernoemen', onSelect: () => actions.onRenameFile(menu.node.relPath) },
-          { label: 'Verplaatsen naar…', onSelect: () => actions.onMoveFile(menu.node.relPath) },
-          { label: 'Naar prullenbak', onSelect: () => actions.onTrashFile(menu.node.relPath), danger: true },
+          { label: 'Hernoemen', icon: <IconPencil />, onSelect: () => actions.onRenameFile(menu.node.relPath) },
+          {
+            label: 'Verplaatsen naar…',
+            icon: <IconMove />,
+            onSelect: () => actions.onMoveFile(menu.node.relPath),
+          },
+          {
+            label: 'Naar prullenbak',
+            icon: <IconTrash />,
+            onSelect: () => actions.onTrashFile(menu.node.relPath),
+            danger: true,
+          },
           menu.node.relPath === startPage
-            ? { label: 'Startpagina wissen', onSelect: () => actions.onClearStartPage() }
-            : { label: 'Als startpagina instellen', onSelect: () => actions.onSetStartPage(menu.node.relPath) },
+            ? { label: 'Startpagina wissen', icon: <IconStarOff />, onSelect: () => actions.onClearStartPage() }
+            : {
+                label: 'Als startpagina instellen',
+                icon: <IconStar />,
+                onSelect: () => actions.onSetStartPage(menu.node.relPath),
+              },
         ]
       : [
-          { label: 'Nieuwe notitie hier', onSelect: () => actions.onNewNoteInDir(menu.node.relPath) },
-          { label: 'Nieuwe map hier', onSelect: () => actions.onNewFolderInDir(menu.node.relPath) },
+          {
+            label: 'Nieuwe notitie hier',
+            icon: <IconFilePlus />,
+            onSelect: () => actions.onNewNoteInDir(menu.node.relPath),
+          },
+          {
+            label: 'Nieuwe map hier',
+            icon: <IconFolderPlus />,
+            onSelect: () => actions.onNewFolderInDir(menu.node.relPath),
+          },
         ]
     : []
 

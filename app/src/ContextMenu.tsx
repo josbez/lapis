@@ -1,8 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 
 export interface ContextMenuAction {
   label: string
   onSelect: () => void
+  /** W10 (Stitch-terugkoppeling): icoon vóór het label. */
+  icon?: ReactNode
   /** W10: signaleert een destructieve actie (naar de prullenbak) in rood. */
   danger?: boolean
 }
@@ -50,7 +52,8 @@ export function ContextMenu({ x, y, actions, onClose }: ContextMenuProps) {
             action.onSelect()
           }}
         >
-          {action.label}
+          {action.icon && <span className="lapis-menu-icon">{action.icon}</span>}
+          <span>{action.label}</span>
         </button>
       ))}
     </div>
