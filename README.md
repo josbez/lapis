@@ -6,6 +6,22 @@ Lapis doet wat Obsidian doet op de dag dat je gewoon wilt schrijven en terugvind
 en verder niets. Geen graph view, geen plugin-store, geen ribbon met twaalf iconen.
 Je bestanden blijven gewone markdown in een gewone map.
 
+## Installeren
+
+Vereist macOS 11 of nieuwer (Apple Silicon en Intel).
+
+1. **[Download Lapis.dmg](https://github.com/josbez/lapis/releases/latest/download/Lapis.dmg)** en open hem.
+2. Sleep **Lapis** naar **Applications**.
+3. In Terminal: `bash /Volumes/Lapis/install.sh` (haalt de app langs Gatekeeper; hij is niet genotariseerd).
+4. Open alleen een **kopie** van je vault, onder git: `git init && git add -A && git commit -m vangnet`
+   (zie de waarschuwing hieronder — de Mac-doorloop is nog niet gedaan).
+
+Updaten: nieuwe DMG downloaden en stap 2–3 herhalen. Lapis checkt zelf nooit op updates (geen netwerk).
+
+Uitbrengen: versie gelijk zetten in `app/package.json`, `app/src-tauri/Cargo.toml` en
+`app/src-tauri/tauri.conf.json`, dan `git tag vX.Y.Z && git push origin vX.Y.Z`;
+[release.yml](.github/workflows/release.yml) bouwt de DMG en zet de release online.
+
 ## Status
 
 **Wat er nog moet gebeuren staat in de [backlog](docs/backlog.md)** — de enige plek

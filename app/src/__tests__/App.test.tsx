@@ -201,7 +201,7 @@ describe('App', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
 
     fireEvent.keyDown(window, { key: 'k', metaKey: true })
-    expect(screen.getByRole('dialog')).toBeTruthy()
+    expect(await screen.findByRole('dialog')).toBeTruthy()
 
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
     expect(screen.queryByRole('dialog')).toBeNull()
@@ -216,7 +216,7 @@ describe('App', () => {
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
     fireEvent.keyDown(window, { key: 'k', metaKey: true })
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^notitie\.md/ }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /^notitie\.md/ }))
 
     await waitFor(() => expect(mockedIpc.readNote).toHaveBeenCalledWith('notitie.md'))
     expect(mockedIpc.recordNoteOpened).toHaveBeenCalledWith('notitie.md')
@@ -235,7 +235,7 @@ describe('App', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
 
     fireEvent.keyDown(window, { key: 'f', metaKey: true, shiftKey: true })
-    expect(screen.getByRole('dialog', { name: 'Zoeken in alle notities' })).toBeTruthy()
+    expect(await screen.findByRole('dialog', { name: 'Zoeken in alle notities' })).toBeTruthy()
 
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
     expect(screen.queryByRole('dialog')).toBeNull()
