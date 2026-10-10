@@ -6,13 +6,46 @@ Lapis doet wat Obsidian doet op de dag dat je gewoon wilt schrijven en terugvind
 en verder niets. Geen graph view, geen plugin-store, geen ribbon met twaalf iconen.
 Je bestanden blijven gewone markdown in een gewone map.
 
-**Status:** [PRD v1.1](docs/03-prd.md) is geldig en de
-[wave-indeling](docs/07-wave-methode.md#5-voorstel-wave-indeling) is goedgekeurd — elf
-waves, als issues `#1`–`#11`. Stack: Tauri v2 · React · CodeMirror 6 · SQLite FTS5.
-Goal Document en Wave Specification voor W0 zijn goedgekeurd; het
-[Test & Verification Plan](docs/waves/W0-spike/02-testplan.md) wacht op goedkeuring.
-De W0-spike staat er, met een [CI-poort](.github/workflows/ci.yml) eromheen; wat nog
-ontbreekt is de doorloop op de Mac. Voor W1 zijn Goal Document, Wave Specification en
+## Status
+
+*Bijgewerkt oktober 2026. De issues `#1`–`#11` volgen deze tabel.*
+
+| Wave | Wat | Stand | Waar |
+|---|---|---|---|
+| W0 | Spike — wil ik hierin typen? | ✅ afgesloten als achterhaald | PR #12, #13 · [bewijs §11](docs/waves/W0-spike/03-bewijs.md) |
+| W1 | Vault openen en tonen | ✅ gebouwd | PR #14, #15, #16 |
+| W2 | Notitie lezen | ✅ gebouwd | PR #17 |
+| W3 | Notitie schrijven | ✅ gebouwd | PR #18 |
+| W4 | Het focusmodel | ✅ gebouwd, **opgegaan in W3** — nooit als eigen stap afgerond | PR #18 |
+| W5 | Quick switcher (`⌘K`) | ✅ gebouwd (in commits "W4" genoemd) | PR #18 |
+| W6 | Volledige tekst zoeken (`⌘⇧F`) | ✅ gebouwd | PR #19 |
+| W7 | Bestandsbeheer | ✅ gebouwd | PR #20 |
+| W8 | Bijlagen | ✅ gebouwd | PR #21 |
+| W9 | Vaste eerste pagina (`⌘⇧H`) | ✅ gebouwd | PR #22 |
+| **W10** | **De vorm** | ⏳ **open** | issue #11 |
+
+"Gebouwd" betekent: gemerged, en de geautomatiseerde poort (fmt, clippy, cargo test,
+eslint, tsc, vitest, vite build, isolatie-check) is groen op Linux. **Het betekent níét
+dat het op de Mac tegen een echte vault heeft gedraaid** — die handmatige doorloop is
+voor geen enkele wave gedaan. Stack: Tauri v2 · React · CodeMirror 6 · SQLite FTS5.
+
+**Openstaand naast W10:**
+
+- **Handmatige doorloop op de Mac**, op een kopie van de vault met `git init` + commit
+  vooraf (afspraak V6a/V6b uit
+  [08](docs/08-vervolgvragen.md#-v6--geen-back-ups-agents-die-schrijven-en-een-geblokkeerd-document)).
+  Het focusmodel (W4) en het verplaatsen van notities bij bijlagen (W8) zijn de
+  onderdelen waar dit het meest toe doet.
+- **Regeleindes bij opslaan** (T11 uit [09](docs/09-code-analyse-en-verbeterplan.md#7-stand-van-uitvoering)):
+  een productbesluit dat nooit genomen is. Zie daar.
+
+## Bouwverslag per wave
+
+*Het verhaal van hoe elke wave tot stand kwam, op het moment van schrijven. Voor de
+actuele stand: de tabel hierboven.*
+
+W0 had alle drie wave-documenten en is [afgesloten als achterhaald](docs/waves/W0-spike/03-bewijs.md)
+zonder formeel oordeel. Voor W1 zijn Goal Document, Wave Specification en
 Test & Verification Plan alle drie goedgekeurd — de vier beslisvragen uit het Goal
 Document zijn beantwoord, en `app/` opent een vault-map, scant recursief, toont de
 boom, en onthoudt de keuze bij herstart. W2 (notitie lezen) en W3 (notitie schrijven)
@@ -25,12 +58,7 @@ besluit 1) — in plaats van het eenvoudiger "sluit als Snapchat" uit een eerder
 antwoordronde. Een notitie is nu bewerkbaar met autosave (500ms na de laatste toets,
 plus `⌘S`) en atomair schrijven (tijdelijk bestand, `fsync`, `rename()`); alleen-lezen
 is sinds W3 voorbehouden aan een actief conflict. Alle geautomatiseerde verificatie
-voor W1, W2 en W3 is groen; wat nog ontbreekt is de handmatige doorloop op Jos' eigen
-vault op de Mac. **Voor die doorloop geldt afspraak V6a/V6b uit
-[08-vervolgvragen.md](docs/08-vervolgvragen.md#-v6--geen-back-ups-agents-die-schrijven-en-een-geblokkeerd-document):**
-alle schrijftests in dit project draaien uitsluitend tegen tijdelijke fixture-vaults,
-nooit tegen `~/Documents` — en vóór Jos zelf tegen zijn echte vault test, hoort daar een
-`git init` + commit aan vooraf te gaan, als vangnet.
+voor W1, W2 en W3 is groen.
 
 **Mismatch met de geplande wave-indeling, hier expliciet gemeld:** volgens
 [07 §5](docs/07-wave-methode.md#5-voorstel-wave-indeling) hoort het focusmodel (opslaan
@@ -143,9 +171,9 @@ wave-documenten. Zie de evaluatie in
 | [04 – Technische optieverkenning](docs/04-technische-spec.md) | Achtergrond bij de stackkeuzes | achtergrond |
 | [05 – Open vragen, ronde 1](docs/05-open-vragen.md) | Alle keuzes, met Jos' antwoorden | ✅ beantwoord |
 | [06 – Beslisinput techniek](docs/06-beslisinput-techniek.md) | Electron vs Tauri, mobiel, sync, urenopbouw | ✅ input voor 05 |
-| [07 – Wave-methode](docs/07-wave-methode.md) | Hoe we per brok werken | voorstel |
+| [07 – Wave-methode](docs/07-wave-methode.md) | Hoe we per brok werken | ✅ geëvalueerd en aangepast (§9) |
 | [08 – Vervolgvragen, ronde 2](docs/08-vervolgvragen.md) | Besluitenregister, met Jos' antwoorden | ✅ beantwoord |
-| [09 – Code-analyse en verbeterplan](docs/09-code-analyse-en-verbeterplan.md) | Bevindingen W0-code als backlog: epics, sprints, taken, agent-inzet | ✅ sprint 1 en 2 verwerkt |
+| [09 – Code-analyse en verbeterplan](docs/09-code-analyse-en-verbeterplan.md) | Bevindingen W0-code als backlog: epics, sprints, taken, agent-inzet | ✅ afgerond, op T11 na |
 | [W0 – Goal Document](docs/waves/W0-spike/00-goal.md) | Spike: wil ik hierin typen? | ✅ goedgekeurd |
 | [W0 – Wave Specification](docs/waves/W0-spike/01-spec.md) | Het implementatiecontract voor de spike | ✅ goedgekeurd |
 | [W0 – Test & Verification Plan](docs/waves/W0-spike/02-testplan.md) | Wat er bewezen moet worden vóór er code is | ✅ goedgekeurd |
