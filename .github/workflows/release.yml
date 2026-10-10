@@ -6,7 +6,9 @@
 # De download staat daarna op .../releases/latest/download/Lapis.dmg.
 #
 # Handmatig starten (Actions → Release → Run workflow) bouwt alleen de DMG als
-# artifact, zonder release — om de build te proberen vóór je een tag zet.
+# artifact, zonder release — om de build te proberen vóór je een tag zet. Een PR
+# die de bundeling raakt doet hetzelfde, zodat een kapotte build niet pas bij
+# de tag opvalt.
 
 name: Release
 
@@ -14,6 +16,14 @@ on:
   push:
     tags: ['v*']
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - 'scripts/make-dmg.sh'
+      - 'release/**'
+      - 'app/src-tauri/tauri.conf.json'
+      - 'app/src-tauri/Cargo.toml'
+      - 'app/src-tauri/icons/**'
 
 permissions:
   contents: write
