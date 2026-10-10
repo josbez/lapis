@@ -671,6 +671,58 @@ fn w3_write_note_conflict_wanneer_extern_gewijzigd() {
     );
 }
 
+/// De wijzigingstijd steekt de IPC-grens over als hele milliseconden
+/// (`millis_since_epoch` in `src-tauri`), terwijl APFS en ext4 nanoseconden
+/// bijhouden. Backlog #1: dezelfde conversie hier, anders gaf elke eerste
+/// autosave een conflict.
+fn via_ipc(t: SystemTime) -> SystemTime {
+    let ms = t
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
+    SystemTime::UNIX_EPOCH + Duration::from_millis(ms)
+}
+
+#[test]
+fn w3_write_note_accepteert_een_tijd_die_via_milliseconden_terugkomt() {
+    let dir = temp_dir("w3-ms-rondje");
+    write(&dir, "notitie.md", "origineel");
+    // Een tijd met een submilliseconde-deel, expliciet gezet: niet afhankelijk
+    // van de resolutie van het bestandssysteem waarop de test draait.
+    let met_nanos = SystemTime::UNIX_EPOCH + Duration::new(1_791_641_337, 478_202_986);
+    zet_mtime(&dir.join("notitie.md"), met_nanos);
+
+    let gelezen = read_note_with_mtime(&dir, "notitie.md").unwrap();
+    let uitkomst = write_note(
+        &dir,
+        "notitie.md",
+        "bewerkt",
+        Some(via_ipc(gelezen.modified)),
+    )
+    .unwrap();
+
+    assert!(
+        matches!(uitkomst, WriteOutcome::Saved(_)),
+        "kreeg {uitkomst:?}"
+    );
+    assert_eq!(
+        fs::read_to_string(dir.join("notitie.md")).unwrap(),
+        "bewerkt"
+    );
+}
+
+#[test]
+fn w3_write_note_conflict_bij_een_milliseconde_verschil() {
+    let dir = temp_dir("w3-ms-conflict");
+    write(&dir, "notitie.md", "origineel");
+    let baseline = SystemTime::UNIX_EPOCH + Duration::new(1_791_641_337, 478_202_986);
+    zet_mtime(&dir.join("notitie.md"), baseline + Duration::from_millis(1));
+
+    let uitkomst = write_note(&dir, "notitie.md", "mijn versie", Some(via_ipc(baseline))).unwrap();
+
+    assert_eq!(uitkomst, WriteOutcome::Conflict);
+}
+
 #[test]
 fn w3_write_note_zonder_expected_negeert_het_conflict_bewust() {
     let dir = temp_dir("w3-force");

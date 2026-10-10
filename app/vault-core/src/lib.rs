@@ -384,7 +384,7 @@ pub fn write_note(
     }
     if let Some(expected) = expected {
         let current = fs::metadata(&path).map_err(io)?.modified().map_err(io)?;
-        if current != expected {
+        if whole_millis(current) != whole_millis(expected) {
             return Ok(WriteOutcome::Conflict);
         }
     }
@@ -394,6 +394,18 @@ pub fn write_note(
 
     let modified = fs::metadata(&path).map_err(io)?.modified().map_err(io)?;
     Ok(WriteOutcome::Saved(modified))
+}
+
+/// Een tijdstip afgekapt op hele milliseconden. De frontend kent de
+/// wijzigingstijd alleen in milliseconden (dat is wat de IPC-grens over
+/// gaat), terwijl het bestandssysteem nanoseconden bijhoudt — vergelijken op
+/// volle precisie gaf daardoor bij elke opslag een conflict (backlog #1).
+/// Een externe wijziging binnen dezelfde milliseconde als de vorige lees- of
+/// schrijfactie wordt zo gemist; dat is de prijs, en hij is klein.
+fn whole_millis(t: SystemTime) -> u128 {
+    t.duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0)
 }
 
 /// Slaat `content` op als een nieuwe, niet-bestaande kopie naast `rel` —
