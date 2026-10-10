@@ -23,6 +23,20 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   avif: 'image/avif',
 }
 
+/**
+ * De bestandsnaam achter een afbeeldingsbron uit de markdown: `%20` en
+ * andere percent-encoding terugvertaald (backlog #3 — zo schrijven Lapis en
+ * Obsidian een naam met spaties). Een losse `%` die geen geldige encoding is,
+ * blijft letterlijk staan: dan was het gewoon onderdeel van de naam.
+ */
+export function attachmentRefToPath(ref: string): string {
+  try {
+    return decodeURIComponent(ref)
+  } catch {
+    return ref
+  }
+}
+
 function guessMimeType(ref: string): string {
   const ext = ref.split('.').pop()?.toLowerCase()
   return (ext && MIME_BY_EXTENSION[ext]) || 'application/octet-stream'
@@ -81,7 +95,7 @@ export function attachmentImageResolver(notePathHolder: { current: string | null
           if (!ref || EXTERNAL_SRC.test(ref)) continue
           this.resolved.add(img)
 
-          void readAttachment(notePath, ref)
+          void readAttachment(notePath, attachmentRefToPath(ref))
             .then((bytesBase64) => {
               const url = base64ToBlobUrl(bytesBase64, guessMimeType(ref))
               this.blobUrls.push(url)

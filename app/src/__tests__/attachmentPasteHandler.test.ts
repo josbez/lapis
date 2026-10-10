@@ -93,7 +93,7 @@ describe('createPasteHandler', () => {
 
     await vi.waitFor(() => expect(dispatch).toHaveBeenCalled())
     expect(dispatch).toHaveBeenCalledWith(
-      expect.objectContaining({ changes: { from: 0, to: 0, insert: '![](foto 2.png)' } }),
+      expect.objectContaining({ changes: { from: 0, to: 0, insert: '![](foto%202.png)' } }),
     )
   })
 

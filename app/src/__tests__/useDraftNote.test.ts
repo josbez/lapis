@@ -213,4 +213,63 @@ describe('useDraftNote', () => {
     expect(mockedIpc.createNote).toHaveBeenCalledWith('dagboek', '# Vandaag')
     unmount()
   })
+
+  // Backlog #5: een leeg concept is nooit iets wat je wilde bewaren — ook
+  // niet als je naar een andere app wisselt of uit gewoonte ⌘S drukt.
+  it('blur op een leeg concept maakt niets aan', () => {
+    const { unmount } = renderHook(() => useDraftNote({ dir: '', onCreated: vi.fn(), onStatus: vi.fn() }))
+
+    act(() => {
+      window.dispatchEvent(new Event('blur'))
+    })
+
+    expect(mockedIpc.createNote).not.toHaveBeenCalled()
+    unmount()
+  })
+
+  it('⌘S op een concept met alleen witruimte maakt niets aan', () => {
+    const { result, unmount } = renderHook(() =>
+      useDraftNote({ dir: '', onCreated: vi.fn(), onStatus: vi.fn() }),
+    )
+
+    act(() => result.current.handleMarkdownChange('  \n'))
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', metaKey: true }))
+    })
+
+    expect(mockedIpc.createNote).not.toHaveBeenCalled()
+    unmount()
+  })
+
+  // Backlog #1: het bijschrijven na create_note kan een conflict geven (iets
+  // anders schreef in dezelfde tussentijd). Dan niet doen alsof het
+  // opgeslagen is, maar de getypte tekst als kopie bewaren — zoals "beide
+  // bewaren" bij een gewone notitie — en verder met wat er op schijf staat.
+  it('bewaart de bijgetypte tekst als kopie als het bijschrijven een conflict geeft', async () => {
+    let resolveCreate!: (v: ipc.CreatedNote) => void
+    mockedIpc.createNote.mockImplementation(() => new Promise((r) => (resolveCreate = r)))
+    mockedIpc.writeNote.mockResolvedValue({ kind: 'conflict' })
+    mockedIpc.writeNoteAsCopy.mockResolvedValue('Titel (conflict).md')
+    mockedIpc.readNote.mockResolvedValue({ content: '# Titel\n\nvan buiten', modifiedMs: 3000 })
+    const onStatus = vi.fn()
+    const onCreated = vi.fn()
+
+    const { result, unmount } = renderHook(() => useDraftNote({ dir: '', onCreated, onStatus }))
+
+    act(() => result.current.handleMarkdownChange('# Titel'))
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', metaKey: true }))
+    })
+    act(() => result.current.handleMarkdownChange('# Titel\n\nen meer'))
+    act(() => resolveCreate({ relPath: 'Titel.md', modifiedMs: 1000 }))
+
+    await waitFor(() =>
+      expect(mockedIpc.writeNoteAsCopy).toHaveBeenCalledWith('Titel.md', '# Titel\n\nen meer'),
+    )
+    await waitFor(() =>
+      expect(onCreated).toHaveBeenCalledWith('Titel.md', '# Titel\n\nvan buiten', 3000),
+    )
+    expect(onStatus).toHaveBeenCalledWith(expect.stringContaining('Titel (conflict).md'))
+    unmount()
+  })
 })

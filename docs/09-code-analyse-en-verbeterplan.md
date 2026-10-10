@@ -6,9 +6,9 @@ Dit document borgt de bevindingen als backlog: epics → sprints → taken, met 
 taak een advies over de uitvoerende agent (Opus 5.0 of Sonnet 5.0) en de
 bijbehorende valkuil.
 
-**Stand:** sprint 1 en 2 zijn uitgevoerd, sprint 3 wacht op de W1- en W3-documenten.
-Zie [§7](#7-stand-van-uitvoering) — inclusief één bevinding die de analyse niet kón
-zien (B21).
+**Stand (oktober 2026):** afgerond. Het enige restpunt, het regeleindebesluit uit T11,
+gaat verder als [backlog #17](backlog.md). Zie [§7](#7-stand-van-uitvoering) — inclusief één bevinding die de analyse niet
+kón zien (B21).
 
 **Verhouding tot de wave-methode.** Dit plan vervangt de waves niet. W0 is
 uitdrukkelijk wegwerpcode; veel bevindingen horen daarom niet als fix in de
@@ -214,8 +214,10 @@ wegwerpcode, conform het Goal Document.
 
 ## 7. Stand van uitvoering
 
-*Bijgewerkt bij het verwerken van dit plan. Sprint 1 en 2 zijn uitgevoerd; sprint 3
-wacht op documenten die nog niet bestaan.*
+*Sprint 1 en 2 uitgevoerd bij het verwerken van dit plan. Sprint 3 is in oktober 2026
+bijgewerkt: de W3-documenten waar T10 en T11 op wachtten zijn nooit geschreven — W2 t/m
+W9 zijn zonder wave-documenten gebouwd ([07 §9](07-wave-methode.md#9-evaluatie-wat-de-methode-heeft-opgeleverd)).
+Wat daarmee van die twee taken overbleef, staat hieronder.*
 
 | Taak | Stand | Waar het landde |
 |---|---|---|
@@ -228,16 +230,42 @@ wacht op documenten die nog niet bestaan.*
 | **T7** (B18) | ✅ | `spike/Cargo.toml` als workspace, één gecommitte `Cargo.lock` |
 | **T8** (B19) | ✅ | clippy `-D warnings`, `rustfmt --check`, ESLint met `exhaustive-deps` als error |
 | **T9** (B6, B13) | ✅ | Testartefacten binnen hun eigen map; fixture `lone-cr.md` met zelfbewaking |
-| **T10** (B2) | ⏳ | Wacht op de W3-spec — die bestaat nog niet |
-| **T11** (B9, B14) | ⏳ | Beslisvragen voor het W3-goal; hetzelfde |
+| **T10** (B2) | ✅ | Niet als spec-eis, maar direct in de code: `VaultError` heeft sinds W1 eigen varianten `PermissionDenied`, `AlreadyExists`, `InvalidUtf8` (`app/vault-core/src/lib.rs`) |
+| **T11** (B9, B14) | ✅ → backlog #17 | B9 (dirty-tracking) is opgelost in W3: autosave plus de conflictbalk. B14 (regeleindes) gaat verder als [backlog #17](backlog.md) |
 | **T12** (B17, B1) | ✅ | Root-autoriteit als twee isolatiechecks; CSP-eis en de schrijfvrij-check in [W1-goal §9 en §11](waves/W1-vault-lezen/00-goal.md) |
-| **T13** (B3, B4, B5) | 🟡 voorgelegd | Als V1, V2 en V3 in [W1-goal §0](waves/W1-vault-lezen/00-goal.md#0-open-vragen-die-blokkeren) — wacht op Jos |
+| **T13** (B3, B4, B5) | ✅ | Beantwoord als V1, V2 en V3 in [W1-goal §0](waves/W1-vault-lezen/00-goal.md#0-open-vragen-die-blokkeren); `InvalidPath` voor B3 staat in `vault-core` |
 
 **Besluit bij T4 (B9).** Jos kiest voor een `confirm` bij wegnavigeren met onopgeslagen
 werk, in de spike zelf. Reden om het niet tot W3 te laten liggen: stil verlies tijdens
 de doorloop kost vertrouwen in het oordeel waar de hele wave om draait. De vergelijking
 loopt via dezelfde serialisatiestap als het opslaan, zodat een puur regeleinde-verschil
 niet als wijziging telt.
+
+### T11: het openstaande regeleinde-besluit
+
+De W0-spike had een eigen serialisatiestap (`lineEndings.ts`) die een CRLF-bestand als
+CRLF terugschreef. `app/` heeft die stap niet meegenomen. De editor geeft zijn inhoud
+altijd met `\n` terug (`noteFidelity.test.ts` legt dat vast voor het lezen), en die
+string gaat ongewijzigd naar `write_note`. **Volgens de code wordt een CRLF-notitie
+daarom bij de eerste opslag na een wijziging volledig LF** — en een notitie met een
+losse CR (klassiek Mac) ook. Dat is niet met een test bewezen en niet op de Mac gezien;
+het is wat de code leest.
+
+**Correctie bij nalezing:** [PRD §8](03-prd.md#8-randvoorwaarden) schrijft al "LF-regeleindes,
+precies zoals Obsidian schrijft" voor. De code volgt de PRD dus; het open punt is alleen
+dat F2 ("byte-voor-byte gelijk buiten de bewerking") daar een uitzondering voor moet
+noemen. Voor een vault die alleen op een Mac
+en in Obsidian leeft, is LF de norm en ziet niemand het verschil. Maar het raakt het
+byte-behoudscontract uit het PRD, en Git ziet het wél: één getypte letter wordt dan een
+diff over het hele bestand. De drie opties:
+
+1. **Accepteren:** Lapis schrijft altijd LF. Vastleggen in de PRD, verder niets.
+2. **Behouden:** het regeleinde van het bestand bij het lezen detecteren en bij het
+   opslaan terugzetten, zoals de spike deed. Gemengde bestanden worden dan uniform.
+3. **Eerst meten:** tellen hoeveel notities in de echte vault CRLF of een losse CR
+   bevatten. Zijn dat er nul, dan is optie 1 gratis.
+
+*Verder als [backlog #17](backlog.md), met optie 3 als eerste stap.*
 
 ### Wat er bijkwam: B21
 

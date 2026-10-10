@@ -60,6 +60,10 @@ export default function App() {
   // ongeldig — hetzelfde patroon als W0's App.tsx. In-/uitklappen heeft dit
   // niet nodig — dat gebeurt zonder IPC-aanroep (Spec W1 §5.6).
   const gate = useRef(createRequestGate())
+  // Het gate-token van het concept dat nu openstaat (W7). Een concept dat
+  // pas ná het wegnavigeren aangemaakt wordt (bij het ontmonten), mag de
+  // notitie die je intussen opende niet meer wegkapen (backlog #4).
+  const draftIsCurrent = useRef<() => boolean>(() => false)
 
   /**
    * Opent de vaste eerste pagina (W9, PRD F7) — bij het starten van Lapis en
@@ -73,6 +77,7 @@ export default function App() {
    * stilzwijgend — geen foutmelding, geen dialoog (PRD F7).
    */
   const openStartPageIfPresent = useCallback((relPath: string, isLatest: () => boolean) => {
+    setDraftDir(null)
     setSelectedPath(relPath)
     setNoteContent(null)
     setRevealText(null)
@@ -131,6 +136,7 @@ export default function App() {
         const opened = await openVault(picked)
         if (!isLatest()) return
         setView(opened)
+        setDraftDir(null)
         setSelectedPath(null)
         setNoteContent(null)
         setStatus('')
@@ -143,6 +149,7 @@ export default function App() {
 
   const openNote = useCallback((relPath: string, reveal: string | null = null) => {
     const isLatest = gate.current.start()
+    setDraftDir(null)
     setSelectedPath(relPath)
     setNoteContent(null)
     setRevealText(reveal)
@@ -211,7 +218,7 @@ export default function App() {
 
   /** "Nieuwe notitie" (W7) — opent een concept, nog geen bestand op schijf. */
   const newNote = useCallback((dir: string = '') => {
-    gate.current.start()
+    draftIsCurrent.current = gate.current.start()
     setSelectedPath(null)
     setNoteContent(null)
     setRevealText(null)
@@ -224,10 +231,15 @@ export default function App() {
    * is het een gewone notitie, behandeld door NoteEditor/useNoteEditor. */
   const handleDraftCreated = useCallback(
     (relPath: string, content: string, modifiedMs: number) => {
-      setDraftDir(null)
-      setSelectedPath(relPath)
-      setNoteContent({ content, modifiedMs })
-      setStatus('')
+      // Is er sinds "Nieuwe notitie" iets anders geopend (de aanmaak kwam
+      // pas bij het ontmonten van het concept), dan alleen de boom en de
+      // recente lijst bijwerken: de huidige keuze blijft staan.
+      if (draftIsCurrent.current()) {
+        setDraftDir(null)
+        setSelectedPath(relPath)
+        setNoteContent({ content, modifiedMs })
+        setStatus('')
+      }
       setRecentPaths((prev) => [relPath, ...prev.filter((p) => p !== relPath)].slice(0, MAX_RECENT_PATHS))
       void recordNoteOpened(relPath)
       refresh()
