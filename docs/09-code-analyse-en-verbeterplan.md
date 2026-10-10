@@ -6,9 +6,8 @@ Dit document borgt de bevindingen als backlog: epics → sprints → taken, met 
 taak een advies over de uitvoerende agent (Opus 5.0 of Sonnet 5.0) en de
 bijbehorende valkuil.
 
-**Stand (oktober 2026):** alles is afgerond op T11 na — een productbesluit over
-regeleindes dat nooit genomen is, en waar de huidige code intussen zelf een keuze in
-maakt. Zie [§7](#7-stand-van-uitvoering) — inclusief één bevinding die de analyse niet
+**Stand (oktober 2026):** afgerond. Het enige restpunt, het regeleindebesluit uit T11,
+gaat verder als [backlog #17](backlog.md). Zie [§7](#7-stand-van-uitvoering) — inclusief één bevinding die de analyse niet
 kón zien (B21).
 
 **Verhouding tot de wave-methode.** Dit plan vervangt de waves niet. W0 is
@@ -232,7 +231,7 @@ Wat daarmee van die twee taken overbleef, staat hieronder.*
 | **T8** (B19) | ✅ | clippy `-D warnings`, `rustfmt --check`, ESLint met `exhaustive-deps` als error |
 | **T9** (B6, B13) | ✅ | Testartefacten binnen hun eigen map; fixture `lone-cr.md` met zelfbewaking |
 | **T10** (B2) | ✅ | Niet als spec-eis, maar direct in de code: `VaultError` heeft sinds W1 eigen varianten `PermissionDenied`, `AlreadyExists`, `InvalidUtf8` (`app/vault-core/src/lib.rs`) |
-| **T11** (B9, B14) | 🟡 half | B9 (dirty-tracking) is opgelost in W3: autosave plus de conflictbalk. **B14 (regeleindes) is nooit besloten** — zie hieronder |
+| **T11** (B9, B14) | ✅ → backlog #17 | B9 (dirty-tracking) is opgelost in W3: autosave plus de conflictbalk. B14 (regeleindes) gaat verder als [backlog #17](backlog.md) |
 | **T12** (B17, B1) | ✅ | Root-autoriteit als twee isolatiechecks; CSP-eis en de schrijfvrij-check in [W1-goal §9 en §11](waves/W1-vault-lezen/00-goal.md) |
 | **T13** (B3, B4, B5) | ✅ | Beantwoord als V1, V2 en V3 in [W1-goal §0](waves/W1-vault-lezen/00-goal.md#0-open-vragen-die-blokkeren); `InvalidPath` voor B3 staat in `vault-core` |
 
@@ -252,7 +251,10 @@ daarom bij de eerste opslag na een wijziging volledig LF** — en een notitie me
 losse CR (klassiek Mac) ook. Dat is niet met een test bewezen en niet op de Mac gezien;
 het is wat de code leest.
 
-Of dat erg is, is een productvraag, geen codevraag. Voor een vault die alleen op een Mac
+**Correctie bij nalezing:** [PRD §8](03-prd.md#8-randvoorwaarden) schrijft al "LF-regeleindes,
+precies zoals Obsidian schrijft" voor. De code volgt de PRD dus; het open punt is alleen
+dat F2 ("byte-voor-byte gelijk buiten de bewerking") daar een uitzondering voor moet
+noemen. Voor een vault die alleen op een Mac
 en in Obsidian leeft, is LF de norm en ziet niemand het verschil. Maar het raakt het
 byte-behoudscontract uit het PRD, en Git ziet het wél: één getypte letter wordt dan een
 diff over het hele bestand. De drie opties:
@@ -263,7 +265,7 @@ diff over het hele bestand. De drie opties:
 3. **Eerst meten:** tellen hoeveel notities in de echte vault CRLF of een losse CR
    bevatten. Zijn dat er nul, dan is optie 1 gratis.
 
-*Wacht op Jos.*
+*Verder als [backlog #17](backlog.md), met optie 3 als eerste stap.*
 
 ### Wat er bijkwam: B21
 

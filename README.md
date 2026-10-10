@@ -8,7 +8,15 @@ Je bestanden blijven gewone markdown in een gewone map.
 
 ## Status
 
-*Bijgewerkt oktober 2026. De issues `#1`–`#11` volgen deze tabel.*
+**Wat er nog moet gebeuren staat in de [backlog](docs/backlog.md)** — de enige plek
+daarvoor. Wat er af is, staat in het [archief](docs/archief.md). De waves en de GitHub-issues
+zijn sinds oktober 2026 vervangen door die twee.
+
+> **Let op:** de [analyse van oktober 2026](docs/10-analyse-oktober-2026.md) vond vijf
+> blokkerende bugs (backlog #1–#5), waaronder: **opslaan van een bestaande notitie geeft
+> altijd een conflictmelding.** Niet tegen een echte vault gebruiken vóór die zijn opgelost.
+
+*Stand van de waves, voor de geschiedenis:*
 
 | Wave | Wat | Stand | Waar |
 |---|---|---|---|
@@ -22,22 +30,12 @@ Je bestanden blijven gewone markdown in een gewone map.
 | W7 | Bestandsbeheer | ✅ gebouwd | PR #20 |
 | W8 | Bijlagen | ✅ gebouwd | PR #21 |
 | W9 | Vaste eerste pagina (`⌘⇧H`) | ✅ gebouwd | PR #22 |
-| **W10** | **De vorm** | ⏳ **open** | issue #11 |
+| W10 | De vorm | ⏳ open → backlog #13–#15 | |
 
 "Gebouwd" betekent: gemerged, en de geautomatiseerde poort (fmt, clippy, cargo test,
 eslint, tsc, vitest, vite build, isolatie-check) is groen op Linux. **Het betekent níét
 dat het op de Mac tegen een echte vault heeft gedraaid** — die handmatige doorloop is
 voor geen enkele wave gedaan. Stack: Tauri v2 · React · CodeMirror 6 · SQLite FTS5.
-
-**Openstaand naast W10:**
-
-- **Handmatige doorloop op de Mac**, op een kopie van de vault met `git init` + commit
-  vooraf (afspraak V6a/V6b uit
-  [08](docs/08-vervolgvragen.md#-v6--geen-back-ups-agents-die-schrijven-en-een-geblokkeerd-document)).
-  Het focusmodel (W4) en het verplaatsen van notities bij bijlagen (W8) zijn de
-  onderdelen waar dit het meest toe doet.
-- **Regeleindes bij opslaan** (T11 uit [09](docs/09-code-analyse-en-verbeterplan.md#7-stand-van-uitvoering)):
-  een productbesluit dat nooit genomen is. Zie daar.
 
 ## Bouwverslag per wave
 
@@ -147,18 +145,12 @@ sinds F2. Alle geautomatiseerde verificatie is groen.
 
 ## Volgende stap
 
-**W10 (de vorm).** Daarna pas is Lapis dagelijks te gebruiken; Jos' oordeel na W8:
-*"ik ga het zo niet kunnen gebruiken, daar zijn W9 en W10 voor nodig."* W9 staat er nu;
-wat overblijft is typografie, licht/donker, lege staten en het instellingenscherm — geen
-afwerking maar de voorwaarde voor de eerste echte gebruikstest.
+Backlog #1–#5 (de P0-bugs, klein), dan #7: de eerste doorloop op de Mac, op een kopie van
+de vault met `git init` + commit vooraf (afspraak V6a). Pas daarna de vorm (#13–#15).
 
-**Werkwijze vanaf hier:** klein snijden, vaste volgorde, groene verificatie per stap, en
-beslissingen die de PRD raken apart voorleggen — maar zónder de drie formele
-wave-documenten. Zie de evaluatie in
-[07 §9](docs/07-wave-methode.md#9-evaluatie-wat-de-methode-heeft-opgeleverd).
-
-**Vóór er tegen echte notities getest wordt:** `git init` + commit in de vault
-(afspraak V6a). Schrijftests draaien uitsluitend tegen tijdelijke fixture-vaults.
+**Werkwijze:** zoals bij Usage Meter — één backlog met prioriteiten, per taak een
+briefing, acceptatie, model en valkuil, en een vaste definition of done. Zie de
+[backlog](docs/backlog.md#werkwijze).
 
 ## Documenten
 
@@ -171,9 +163,12 @@ wave-documenten. Zie de evaluatie in
 | [04 – Technische optieverkenning](docs/04-technische-spec.md) | Achtergrond bij de stackkeuzes | achtergrond |
 | [05 – Open vragen, ronde 1](docs/05-open-vragen.md) | Alle keuzes, met Jos' antwoorden | ✅ beantwoord |
 | [06 – Beslisinput techniek](docs/06-beslisinput-techniek.md) | Electron vs Tauri, mobiel, sync, urenopbouw | ✅ input voor 05 |
-| [07 – Wave-methode](docs/07-wave-methode.md) | Hoe we per brok werken | ✅ geëvalueerd en aangepast (§9) |
+| [07 – Wave-methode](docs/07-wave-methode.md) | Hoe we per brok werkten | vervangen door de backlog |
 | [08 – Vervolgvragen, ronde 2](docs/08-vervolgvragen.md) | Besluitenregister, met Jos' antwoorden | ✅ beantwoord |
-| [09 – Code-analyse en verbeterplan](docs/09-code-analyse-en-verbeterplan.md) | Bevindingen W0-code als backlog: epics, sprints, taken, agent-inzet | ✅ afgerond, op T11 na |
+| [09 – Code-analyse en verbeterplan](docs/09-code-analyse-en-verbeterplan.md) | Bevindingen W0-code als backlog: epics, sprints, taken, agent-inzet | ✅ afgerond (T11 → backlog #17) |
+| **[10 – Analyse oktober 2026](docs/10-analyse-oktober-2026.md)** | **QA, code-verificatie, design review en algemene analyse van W1–W9** | **actueel** |
+| **[Backlog](docs/backlog.md)** | **Alle open taken, met prioriteit, briefing en DoD** | **actueel** |
+| [Archief](docs/archief.md) | Afgeronde taken, W0–W9 | actueel |
 | [W0 – Goal Document](docs/waves/W0-spike/00-goal.md) | Spike: wil ik hierin typen? | ✅ goedgekeurd |
 | [W0 – Wave Specification](docs/waves/W0-spike/01-spec.md) | Het implementatiecontract voor de spike | ✅ goedgekeurd |
 | [W0 – Test & Verification Plan](docs/waves/W0-spike/02-testplan.md) | Wat er bewezen moet worden vóór er code is | ✅ goedgekeurd |
@@ -184,10 +179,9 @@ wave-documenten. Zie de evaluatie in
 
 ## Werkwijze
 
-Human in the lead: keuzes liggen bij Jos, niet bij de agent. Vanaf de bouwfase werkt elke
-wave met drie documenten in vaste gezagsvolgorde — Goal Document, Wave Specification,
-Test & Verification Plan — met een goedkeuringsmoment vóór elk van de drie. Zie
-[07](docs/07-wave-methode.md).
+Human in the lead: keuzes liggen bij Jos, niet bij de agent. Tot en met W9 werkte het
+project in waves ([07](docs/07-wave-methode.md)); sinds oktober 2026 via de
+[backlog](docs/backlog.md).
 
 ## Het idee, als voorstel
 

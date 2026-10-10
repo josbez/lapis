@@ -1,5 +1,9 @@
 # 07 – De wave-methode toegepast op Lapis
 
+> **Vervangen (oktober 2026).** Lapis werkt niet meer in waves maar via de
+> [backlog](backlog.md), in dezelfde vorm als Usage Meter. Dit document blijft staan als
+> verantwoording van W0–W9; §9 is de evaluatie die tot de overstap leidde.
+
 **Status:** de wave-indeling in §5 is goedgekeurd en grotendeels uitgevoerd. De formele
 drie-documenten-werkwijze is na W1 losgelaten — zie de evaluatie in
 [§9](#9-evaluatie-wat-de-methode-heeft-opgeleverd). Wat blijft: klein snijden, vaste
