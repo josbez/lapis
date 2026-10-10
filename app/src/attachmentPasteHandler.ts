@@ -26,6 +26,20 @@ function suggestFilename(file: File): string {
   return `Geplakte afbeelding ${pastedImageCounter}.${ext}`
 }
 
+/**
+ * Een bestandsnaam als bestemming van een markdown-link (backlog #3). Een
+ * spatie mag daar niet in (CommonMark), en de editor herkent ook haakjes en
+ * aanhalingstekens niet in een afbeeldingsbron — die tekens worden
+ * percent-encoded, zoals Obsidian dat ook doet (`mijn%20foto.png`). De weg terug staat in
+ * `attachmentImageResolver`.
+ */
+export function markdownImageRef(filename: string): string {
+  // Alleen wat de link breekt; `café` blijft `café`, net als in Obsidian.
+  return filename.replace(/[\s%()'"<>\\]/g, (c) =>
+    c.charCodeAt(0) < 0x80 ? `%${c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0')}` : encodeURIComponent(c),
+  )
+}
+
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   let binary = ''
   for (const byte of new Uint8Array(buffer)) {
@@ -73,7 +87,7 @@ export function createPasteHandler(onPasteImageHolder: { current: PasteImageHand
       .then((insertedName) => {
         if (!insertedName) return
         const at = Math.min(pos, view.state.doc.length)
-        const text = `![](${insertedName})`
+        const text = `![](${markdownImageRef(insertedName)})`
         view.dispatch({
           changes: { from: at, to: at, insert: text },
           selection: { anchor: at + text.length },

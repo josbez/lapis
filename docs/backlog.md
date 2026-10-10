@@ -12,14 +12,9 @@ analyse die de P0- en P1-taken hieronder opleverde: [10 – Analyse oktober 2026
 
 | Prio | # | Taak | Epic | Hangt af van | Model |
 |---|---|---|---|---|---|
-| **P0** | 1 | Opslaan geeft altijd een conflict (mtime ms ↔ ns) | A | — | Sonnet 5.5 |
-| **P0** | 2 | Inline afbeeldingen geblokkeerd door de CSP (`blob:` ontbreekt) | A | — | Haiku 5.5 |
-| **P0** | 3 | Geplakte afbeelding met spatie in de naam geeft een kapotte link | A | — | Sonnet 5.5 |
-| **P0** | 4 | Een open concept blokkeert het openen van elke andere notitie | A | — | Sonnet 5.5 |
-| **P0** | 5 | Leeg concept wordt bij wegklikken toch `Untitled.md` | A | — | Haiku 5.5 |
-| P1 | 6 | Contracttest over de IPC-grens (vangt de klasse van #1) | A | 1 | Opus 5.5 |
-| P1 | 7 | Eerste doorloop op de Mac | A | 1–5 | Jos |
-| P1 | 8 | Hernoemen/verplaatsen/prullenbak van de open notitie verliest getypte tekst | A | 1 | Opus 5.5 |
+| P1 | 6 | Contracttest over de IPC-grens (vangt de klasse van #1) | A | — | Opus 5.5 |
+| **P1** | **7** | **Eerste doorloop op de Mac** | A | — | Jos |
+| P1 | 8 | Hernoemen/verplaatsen/prullenbak van de open notitie verliest getypte tekst | A | — | Opus 5.5 |
 | P1 | 9 | Alleen-hoofdletter hernoemen faalt op APFS | A | — | Sonnet 5.5 |
 | P1 | 10 | Startpagina en recente paden volgen een verplaatsing niet | A | — | Sonnet 5.5 |
 | P1 | 11 | `[[wikilinks]]` en gewone links doen niets | B | 7 | Opus 5.5 |
@@ -34,12 +29,12 @@ analyse die de P0- en P1-taken hieronder opleverde: [10 – Analyse oktober 2026
 | P3 | 20 | Bijlage niet atomair geschreven; één rare submap breekt de hele scan | A | — | Sonnet 5.5 |
 | P3 | 21 | `spike/` opruimen | D | 7 | Haiku 5.5 |
 
-Afhankelijkheden: `1 ─► 6`, `1–5 ─► 7 ─► 11`, `7 ─► 13 ─► 14`, `13 ─► 15`, `1 ─► 8`.
+Afhankelijkheden: `7 ─► 11`, `7 ─► 13 ─► 14`, `13 ─► 15`, `7 ─► 21`.
 
-**Volgorde.** Eerst 1–5 in één sessie: dat zijn kleine fixes, en zonder die fixes is
-Lapis niet te gebruiken. Daarna 7: pas na een echte doorloop weten we wat er verder
+**Volgorde.** De P0-bugs #1–#5 zijn opgelost (zie het [archief](archief.md)), maar alleen
+bewezen met tests op Linux. Nu eerst #7: pas na een echte doorloop weten we wat er verder
 stuk is, want 132 Rust-tests en 135 frontendtests waren allemaal groen terwijl opslaan
-niet werkte. De vorm (13–15) komt pas na 7. Wie ontwerpt voordat opslaan werkt,
+niet werkte. De vorm (13–15) komt pas na 7. Wie ontwerpt voordat de basis bewezen werkt,
 ontwerpt een app die niemand kan gebruiken.
 
 ---
@@ -139,118 +134,7 @@ Parallelle agents die `App.tsx` of `useNoteEditor.ts` raken alleen in een eigen 
 
 ## Epic A: Je bestanden zijn veilig
 
-#### ⬜ 1. Opslaan geeft altijd een conflict — P0
-
-**Probleem.** `read_note` stuurt de wijzigingstijd als milliseconden naar de frontend
-(`millis_since_epoch`), de frontend geeft die bij het opslaan terug, en `write_note`
-vergelijkt `from_millis(ms)` met de echte `SystemTime` van schijf, die op APFS (en ext4)
-nanoseconden heeft. Die twee zijn vrijwel nooit gelijk, dus de eerste autosave op elke
-bestaande notitie geeft `Conflict` en toont de conflictbalk. "Mijn versie behouden" lukt
-wel, maar daarna gebeurt hetzelfde bij de volgende opslag. Ook het concept uit #4/#5
-loopt hierin: tekst getypt tijdens `create_note` wordt met dezelfde vergelijking
-bijgeschreven, faalt stil, en de editor denkt dat hij is opgeslagen.
-
-**Bewijs.** Reproductie met `vault-core` en exact de conversie uit `main.rs`
-(10-10-2026, ext4): `mtime op schijf: 1791641337.478202986s` → `1e autosave: Conflict`.
-
-**Briefing.**
-1. Eerst de test: in `vault-core/tests/vault_core.rs` een test die leest, de tijd via ms
-   afrondt (zelfde formule als `main.rs`), en schrijft. Hoort nu `Conflict` te geven.
-2. Fix aan de Rust-kant, op één plek: vergelijk in `write_note` op millisecondenresolutie
-   (beide kanten afkappen naar hele ms), of laat `write_note` de verwachte tijd als `u64`
-   ms aannemen. Kies het eerste: de publieke API blijft `SystemTime`.
-3. Controleer `useDraftNote.commit`: de uitkomst `conflict` van de nawrite wordt nu
-   genegeerd. Bij `conflict` niet doen alsof het opgeslagen is.
-
-**Acceptatie:** de nieuwe test slaagt; typen in een bestaande notitie geeft geen
-conflictbalk; `echo x >> notitie.md` tijdens het typen geeft er wél een; DoD.
-
-**Model: Sonnet 5.5.** Valkuil: de conflictdetectie zelf niet verzwakken. Een echte
-externe wijziging binnen dezelfde milliseconde is acceptabel om te missen; een
-grovere vergelijking (seconden, of alleen bestandsgrootte) niet.
-
-#### ⬜ 2. Inline afbeeldingen geblokkeerd door de CSP — P0
-
-**Probleem.** `attachmentImageResolver` zet `img.src` op een `blob:`-URL, maar de CSP in
-`src-tauri/tauri.conf.json` is `img-src 'self' asset: http://asset.localhost`, zonder
-`blob:`. In WKWebView worden bijlagen dus nooit getoond. jsdom kent geen CSP, dus geen
-test ziet dit.
-
-**Briefing.** `blob:` toevoegen aan `img-src`. Verder niets: externe `https:`-afbeeldingen
-blijven geblokkeerd (PRD §8, geen netwerk). Of een externe afbeelding een nette placeholder
-krijgt in plaats van het gebroken-afbeeldingsicoon, hoort bij #14.
-
-**Acceptatie:** in `npm run tauri dev` toont een notitie met `![](foto.png)` de foto; geen
-CSP-melding in de console; DoD (punt 3: Jos bevestigt op de Mac).
-
-**Model: Haiku 5.5.**
-
-#### ⬜ 3. Geplakte afbeelding met spatie in de naam geeft een kapotte link — P0
-
-**Probleem.** Een geplakte afbeelding zonder bestandsnaam heet `Geplakte afbeelding 1.png`.
-Een macOS-screenshot heet vaak `image.png`, en bij een botsing wordt dat `image 2.png`.
-`attachmentPasteHandler` voegt dan `![](Geplakte afbeelding 1.png)` in. Volgens CommonMark
-is dat geen afbeelding (een spatie mag niet in de link-bestemming), dus Lapis en Obsidian
-renderen alleen tekst.
-
-**Briefing.**
-1. Bij het invoegen de bestemming in punthaken zetten: `![](<Geplakte afbeelding 1.png>)`
-   (CommonMark, en Obsidian leest het). Alternatief `%20`, maar dan moet `read_attachment`
-   ook URL-decoderen.
-2. Controleer dat `imageBlocks()` van atomic-editor de punthaken-vorm herkent en dat
-   `getAttribute('src')` dan de naam zonder `<>` geeft. Werkt dat niet: kies `%20` en
-   decodeer in `attachmentImageResolver` vóór `readAttachment`.
-3. Overweeg een standaardnaam zonder spaties (`plak-2026-10-10-1403.png`): botst niet bij
-   een herstart (de teller begint nu bij 1) en is leesbaar in Finder.
-
-**Acceptatie:** test in `attachmentPasteHandler.test.ts` die de ingevoegde tekst door de
-markdown-parser haalt en een `Image`-knoop vindt; geplakte screenshot verschijnt inline,
-ook bij de tweede plak; DoD.
-
-**Model: Sonnet 5.5.**
-
-#### ⬜ 4. Een open concept blokkeert het openen van elke andere notitie — P0
-
-**Probleem.** `App.tsx` rendert `NoteDraft` zolang `draftDir !== null`, en dat gaat vóór
-`selectedPath`. `openNote`, `openStartPageIfPresent` (`⌘⇧H`) en `pickFolder` zetten
-`draftDir` niet terug op `null`. Na "Nieuwe notitie" doen een klik in de boom, `⌘K` en
-`⌘⇧F` dus niets zichtbaars, tot je iets typt en het concept na 500 ms wordt aangemaakt.
-
-**Bewijs.** Test (10-10-2026): "Nieuwe notitie" → klik op `notitie.md` → `readNote` wordt
-aangeroepen, maar de inhoud verschijnt niet.
-
-**Briefing.**
-1. Test toevoegen in `App.test.tsx` (de repro hierboven).
-2. In `openNote`, `openStartPageIfPresent` en `pickFolder` ook `setDraftDir(null)`. De
-   unmount van `useDraftNote` maakt het concept dan alsnog aan als er getypt is.
-3. **Let op de race die dat opent:** die late `onCreated` (`handleDraftCreated`) zet
-   `selectedPath` en `noteContent` op het concept, terwijl de gebruiker net een andere
-   notitie opende. `handleDraftCreated` mag alleen naar het concept springen als het
-   concept nog actief is (bijvoorbeeld via de bestaande `gate`). Anders alleen `refresh()`
-   en de recente paden.
-
-**Acceptatie:** beide tests slagen (navigeren werkt; typen + direct wegklikken maakt het
-bestand aan zonder de nieuwe keuze te overschrijven); DoD.
-
-**Model: Sonnet 5.5.** Valkuil: punt 3 overslaan, want de happy-path-test slaagt ook zonder.
-
-#### ⬜ 5. Leeg concept wordt bij wegklikken toch `Untitled.md` — P0
-
-**Probleem.** `useDraftNote` hangt `commit` direct aan `window` `blur`. `commit` controleert
-niet of er iets getypt is: "Nieuwe notitie" → `⌘Tab` naar een andere app geeft een leeg
-`Untitled.md` op schijf. De unmount-cleanup heeft die controle wél, en het commentaar
-daar zegt dat er "terecht geen leeg Untitled.md achterblijft".
-
-**Bewijs.** Test (10-10-2026): blur op een leeg concept → `createNote('', '')`.
-
-**Briefing.** Dezelfde guard (`contentRef.current.trim() !== ''`) bij blur. Bij `⌘S` op een
-leeg concept: ook niets doen (een leeg `Untitled.md` is nooit wat je bedoelt).
-
-**Acceptatie:** test "blur op een leeg concept maakt niets aan"; bestaande tests groen; DoD.
-
-**Model: Haiku 5.5.**
-
-#### ⬜ 6. Contracttest over de IPC-grens — P1, na 1
+#### ⬜ 6. Contracttest over de IPC-grens — P1
 
 **Probleem.** #1 kon bestaan omdat geen enkele test door `main.rs` loopt: frontendtests
 mocken `ipc.ts`, Rust-tests roepen `vault-core` direct aan. De tijdconversie, de
@@ -262,12 +146,12 @@ wordt een één-regel-wrapper) en test die met een tijdelijke vault: `read_note`
 met de `modified_ms` uit de vorige stap → `saved`; `create_note` → `write_note` → `saved`;
 `write_attachment` met migratie → `read_note` op het nieuwe pad. Geen nieuwe dependencies.
 
-**Acceptatie:** de testsuite van `src-tauri` faalt op de code van vóór #1 en slaagt erna;
-DoD.
+**Acceptatie:** de testsuite van `src-tauri` faalt als `write_note` weer op volle
+precisie vergelijkt (tijdelijk terugdraaien als bewijs) en slaagt met de huidige code; DoD.
 
 **Model: Opus 5.5.** Out of scope: geen e2e met een echte webview, geen tauri-driver.
 
-#### ⬜ 7. Eerste doorloop op de Mac — P1, na 1–5 (Jos)
+#### ⬜ 7. Eerste doorloop op de Mac — P1 (Jos)
 
 **Probleem.** Geen enkele wave heeft ooit tegen een echte vault in de echte app gedraaid.
 Onbewezen en direct van belang: `window.prompt`/`confirm` in de Tauri-webview (daar hangen
@@ -278,7 +162,11 @@ vault.
 **Briefing (Jos).**
 1. Kopie van de vault, daarin `git init && git add -A && git commit -m vóór-lapis`.
 2. `cd app && npm ci && npm run tauri dev`, de kopie openen.
-3. Nalopen: notitie bewerken (geen conflictbalk) · `echo x >> notitie.md` in Terminal terwijl
+3. Nalopen, eerst de fixes uit #1–#5: notitie bewerken (géén conflictbalk) · een
+   notitie met een bestaande afbeelding toont die · screenshot plakken, twee keer
+   (beide verschijnen inline, ook in Obsidian) · "Nieuwe notitie", dan meteen een andere
+   notitie aanklikken (opent) · "Nieuwe notitie", dan `⌘Tab` weg (géén `Untitled.md`).
+   Daarna de rest: notitie bewerken · `echo x >> notitie.md` in Terminal terwijl
    Lapis op de achtergrond staat → bij terugkeer zichtbaar · idem terwijl je typt →
    conflictbalk, alle drie de knoppen · nieuwe notitie met kop · hernoemen, verplaatsen,
    nieuwe map, prullenbak (verschijnt er überhaupt een invoervenster?) · screenshot plakken
@@ -499,4 +387,11 @@ bewijsdocumenten in `docs/waves/W0-spike/` blijven staan. **Model: Haiku 5.5.**
   `doSave` stil vallen in plaats van hem na de eerste te laten lopen. Bij `flush()` vóór een
   bijlage kan zo een nog lopende save niet afgewacht worden.
 - **Mappen naar de prullenbak** (nu alleen bestanden).
+- **Concept: tekst getypt tijdens het bijschrijven na `create_note`.** `useDraftNote` geeft
+  `contentRef.current` door aan `onCreated` ná de `await writeNote`; wat in díe paar
+  milliseconden getypt wordt, telt als opgeslagen zonder het te zijn. Venster van één
+  IPC-rondgang; `typed` doorgeven en de editor daarna laten bijwerken.
+- **Standaardnaam van geplakte afbeeldingen** (`Geplakte afbeelding 1.png`): de teller begint
+  bij elke start opnieuw, dus botsingen geven `… 1 2.png`. Een tijdstempel in de naam is
+  netter.
 - **README inkorten:** het bouwverslag per wave kan naar het archief.

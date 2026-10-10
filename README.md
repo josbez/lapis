@@ -13,8 +13,9 @@ daarvoor. Wat er af is, staat in het [archief](docs/archief.md). De waves en de 
 zijn sinds oktober 2026 vervangen door die twee.
 
 > **Let op:** de [analyse van oktober 2026](docs/10-analyse-oktober-2026.md) vond vijf
-> blokkerende bugs (backlog #1–#5), waaronder: **opslaan van een bestaande notitie geeft
-> altijd een conflictmelding.** Niet tegen een echte vault gebruiken vóór die zijn opgelost.
+> blokkerende bugs, waaronder: opslaan van een bestaande notitie gaf altijd een
+> conflictmelding. Ze zijn opgelost en met tests bewezen, maar **nog niet op de Mac
+> doorlopen** (backlog #7). Alleen tegen een kopie van de vault met `git init` gebruiken.
 
 *Stand van de waves, voor de geschiedenis:*
 
@@ -145,8 +146,8 @@ sinds F2. Alle geautomatiseerde verificatie is groen.
 
 ## Volgende stap
 
-Backlog #1–#5 (de P0-bugs, klein), dan #7: de eerste doorloop op de Mac, op een kopie van
-de vault met `git init` + commit vooraf (afspraak V6a). Pas daarna de vorm (#13–#15).
+Backlog #7: de eerste doorloop op de Mac, op een kopie van de vault met `git init` +
+commit vooraf (afspraak V6a). Pas daarna de vorm (#13–#15).
 
 **Werkwijze:** zoals bij Usage Meter — één backlog met prioriteiten, per taak een
 briefing, acceptatie, model en valkuil, en een vaste definition of done. Zie de

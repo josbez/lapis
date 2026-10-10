@@ -356,6 +356,47 @@ describe('App', () => {
     expect(screen.queryByText(/bestaande inhoud/)).toBeNull()
   })
 
+  // Backlog #4: zolang het concept openstond, deed een klik in de boom niets
+  // zichtbaars — het concept ging in de render vóór de gekozen notitie.
+  it('met een concept open opent een klik in de boom gewoon die notitie', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.readNote.mockResolvedValue({ content: 'bestaande inhoud', modifiedMs: 1000 })
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.click(screen.getByText('Nieuwe notitie'))
+    fireEvent.click(screen.getByText(/notitie\.md/))
+
+    await waitFor(() => expect(screen.getByText(/bestaande inhoud/)).toBeTruthy())
+  })
+
+  // Backlog #4, de race die de fix opent: wie wegklikt na het typen, laat
+  // het concept bij het ontmonten alsnog aanmaken. Die late onCreated mag de
+  // notitie die je intussen opende niet wegkapen.
+  it('een concept dat pas na het wegnavigeren aangemaakt wordt, kaapt de nieuwe keuze niet', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.rescanVault.mockResolvedValue(eenBoom)
+    mockedIpc.readNote.mockResolvedValue({ content: 'bestaande inhoud', modifiedMs: 1000 })
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.click(screen.getByText('Nieuwe notitie'))
+    const draftOptions = mockedUseDraftNote.mock.calls.at(-1)?.[0]
+
+    fireEvent.click(screen.getByText(/notitie\.md/))
+    await waitFor(() => expect(screen.getByText(/bestaande inhoud/)).toBeTruthy())
+
+    act(() => draftOptions?.onCreated('Concept.md', '# Concept', 2000))
+
+    await waitFor(() => expect(mockedIpc.rescanVault).toHaveBeenCalled())
+    expect(screen.getByText(/bestaande inhoud/)).toBeTruthy()
+    expect(screen.queryByText(/# Concept/)).toBeNull()
+  })
+
   // W7 — "Nieuwe map", en het rechtsklik-contextmenu op de boom.
 
   it('"Nieuwe map" vraagt een naam en maakt de map aan', async () => {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { createNote, writeNote } from './ipc'
+import { createNote, readNote, writeNote, writeNoteAsCopy } from './ipc'
 
 /**
  * Een notitie ván het klikken op "Nieuwe notitie" tót de allereerste opslag
@@ -45,6 +45,10 @@ export function useDraftNote({ dir, onCreated, onStatus }: UseDraftNoteOptions):
 
   const commit = useCallback(() => {
     if (committedRef.current) return
+    // Een leeg concept (of alleen witruimte) is nooit iets wat je wilde
+    // bewaren — geen `Untitled.md` bij wegklikken of een reflex-⌘S
+    // (backlog #5). Eén controle hier dekt debounce, ⌘S, blur en ontmonten.
+    if (contentRef.current.trim() === '') return
     committedRef.current = true
     const submitted = contentRef.current
 
@@ -57,8 +61,20 @@ export function useDraftNote({ dir, onCreated, onStatus }: UseDraftNoteOptions):
         // meteen bijschrijven op het bestand dat er nu al staat, zodat er
         // niets van wat je typte verloren gaat.
         if (contentRef.current !== submitted) {
-          const outcome = await writeNote(relPath, contentRef.current, modifiedMs)
-          if (outcome.kind === 'saved') modifiedMs = outcome.modifiedMs
+          const typed = contentRef.current
+          const outcome = await writeNote(relPath, typed, modifiedMs)
+          if (outcome.kind === 'conflict') {
+            // Iets anders schreef in die tussentijd naar het nieuwe bestand.
+            // Niet doen alsof het opgeslagen is (backlog #1): de getypte
+            // tekst als kopie bewaren, zoals "beide bewaren", en verder met
+            // wat er op schijf staat.
+            const copyPath = await writeNoteAsCopy(relPath, typed)
+            const fresh = await readNote(relPath)
+            onStatus(`jouw laatste tekst bewaard als ${copyPath}`)
+            onCreated(relPath, fresh.content, fresh.modifiedMs)
+            return
+          }
+          modifiedMs = outcome.modifiedMs
         }
         onCreated(relPath, contentRef.current, modifiedMs)
       })
@@ -108,9 +124,7 @@ export function useDraftNote({ dir, onCreated, onStatus }: UseDraftNoteOptions):
   useEffect(() => {
     return () => {
       clearTimer()
-      if (!committedRef.current && contentRef.current.trim() !== '') {
-        commit()
-      }
+      if (!committedRef.current) commit()
     }
   }, [commit])
 

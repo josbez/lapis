@@ -5,7 +5,18 @@ Eén regel per afgeronde taak, nieuwste bovenaan. De open taken staan in de
 
 ## Backlog (vanaf oktober 2026)
 
-*Nog niets afgerond sinds de overstap.*
+- **#1–#5 · P0-bugs uit de analyse (10-10-2026)**, bewezen met tests die vóór de fix
+  faalden; op de Mac nog na te lopen in #7.
+  - #1 `write_note` vergelijkt de wijzigingstijd op hele milliseconden (zoals hij de
+    IPC-grens oversteekt); conflict bij het bijschrijven van een nieuw concept bewaart de
+    tekst als kopie in plaats van stil te verdwijnen.
+  - #2 `blob:` in `img-src` van de CSP, met een test die de CSP zelf leest.
+  - #3 Geplakte afbeelding: bestandsnaam percent-encoded in de link (`foto%202.png`), en
+    `%20` wordt bij het lezen terugvertaald; bestaande Obsidian-links profiteren mee.
+  - #4 Een open concept blokkeert de navigatie niet meer; een concept dat pas bij het
+    wegklikken wordt aangemaakt, kaapt de nieuwe keuze niet.
+  - #5 Een leeg (of alleen-witruimte) concept wordt nooit een bestand, ook niet bij blur
+    of `⌘S`.
 
 ## Waves W0–W9 (augustus 2026)
 
