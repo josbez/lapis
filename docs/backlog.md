@@ -12,6 +12,7 @@ analyse die de P0- en P1-taken hieronder opleverde: [10 – Analyse oktober 2026
 
 | Prio | # | Taak | Epic | Hangt af van | Model |
 |---|---|---|---|---|---|
+| **P1** | **22** | **Release v0.1.0 uitbrengen (tag pushen)** | D | — | Jos |
 | P1 | 6 | Contracttest over de IPC-grens (vangt de klasse van #1) | A | — | Opus 5.5 |
 | **P1** | **7** | **Eerste doorloop op de Mac** | A | — | Jos |
 | P1 | 8 | Hernoemen/verplaatsen/prullenbak van de open notitie verliest getypte tekst | A | — | Opus 5.5 |
@@ -27,12 +28,13 @@ analyse die de P0- en P1-taken hieronder opleverde: [10 – Analyse oktober 2026
 | P3 | 18 | Bestandsnaam uit kopregel kan langer dan 255 bytes worden | A | — | Haiku 5.5 |
 | P3 | 19 | Atomair schrijven: rechten, Finder-tags, `F_FULLFSYNC` | A | besluit Jos | Opus 5.5 |
 | P3 | 20 | Bijlage niet atomair geschreven; één rare submap breekt de hele scan | A | — | Sonnet 5.5 |
-| P3 | 21 | `spike/` opruimen | D | 7 | Haiku 5.5 |
+| P3 | 21 | `spike/` opruimen, CI niet meer dubbel | D | 7 | Haiku 5.5 |
 
-Afhankelijkheden: `7 ─► 11`, `7 ─► 13 ─► 14`, `13 ─► 15`, `7 ─► 21`.
+Afhankelijkheden: `22 ─► 7` (zacht: de DMG staat ook als CI-artifact), `7 ─► 11`, `7 ─► 13 ─► 14`, `13 ─► 15`, `7 ─► 21`.
 
 **Volgorde.** De P0-bugs #1–#5 zijn opgelost (zie het [archief](archief.md)), maar alleen
-bewezen met tests op Linux. Nu eerst #7: pas na een echte doorloop weten we wat er verder
+bewezen met tests op Linux. Sinds josbez/lapis#24 bouwt CI een installeerbare `Lapis.dmg`;
+eerst #22 (de tag), dan #7: pas na een echte doorloop weten we wat er verder
 stuk is, want 132 Rust-tests en 135 frontendtests waren allemaal groen terwijl opslaan
 niet werkte. De vorm (13–15) komt pas na 7. Wie ontwerpt voordat de basis bewezen werkt,
 ontwerpt een app die niemand kan gebruiken.
@@ -104,6 +106,9 @@ ontwerpt een app die niemand kan gebruiken.
   noteren.
 - **Een bug eerst reproduceren in een test**, dan pas de fix. Een taak zonder reproductie
   heet "onbewezen" tot er een is.
+- **Uitbrengen:** versie gelijk in `app/package.json`, `app/src-tauri/Cargo.toml` en
+  `tauri.conf.json`, dan een `v*`-tag; `release.yml` bouwt de DMG en maakt de release.
+  Een tag pushen kan alleen Jos: cloud-sessies mogen uitsluitend naar hun eigen branch.
 - **Werken in de cloud:** de poort hieronder draait op Linux; wat alleen op de Mac te zien
   is, staat in de taak als stap voor Jos.
 
@@ -115,7 +120,7 @@ ontwerpt een app die niemand kan gebruiken.
 2. Er is een test die faalde vóór de fix en slaagt erna. Voor alles wat de IPC-grens
    raakt (tijden, paden, DTO's) loopt die test door dezelfde conversie als `main.rs`.
 3. Raakt de taak gedrag of UI: in de taakuitkomst staat een korte checklist voor Jos om op
-   de Mac na te lopen (`npm run tauri dev`).
+   de Mac na te lopen (in de DMG van de Release-run, of `npm run tauri dev`).
 4. De taak gaat uit deze backlog; de uitkomst komt in één regel in het [archief](archief.md).
 
 ### Modelkeuze
@@ -161,10 +166,14 @@ vault.
 
 **Briefing (Jos).**
 1. Kopie van de vault, daarin `git init && git add -A && git commit -m vóór-lapis`.
-2. `cd app && npm ci && npm run tauri dev`, de kopie openen.
+2. Lapis installeren uit de DMG (README → Installeren; na #22 via de downloadlink, tot
+   die tijd het `Lapis.dmg`-artifact van de laatste Release-run), de kopie openen.
+   Zo test je de echte bundel, met de CSP en de ad-hoc-handtekening zoals ze uitgeleverd
+   worden. `npm run tauri dev` alleen om een fout te debuggen.
 3. Nalopen, eerst de fixes uit #1–#5: notitie bewerken (géén conflictbalk) · een
    notitie met een bestaande afbeelding toont die · screenshot plakken, twee keer
-   (beide verschijnen inline, ook in Obsidian) · "Nieuwe notitie", dan meteen een andere
+   (beide verschijnen inline, ook in Obsidian) · de app start überhaupt na `install.sh`
+   (Gatekeeper, ad-hoc-handtekening, universal build op jouw chip) · "Nieuwe notitie", dan meteen een andere
    notitie aanklikken (opent) · "Nieuwe notitie", dan `⌘Tab` weg (géén `Untitled.md`).
    Daarna de rest: notitie bewerken · `echo x >> notitie.md` in Terminal terwijl
    Lapis op de achtergrond staat → bij terugkeer zichtbaar · idem terwijl je typt →
@@ -367,12 +376,27 @@ verantwoorden; tel ze bij elke release (PRD §6). **Model: Sonnet 5.5.**
 
 ## Epic D: Onderhoud
 
+#### ⬜ 22. Release v0.1.0 uitbrengen — P1 (Jos)
+
+De pipeline staat (josbez/lapis#24); de DMG bouwde groen op de macOS-runner. Wat ontbreekt
+is de tag; een cloud-sessie kan die niet pushen (403, alleen de eigen branch).
+
+```bash
+git fetch origin && git tag v0.1.0 origin/claude/obsidian-like-markdown-tool-m9sk6s
+git push origin v0.1.0
+```
+
+**Acceptatie:** de Release-run is groen, de release staat op GitHub met `Lapis.dmg`, en de
+downloadlink in de README werkt.
+
 #### ⬜ 21. `spike/` opruimen — P3, na 7
 
 De W0-spike is gesloten als achterhaald, maar draait nog als eigen CI-job
 (`controle-spike`) en wordt meegenomen in de isolatie-check. Na de eerste geslaagde
 doorloop (#7) weghalen: map, CI-job en de verwijzingen in `isolatie-check.sh`. De
-bewijsdocumenten in `docs/waves/W0-spike/` blijven staan. **Model: Haiku 5.5.**
+bewijsdocumenten in `docs/waves/W0-spike/` blijven staan. Meteen meenemen: `ci.yml` draait
+op `push` én `pull_request`, dus elke check staat dubbel in een PR. `push` beperken tot de
+standaardbranch. **Model: Haiku 5.5.**
 
 ---
 
@@ -394,4 +418,8 @@ bewijsdocumenten in `docs/waves/W0-spike/` blijven staan. **Model: Haiku 5.5.**
 - **Standaardnaam van geplakte afbeeldingen** (`Geplakte afbeelding 1.png`): de teller begint
   bij elke start opnieuw, dus botsingen geven `… 1 2.png`. Een tijdstempel in de naam is
   netter.
+- **Dialoog verschijnt niet synchroon na een sneltoets.** In jsdom stond het venster van
+  `⌘K`/`⌘⇧F` soms pas een tick na `fireEvent.keyDown` (2 op 5 runs faalde). De tests wachten
+  nu met `findByRole` (josbez/lapis#24); waaróm de render uitgesteld wordt is niet
+  uitgezocht. Waarschijnlijk onschuldig, maar onverklaard.
 - **README inkorten:** het bouwverslag per wave kan naar het archief.

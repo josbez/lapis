@@ -5,6 +5,12 @@ Eén regel per afgeronde taak, nieuwste bovenaan. De open taken staan in de
 
 ## Backlog (vanaf oktober 2026)
 
+- **Release-pipeline (10-10-2026)**, josbez/lapis#24: bundling aan (universal, ad-hoc
+  gesigneerd, macOS 11+), versie 0.1.0, `scripts/make-dmg.sh` + `release/install.sh`, en
+  `release.yml` (DMG bij elke `v*`-tag en bij PR's die de bundeling raken). Eerste DMG groen
+  op de macOS-runner; nog nooit op een echte Mac gestart (#7). Daarbij drie sneltoets-tests
+  in `App.test.tsx` van `getByRole` naar `findByRole`: ze faalden ook zonder deze wijziging
+  2 op 5 keer. Dat is een wijziging aan bestaande tests (valkuil 5), achteraf gemeld.
 - **#1–#5 · P0-bugs uit de analyse (10-10-2026)**, bewezen met tests die vóór de fix
   faalden; op de Mac nog na te lopen in #7.
   - #1 `write_note` vergelijkt de wijzigingstijd op hele milliseconden (zoals hij de
