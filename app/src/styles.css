@@ -39,6 +39,7 @@
   --accent-fg: #ffffff;
   --danger: #ba1a1a;
   --danger-bg: #ffdad6;
+  --update-dot: #e8833a;
   --radius: 0.25rem;
 
   /* Typografie — drie families met elk hun eigen rol (Brand & Style /
@@ -416,7 +417,7 @@ svg {
   height: 0.45rem;
   margin-left: auto;
   border-radius: 50%;
-  background: #e8833a;
+  background: var(--update-dot);
 }
 
 .lapis-sidebar-settings:hover {
