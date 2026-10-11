@@ -106,11 +106,12 @@ ontwerpt een app die niemand kan gebruiken.
 - **Een bug eerst reproduceren in een test**, dan pas de fix. Een taak zonder reproductie
   heet "onbewezen" tot er een is.
 - **Updaten:** sinds v0.2.0 via `tauri-plugin-updater` (PRD §8, besluit 11-10-2026). Een
-  release zonder `latest.json` laat iedereen stil op de oude versie; `release.yml` weigert
-  daarom een tag zonder de signing-secrets.
-- **Uitbrengen:** versie gelijk in `app/package.json`, `app/src-tauri/Cargo.toml` en
-  `tauri.conf.json`, dan een `v*`-tag; `release.yml` bouwt de DMG en maakt de release.
-  Een tag pushen kan alleen Jos: cloud-sessies mogen uitsluitend naar hun eigen branch.
+  release zonder `latest.json` laat iedereen stil op de oude versie; `scripts/release.sh`
+  weigert daarom te bouwen zonder sleutel.
+- **Uitbrengen (Jos, op de Mac, zoals Usage Meter):** versie gelijk in `app/package.json`,
+  `app/src-tauri/Cargo.toml` en `tauri.conf.json`, committen, `./scripts/release.sh`. De
+  updater-sleutel staat alleen in `~/.tauri/lapis.key`. Een cloud-sessie kan niet
+  uitbrengen; CI (`dmg.yml`) controleert alleen dat de DMG bouwt.
 - **Werken in de cloud:** de poort hieronder draait op Linux; wat alleen op de Mac te zien
   is, staat in de taak als stap voor Jos.
 
@@ -122,7 +123,7 @@ ontwerpt een app die niemand kan gebruiken.
 2. Er is een test die faalde vóór de fix en slaagt erna. Voor alles wat de IPC-grens
    raakt (tijden, paden, DTO's) loopt die test door dezelfde conversie als `main.rs`.
 3. Raakt de taak gedrag of UI: in de taakuitkomst staat een korte checklist voor Jos om op
-   de Mac na te lopen (in de DMG van de Release-run, of `npm run tauri dev`).
+   de Mac na te lopen (in de DMG, of `npm run tauri dev`).
 4. De taak gaat uit deze backlog; de uitkomst komt in één regel in het [archief](archief.md).
 
 ### Modelkeuze

@@ -21,13 +21,14 @@ staat er een oranje stip bij **Instellingen** → **Installeren en herstarten**.
 daar ook. Updates zijn gesigneerd; een update zonder geldige handtekening wordt geweigerd.
 Dit is het enige netwerkverkeer van Lapis (PRD §8).
 
-Uitbrengen: versie gelijk zetten in `app/package.json`, `app/src-tauri/Cargo.toml` en
-`app/src-tauri/tauri.conf.json`, dan `git tag vX.Y.Z && git push origin vX.Y.Z`;
-[release.yml](.github/workflows/release.yml) bouwt de DMG en de gesigneerde update
-(`Lapis.app.tar.gz` + `latest.json`) en zet de release online. Daarvoor moeten de secrets
-`TAURI_SIGNING_PRIVATE_KEY` en `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in de repo staan. **Raak
-je die sleutel kwijt, dan kan geen enkele geïnstalleerde Lapis nog updaten**; bewaar hem
-buiten de repo, met een back-up.
+Uitbrengen gebeurt op de Mac, zoals bij Usage Meter: versie gelijk zetten in
+`app/package.json`, `app/src-tauri/Cargo.toml` en `app/src-tauri/tauri.conf.json`, committen,
+dan `./scripts/release.sh`. Dat bouwt de DMG en de gesigneerde update (`Lapis.app.tar.gz` +
+`latest.json`) met de sleutel in `~/.tauri/lapis.key`, zet de tag en maakt de release
+(met `gh`, anders staat er wat je moet uploaden). Nodig: zie [Zelf bouwen](#zelf-bouwen-en-draaien-macos).
+De sleutel gaat nooit naar git of GitHub. **Raak je hem of zijn wachtwoord kwijt, dan kan
+geen enkele geïnstalleerde Lapis nog updaten**; bewaar een back-up. CI
+([dmg.yml](.github/workflows/dmg.yml)) controleert alleen dat de DMG bouwt.
 
 ## Status
 

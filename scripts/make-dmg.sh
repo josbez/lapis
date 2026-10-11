@@ -2,14 +2,12 @@
 # Bouwt Lapis.app (universal: Apple Silicon + Intel) en verpakt 'm in een
 # deelbare DMG, met install.sh en een snelkoppeling naar /Applications.
 #   ./scripts/make-dmg.sh
-# Draait op macOS — lokaal of in .github/workflows/release.yml.
+# Draait op macOS — lokaal (scripts/release.sh) of in .github/workflows/dmg.yml.
 #
-# Met TAURI_SIGNING_PRIVATE_KEY (en _PASSWORD) in de omgeving maakt hij ook
-# de update: Lapis.app.tar.gz, de handtekening en latest.json, die de
-# updater in de app van de laatste release haalt. Zonder sleutel alleen de DMG.
-#
-# De DMG maken we zelf met hdiutil in plaats van via Tauri's dmg-bundler: die
-# stuurt Finder aan met AppleScript en dat hapert op CI-runners zonder scherm.
+# Staat de updater-sleutel op ~/.tauri/lapis.key (of in TAURI_SIGNING_PRIVATE_KEY),
+# dan maakt hij ook de update: Lapis.app.tar.gz met handtekening en latest.json,
+# die de updater in de app van de laatste release haalt. Zonder sleutel alleen
+# de DMG (zo draait hij in CI). De sleutel gaat nooit in git of naar GitHub.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -18,8 +16,22 @@ cd "$(dirname "$0")/.."
 TARGET=universal-apple-darwin
 rustup target add aarch64-apple-darwin x86_64-apple-darwin >/dev/null
 
+KEY_FILE="$HOME/.tauri/lapis.key"
+if [ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ] && [ -f "$KEY_FILE" ]; then
+    export TAURI_SIGNING_PRIVATE_KEY="$KEY_FILE"
+    if [ -z "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}" ]; then
+        read -r -s -p "Wachtwoord van $KEY_FILE: " TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+        echo
+        export TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+    fi
+fi
+
 UPDATER=()
 if [ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
+    if grep -q VERVANG_DOOR app/src-tauri/tauri.conf.json; then
+        echo "✗ de publieke updater-sleutel in tauri.conf.json is nog een placeholder" >&2
+        exit 1
+    fi
     UPDATER=(--config '{"bundle":{"createUpdaterArtifacts":true}}')
 fi
 
@@ -60,5 +72,5 @@ if [ ${#UPDATER[@]} -gt 0 ]; then
     ' "$VERSION" "$SIG" "$URL"
     echo "✓ update klaar: Lapis.app.tar.gz + latest.json (v$VERSION)"
 else
-    echo "⚠ geen TAURI_SIGNING_PRIVATE_KEY — alleen de DMG, geen update voor de updater"
+    echo "⚠ geen updater-sleutel ($KEY_FILE) — alleen de DMG, geen update voor de updater"
 fi
