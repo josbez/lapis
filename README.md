@@ -160,14 +160,80 @@ leeg, precies zoals het PRD voorschrijft. Bewust ontbrekend, want expliciet buit
 is uitsluitend een vaste plek die altijd bereikbaar is, de vinkjes erin waren al klikbaar
 sinds F2. Alle geautomatiseerde verificatie is groen.
 
+Ook W10 (PRD F6, de vorm) is zonder de drie wave-documenten gebouwd. **Dit is bewust de
+eerste versie in code, geen ontwerpvoorstel** (05 §F1/F3): Jos herontwerpt hierna via
+Stitch/Claude Design, en dít wireframe is wat hij daarvoor als vertrekpunt aanwees. Wat
+erin zit: één stylesheet (`app/src/styles.css`) met de vier F6-eisen. Eén venster —
+toolbar, sidebar, editor, geen tabs of panelen. Licht en donker volgend op het systeem via
+`prefers-color-scheme`, uitdrukkelijk geen handmatige thema-schakelaar (die sluit het PRD
+zelf uit). Ruime marges met een beperkte regellengte en royale regelafstand, via de
+theming-contract-variabelen die `@atomic-editor/editor` al bood (`--atomic-editor-*`) —
+de kern van de vorm zit dus juist niet in eigen CSS, maar in het overnemen van een
+bestaand contract, inclusief syntaxkleuren voor codeblokken in beide standen. En een
+instellingenscherm: één scherm, twee regels die zich allebei verantwoorden — de vault
+(tot deze wave was er geen manier om 'm ná het eerste kiezen te wijzigen; dat is een
+functioneel gat, geen decoratie) en de startpagina (W9; hier alleen tonen en wissen,
+instellen blijft bewust via het rechtsklik-contextmenu, zoals F7 voorschrijft). Quick
+switcher, volledige-tekst-zoeken, het contextmenu en de conflictbalk zijn in dezelfde
+stijl meegenomen zonder hun bestaande rollen/tekst te wijzigen — alle 148
+frontend-tests bleven ongewijzigd groen. **Acceptatie is hier bewust geen automatische
+test** (PRD F6 zelf: "Jos beoordeelt dit") — de geautomatiseerde verificatie bewijst dat
+niets kapot is gegaan, niet dat de vorm "goed genoeg" is.
+
+Het echte ontwerp is daarna via Stitch tot stand gekomen en heeft de wireframe hierboven
+vervangen. Drie terugkoppelrondes (vastgelegd in de Stitch-briefing, die niet in de repo
+staat) haalden drie problemen eruit vóór Jos akkoord gaf: lopende tekst in een
+codelettertype (leest als een IDE, niet als proza — precies wat de doelzone tussen Bear
+en iA Writer uitsluit), een toolbar van ongelabelde iconen (letterlijk Jos' eigen klacht
+over Obsidian), en een verzonnen navigatielaag ("Drafts/Projects/Archive/Trash") die
+principe 3 schendt — Lapis kent geen concepten, projecten, archief of in-app
+prullenbak-scherm, de mapboom is de enige navigatie. Dat laatste punt is in de code
+stilzwijgend weggelaten in plaats van in Stitch opgelost, op Jos' eigen instructie.
+Overgenomen: drie lettertypefamilies met een eigen rol (Geist voor de chrome, Source
+Serif 4 voor notitie-inhoud, Hanken Grotesk uitsluitend voor het instellingenscherm — een
+notitie-kop blijft bewust in dezelfde serif als de rest van diezelfde notitie), een
+kleurenpalet met borders in plaats van schaduwen voor elke laag, 4px-afronding, en een
+broodkruimel boven de editor die het echte pad toont. Alle drie de lettertypes zijn
+zelf-gehost via `@fontsource` (geen Google Fonts-CDN op runtime — PRD §8 eist "volledig
+offline"). Alle 148 frontend-tests bleven groen.
+
 ## Volgende stap
 
-Backlog #7: de eerste doorloop op de Mac, op een kopie van de vault met `git init` +
-commit vooraf (afspraak V6a). Pas daarna de vorm (#13–#15).
+Backlog #7: de eerste doorloop op de Mac met de gestylede v0.2.0, op een kopie van de
+vault met `git init` + commit vooraf (afspraak V6a). Jos' oordeel na W8 was: *"ik ga het
+zo niet kunnen gebruiken, daar zijn W9 en W10 voor nodig."* Beide staan er nu.
 
 **Werkwijze:** zoals bij Usage Meter — één backlog met prioriteiten, per taak een
 briefing, acceptatie, model en valkuil, en een vaste definition of done. Zie de
 [backlog](docs/backlog.md#werkwijze).
+
+## Zelf bouwen en draaien (macOS)
+
+Eenmalig nodig:
+
+- **Xcode Command Line Tools** — `xcode-select --install`
+- **Rust** — via [rustup.rs](https://rustup.rs)
+- **Node.js 22** — dezelfde versie als CI, bijvoorbeeld via [nvm](https://github.com/nvm-sh/nvm)
+  of [nodejs.org](https://nodejs.org)
+
+Daarna, om Lapis als een echt venster te starten (hot reload op de frontend; de eerste
+keer bouwt cargo de Rust-kant, dat duurt een paar minuten, daarna is het snel):
+
+```bash
+git clone git@github.com:josbez/lapis.git
+cd lapis/app
+npm install
+npm run tauri dev
+```
+
+Om een `.app` te bouwen die je los kunt starten in plaats van via `tauri dev`:
+
+```bash
+npm run tauri build
+```
+
+Het resultaat staat in `app/target/release/bundle/macos/Lapis.app`. Voor gewoon gebruik is
+de DMG uit [Installeren](#installeren) makkelijker; `scripts/make-dmg.sh` bouwt die ook lokaal.
 
 ## Documenten
 

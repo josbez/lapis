@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Breadcrumb } from './Breadcrumb'
 import { EmptyState } from './EmptyState'
 import { FullTextSearch } from './FullTextSearch'
+import { IconRefresh, IconSettings, IconSidebar } from './Icons'
+import { NewItemButtons } from './NewItemButtons'
 import { NoteDraft } from './NoteDraft'
 import { NoteEditor } from './NoteEditor'
 import { QuickSwitcher, flattenFiles } from './QuickSwitcher'
+import { Settings } from './Settings'
 import { Tree, type TreeActions } from './Tree'
 import { createRequestGate } from './requestGate'
 import {
@@ -49,6 +53,8 @@ export default function App() {
   const [startPage, setStartPageState] = useState<string | null>(null)
   const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false)
   const [fullTextSearchOpen, setFullTextSearchOpen] = useState(false)
+  // W10: het instellingenscherm (PRD F6) — één scherm, geen tabs.
+  const [settingsOpen, setSettingsOpen] = useState(false)
   // W7: `null` zolang er geen concept openstaat, anders de map waarin het
   // straks aangemaakt wordt (leeg voor de vault-root).
   const [draftDir, setDraftDir] = useState<string | null>(null)
@@ -64,6 +70,14 @@ export default function App() {
   // pas ná het wegnavigeren aangemaakt wordt (bij het ontmonten), mag de
   // notitie die je intussen opende niet meer wegkapen (backlog #4).
   const draftIsCurrent = useRef<() => boolean>(() => false)
+
+  // W10: quick switcher, volledige-tekst-zoeken en instellingen zijn alle
+  // drie een overlay boven dezelfde inhoud — hoogstens één tegelijk open.
+  const closeOverlays = useCallback(() => {
+    setQuickSwitcherOpen(false)
+    setFullTextSearchOpen(false)
+    setSettingsOpen(false)
+  }, [])
 
   /**
    * Opent de vaste eerste pagina (W9, PRD F7) — bij het starten van Lapis en
@@ -81,8 +95,7 @@ export default function App() {
     setSelectedPath(relPath)
     setNoteContent(null)
     setRevealText(null)
-    setQuickSwitcherOpen(false)
-    setFullTextSearchOpen(false)
+    closeOverlays()
     void (async () => {
       try {
         const content = await readNote(relPath)
@@ -98,7 +111,7 @@ export default function App() {
         void setStartPage(null).catch(() => {})
       }
     })()
-  }, [])
+  }, [closeOverlays])
 
   useEffect(() => {
     const isLatest = gate.current.start()
@@ -140,12 +153,16 @@ export default function App() {
         setSelectedPath(null)
         setNoteContent(null)
         setStatus('')
+        // W10: een vault wisselen kan nu ook vanuit Instellingen, terwijl er
+        // nog een ander overlay openstaat — die hoort dan niet over de
+        // nieuwe, andere boom heen te blijven staan.
+        closeOverlays()
       } catch (e) {
         if (!isLatest()) return
         setStatus(`map openen mislukt: ${e}`)
       }
     })()
-  }, [])
+  }, [closeOverlays])
 
   const openNote = useCallback((relPath: string, reveal: string | null = null) => {
     const isLatest = gate.current.start()
@@ -153,8 +170,7 @@ export default function App() {
     setSelectedPath(relPath)
     setNoteContent(null)
     setRevealText(reveal)
-    setQuickSwitcherOpen(false)
-    setFullTextSearchOpen(false)
+    closeOverlays()
     void (async () => {
       try {
         const content = await readNote(relPath)
@@ -172,7 +188,7 @@ export default function App() {
         setStatus(`notitie openen mislukt: ${e}`)
       }
     })()
-  }, [])
+  }, [closeOverlays])
 
   /** Rechtsklik → "Als startpagina instellen" (W9). */
   const setAsStartPage = useCallback((relPath: string) => {
@@ -217,15 +233,17 @@ export default function App() {
   )
 
   /** "Nieuwe notitie" (W7) — opent een concept, nog geen bestand op schijf. */
-  const newNote = useCallback((dir: string = '') => {
-    draftIsCurrent.current = gate.current.start()
-    setSelectedPath(null)
-    setNoteContent(null)
-    setRevealText(null)
-    setQuickSwitcherOpen(false)
-    setFullTextSearchOpen(false)
-    setDraftDir(dir)
-  }, [])
+  const newNote = useCallback(
+    (dir: string = '') => {
+      draftIsCurrent.current = gate.current.start()
+      setSelectedPath(null)
+      setNoteContent(null)
+      setRevealText(null)
+      closeOverlays()
+      setDraftDir(dir)
+    },
+    [closeOverlays],
+  )
 
   /** Het concept is bij de eerste opslag echt aangemaakt (W7) — vanaf hier
    * is het een gewone notitie, behandeld door NoteEditor/useNoteEditor. */
@@ -364,9 +382,13 @@ export default function App() {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'k') {
         e.preventDefault()
+        setFullTextSearchOpen(false)
+        setSettingsOpen(false)
         setQuickSwitcherOpen((open) => !open)
       } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
         e.preventDefault()
+        setQuickSwitcherOpen(false)
+        setSettingsOpen(false)
         setFullTextSearchOpen((open) => !open)
       } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'h') {
         e.preventDefault()
@@ -395,53 +417,81 @@ export default function App() {
   }
 
   return (
-    <div>
-      <div>
-        <button type="button" onClick={toggleSidebar}>
-          {sidebarVisible ? 'Sidebar verbergen' : 'Sidebar tonen'}
+    <div className="lapis-app">
+      <div className="lapis-toolbar" data-tauri-drag-region="">
+        <button
+          type="button"
+          className="lapis-toolbar-btn"
+          aria-label={sidebarVisible ? 'Sidebar verbergen' : 'Sidebar tonen'}
+          title={sidebarVisible ? 'Sidebar verbergen' : 'Sidebar tonen'}
+          onClick={toggleSidebar}
+        >
+          <IconSidebar />
         </button>
-        <button type="button" onClick={refresh}>
-          Verversen
+        <span className="lapis-toolbar-spacer" />
+        <button
+          type="button"
+          className="lapis-toolbar-btn"
+          aria-label="Verversen"
+          title="Verversen"
+          onClick={refresh}
+        >
+          <IconRefresh />
         </button>
-        <button type="button" onClick={() => newNote()}>
-          Nieuwe notitie
-        </button>
-        <button type="button" onClick={() => newFolder()}>
-          Nieuwe map
-        </button>
-        <span> {view.rootDisplay}</span>
-        <span> {status}</span>
       </div>
-      <div style={{ display: 'flex' }}>
+      <div className="lapis-body">
         {sidebarVisible && (
-          <nav aria-label="Vault">
-            <Tree
-              root={view.tree}
-              selectedPath={selectedPath}
-              startPage={startPage}
-              onSelectFile={openNote}
-              actions={treeActions}
-            />
+          <nav aria-label="Vault" className="lapis-sidebar">
+            <div className="lapis-sidebar-tree">
+              <Tree
+                root={view.tree}
+                selectedPath={selectedPath}
+                startPage={startPage}
+                onSelectFile={openNote}
+                actions={treeActions}
+              />
+            </div>
+            <div className="lapis-sidebar-footer">
+              <NewItemButtons onNewNote={() => newNote()} onNewFolder={() => newFolder()} />
+              <button
+                type="button"
+                className="lapis-sidebar-settings"
+                onClick={() => {
+                  setQuickSwitcherOpen(false)
+                  setFullTextSearchOpen(false)
+                  setSettingsOpen(true)
+                }}
+              >
+                <IconSettings />
+                <span>Instellingen</span>
+              </button>
+            </div>
           </nav>
         )}
-        <main>
+        <main className="lapis-main">
           {draftDir !== null ? (
             <NoteDraft dir={draftDir} onCreated={handleDraftCreated} onStatus={setStatus} />
           ) : selectedPath === null ? (
-            <p>Kies een notitie in de boom.</p>
+            <p className="lapis-main-placeholder">Kies een notitie in de boom.</p>
           ) : noteContent !== null ? (
-            <NoteEditor
-              relPath={selectedPath}
-              initial={noteContent}
-              revealText={revealText}
-              onStatus={setStatus}
-              onCopySaved={refresh}
-              onNoteMoved={handleNoteMoved}
-            />
+            <>
+              <Breadcrumb relPath={selectedPath} />
+              <NoteEditor
+                relPath={selectedPath}
+                initial={noteContent}
+                revealText={revealText}
+                onStatus={setStatus}
+                onCopySaved={refresh}
+                onNoteMoved={handleNoteMoved}
+              />
+            </>
           ) : (
-            <p>{status || 'laden…'}</p>
+            <p className="lapis-main-placeholder">{status || 'laden…'}</p>
           )}
         </main>
+      </div>
+      <div className="lapis-statusbar">
+        <span>{status}</span>
       </div>
       {quickSwitcherOpen && (
         <QuickSwitcher
@@ -453,6 +503,15 @@ export default function App() {
       )}
       {fullTextSearchOpen && (
         <FullTextSearch onOpen={openNote} onClose={() => setFullTextSearchOpen(false)} />
+      )}
+      {settingsOpen && (
+        <Settings
+          vaultRootDisplay={view.rootDisplay}
+          startPage={startPage}
+          onPickVault={pickFolder}
+          onClearStartPage={clearStartPage}
+          onClose={() => setSettingsOpen(false)}
+        />
       )}
     </div>
   )

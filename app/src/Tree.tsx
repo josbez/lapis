@@ -1,5 +1,17 @@
 import { useState } from 'react'
 import { ContextMenu, type ContextMenuAction } from './ContextMenu'
+import {
+  IconChevron,
+  IconFile,
+  IconFilePlus,
+  IconFolder,
+  IconFolderPlus,
+  IconMove,
+  IconPencil,
+  IconStar,
+  IconStarOff,
+  IconTrash,
+} from './Icons'
 import type { TreeNode } from './ipc'
 
 /**
@@ -63,27 +75,47 @@ export function Tree({ root, selectedPath, startPage, onSelectFile, actions }: T
   const menuActions: ContextMenuAction[] = menu
     ? menu.node.kind === 'file'
       ? [
-          { label: 'Hernoemen', onSelect: () => actions.onRenameFile(menu.node.relPath) },
-          { label: 'Verplaatsen naar…', onSelect: () => actions.onMoveFile(menu.node.relPath) },
-          { label: 'Naar prullenbak', onSelect: () => actions.onTrashFile(menu.node.relPath) },
+          { label: 'Hernoemen', icon: <IconPencil />, onSelect: () => actions.onRenameFile(menu.node.relPath) },
+          {
+            label: 'Verplaatsen naar…',
+            icon: <IconMove />,
+            onSelect: () => actions.onMoveFile(menu.node.relPath),
+          },
+          {
+            label: 'Naar prullenbak',
+            icon: <IconTrash />,
+            onSelect: () => actions.onTrashFile(menu.node.relPath),
+            danger: true,
+          },
           menu.node.relPath === startPage
-            ? { label: 'Startpagina wissen', onSelect: () => actions.onClearStartPage() }
-            : { label: 'Als startpagina instellen', onSelect: () => actions.onSetStartPage(menu.node.relPath) },
+            ? { label: 'Startpagina wissen', icon: <IconStarOff />, onSelect: () => actions.onClearStartPage() }
+            : {
+                label: 'Als startpagina instellen',
+                icon: <IconStar />,
+                onSelect: () => actions.onSetStartPage(menu.node.relPath),
+              },
         ]
       : [
-          { label: 'Nieuwe notitie hier', onSelect: () => actions.onNewNoteInDir(menu.node.relPath) },
-          { label: 'Nieuwe map hier', onSelect: () => actions.onNewFolderInDir(menu.node.relPath) },
+          {
+            label: 'Nieuwe notitie hier',
+            icon: <IconFilePlus />,
+            onSelect: () => actions.onNewNoteInDir(menu.node.relPath),
+          },
+          {
+            label: 'Nieuwe map hier',
+            icon: <IconFolderPlus />,
+            onSelect: () => actions.onNewFolderInDir(menu.node.relPath),
+          },
         ]
     : []
 
   return (
     <>
-      <ul role="tree">
+      <ul role="tree" className="lapis-tree">
         {root.children.map((child) => (
           <TreeRow
             key={child.relPath}
             node={child}
-            depth={0}
             expanded={expanded}
             onToggle={toggle}
             selectedPath={selectedPath}
@@ -99,7 +131,6 @@ export function Tree({ root, selectedPath, startPage, onSelectFile, actions }: T
 
 interface RowProps {
   node: TreeNode
-  depth: number
   expanded: Set<string>
   onToggle: (relPath: string) => void
   selectedPath: string | null
@@ -107,7 +138,7 @@ interface RowProps {
   onContextMenu: (e: React.MouseEvent, node: TreeNode) => void
 }
 
-function TreeRow({ node, depth, expanded, onToggle, selectedPath, onSelectFile, onContextMenu }: RowProps) {
+function TreeRow({ node, expanded, onToggle, selectedPath, onSelectFile, onContextMenu }: RowProps) {
   const isDir = node.kind === 'dir'
   const isOpen = isDir && expanded.has(node.relPath)
   const isSelected = !isDir && node.relPath === selectedPath
@@ -116,23 +147,25 @@ function TreeRow({ node, depth, expanded, onToggle, selectedPath, onSelectFile, 
     <li role="treeitem" aria-expanded={isDir ? isOpen : undefined} aria-selected={isSelected}>
       <button
         type="button"
-        style={{ paddingLeft: `${depth * 16}px` }}
+        className="lapis-tree-row"
         // Een klik op een bestand zet hooguit de selectie — er gebeurt geen
         // IPC-aanroep die inhoud leest (Goal §4: dat is W2).
         onClick={() => (isDir ? onToggle(node.relPath) : onSelectFile(node.relPath))}
         onContextMenu={(e) => onContextMenu(e, node)}
       >
-        {isDir ? (isOpen ? '▾ ' : '▸ ') : '  '}
-        {node.name}
+        <span className="lapis-tree-chevron" style={{ width: 12 }}>
+          {isDir && <IconChevron open={isOpen} />}
+        </span>
+        <span className="lapis-tree-icon">{isDir ? <IconFolder /> : <IconFile />}</span>
+        <span className="lapis-tree-name">{node.name}</span>
         {isDir && !node.readable ? ' (geen toegang)' : ''}
       </button>
       {isDir && isOpen && (
-        <ul>
+        <ul className="lapis-tree-branch">
           {node.children.map((child) => (
             <TreeRow
               key={child.relPath}
               node={child}
-              depth={depth + 1}
               expanded={expanded}
               onToggle={onToggle}
               selectedPath={selectedPath}
