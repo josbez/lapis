@@ -45,7 +45,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "VERVANG_DOOR_PUBLIEKE_SLEUTEL_VAN_JOS",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEEyQzk3MzcxQUM5QjhDMTcKUldRWGpKdXNjWFBKb3NNUFVBL2cydDl3dmduOGFQUVdDYVVydVdKdUFGSTdSUnZOL2RzRFN3Ly8K",
       "endpoints": [
         "https://github.com/josbez/lapis/releases/latest/download/latest.json"
       ]
