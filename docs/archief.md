@@ -5,6 +5,8 @@ Eén regel per afgeronde taak, nieuwste bovenaan. De open taken staan in de
 
 ## Backlog (vanaf oktober 2026)
 
+- **#22 · Release v0.1.0 (10-10-2026)**: tag gepusht door Jos; de Release-run bouwde de DMG
+  en zette de release online met `Lapis.dmg`. Eerste start op de Mac is #7.
 - **Release-pipeline (10-10-2026)**, josbez/lapis#24: bundling aan (universal, ad-hoc
   gesigneerd, macOS 11+), versie 0.1.0, `scripts/make-dmg.sh` + `release/install.sh`, en
   `release.yml` (DMG bij elke `v*`-tag en bij PR's die de bundeling raken). Eerste DMG groen

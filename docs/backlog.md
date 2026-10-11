@@ -12,7 +12,6 @@ analyse die de P0- en P1-taken hieronder opleverde: [10 – Analyse oktober 2026
 
 | Prio | # | Taak | Epic | Hangt af van | Model |
 |---|---|---|---|---|---|
-| **P1** | **22** | **Release v0.1.0 uitbrengen (tag pushen)** | D | — | Jos |
 | P1 | 6 | Contracttest over de IPC-grens (vangt de klasse van #1) | A | — | Opus 5.5 |
 | **P1** | **7** | **Eerste doorloop op de Mac** | A | — | Jos |
 | P1 | 8 | Hernoemen/verplaatsen/prullenbak van de open notitie verliest getypte tekst | A | — | Opus 5.5 |
@@ -30,11 +29,11 @@ analyse die de P0- en P1-taken hieronder opleverde: [10 – Analyse oktober 2026
 | P3 | 20 | Bijlage niet atomair geschreven; één rare submap breekt de hele scan | A | — | Sonnet 5.5 |
 | P3 | 21 | `spike/` opruimen, CI niet meer dubbel | D | 7 | Haiku 5.5 |
 
-Afhankelijkheden: `22 ─► 7` (zacht: de DMG staat ook als CI-artifact), `7 ─► 11`, `7 ─► 13 ─► 14`, `13 ─► 15`, `7 ─► 21`.
+Afhankelijkheden: `7 ─► 11`, `7 ─► 13 ─► 14`, `13 ─► 15`, `7 ─► 21`.
 
 **Volgorde.** De P0-bugs #1–#5 zijn opgelost (zie het [archief](archief.md)), maar alleen
-bewezen met tests op Linux. Sinds josbez/lapis#24 bouwt CI een installeerbare `Lapis.dmg`;
-eerst #22 (de tag), dan #7: pas na een echte doorloop weten we wat er verder
+bewezen met tests op Linux. Sinds v0.1.0 staat er een installeerbare `Lapis.dmg`
+op de releasepagina. Nu eerst #7: pas na een echte doorloop weten we wat er verder
 stuk is, want 132 Rust-tests en 135 frontendtests waren allemaal groen terwijl opslaan
 niet werkte. De vorm (13–15) komt pas na 7. Wie ontwerpt voordat de basis bewezen werkt,
 ontwerpt een app die niemand kan gebruiken.
@@ -166,8 +165,7 @@ vault.
 
 **Briefing (Jos).**
 1. Kopie van de vault, daarin `git init && git add -A && git commit -m vóór-lapis`.
-2. Lapis installeren uit de DMG (README → Installeren; na #22 via de downloadlink, tot
-   die tijd het `Lapis.dmg`-artifact van de laatste Release-run), de kopie openen.
+2. Lapis installeren uit de DMG (README → Installeren, de downloadlink), de kopie openen.
    Zo test je de echte bundel, met de CSP en de ad-hoc-handtekening zoals ze uitgeleverd
    worden. `npm run tauri dev` alleen om een fout te debuggen.
 3. Nalopen, eerst de fixes uit #1–#5: notitie bewerken (géén conflictbalk) · een
@@ -375,19 +373,6 @@ verantwoorden; tel ze bij elke release (PRD §6). **Model: Sonnet 5.5.**
 ---
 
 ## Epic D: Onderhoud
-
-#### ⬜ 22. Release v0.1.0 uitbrengen — P1 (Jos)
-
-De pipeline staat (josbez/lapis#24); de DMG bouwde groen op de macOS-runner. Wat ontbreekt
-is de tag; een cloud-sessie kan die niet pushen (403, alleen de eigen branch).
-
-```bash
-git fetch origin && git tag v0.1.0 origin/claude/obsidian-like-markdown-tool-m9sk6s
-git push origin v0.1.0
-```
-
-**Acceptatie:** de Release-run is groen, de release staat op GitHub met `Lapis.dmg`, en de
-downloadlink in de README werkt.
 
 #### ⬜ 21. `spike/` opruimen — P3, na 7
 
