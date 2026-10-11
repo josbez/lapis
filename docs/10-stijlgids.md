@@ -1,9 +1,23 @@
 # 10. Stijlgids
 
-Dit document beschrijft het daadwerkelijk geïmplementeerde ontwerp in
-`app/src/styles.css` en `app/src/Icons.tsx` — niet een voorstel, maar de
-huidige staat van de app. Het is de bron van waarheid voor het visuele
-ontwerp; bij twijfel wint de code, en wordt dit document bijgewerkt.
+Dit document beschrijft het ontwerp zoals het in `app/src/styles.css` en
+`app/src/Icons.tsx` is gebouwd.
+
+**Het design system is leidend:** het Claude Design-artifact "Lapis"
+(privé): <https://claude.ai/artifact/6SPdkzcUjUhcw9ahaHpZL8>. De code en dit
+document volgen het, met dezelfde tokennamen (`naam` daar is `--naam` hier;
+de editorkleuren `hl-*` en `accent-bright` zijn `--atomic-editor-hl-*` en
+`--atomic-editor-accent-bright`).
+
+- **Eerst opzoeken.** Lees README, tokens en componentgids in het design
+  system voordat je de UI wijzigt, en bouw met wat er is.
+- **Ontbreekt iets of klopt het niet? Pas eerst het design system aan**
+  (token, component, regel), implementeer het daarna in de code en werk dit
+  document bij. De code loopt nooit voor op het design system.
+- **Elke PR die de UI wijzigt, werkt het design system bij** en noemt in de
+  beschrijving wat er veranderde. Ook een refactor zonder zichtbaar verschil
+  synchroniseert hernoemde of verwijderde tokens.
+- **Eén design system** voor Lapis: herzie dit, maak geen tweede.
 
 De aanleiding: het ontwerp is via Stitch tot stand gekomen (zie
 `docs/07-wave-methode.md`, W10), maar is daarna over meerdere rondes
@@ -31,6 +45,7 @@ handmatige thema-schakelaar (PRD sluit dat expliciet uit).
 | `--accent-fg` | `#ffffff` | `#0a1d2d` | Tekst op `--accent` |
 | `--danger` | `#ba1a1a` | `#ffb4ab` | Destructieve acties (prullenbak) |
 | `--danger-bg` | `#ffdad6` | `#3a2320` | Conflictbalk-achtergrond |
+| `--update-dot` | `#e8833a` | `#e8833a` | Stip op Instellingen bij een update; alleen als stip, nooit als tekst |
 
 Het donkere palet is een eigen afleiding — Stitch' tokenbestand gaf alleen
 losse aanwijzingen voor donker (basissurfaces, "vermijd puur zwart"), geen
