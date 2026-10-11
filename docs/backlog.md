@@ -157,7 +157,9 @@ precisie vergelijkt (tijdelijk terugdraaien als bewijs) en slaagt met de huidige
 
 #### ⬜ 7. Eerste doorloop op de Mac — P1 (Jos)
 
-**Probleem.** Geen enkele wave heeft ooit tegen een echte vault in de echte app gedraaid.
+**Probleem.** Geen enkele wave heeft ooit gestructureerd tegen een echte vault in de echte
+app gedraaid. (Wel een eerste losse macOS-toets van de W10-UI in augustus, commit `e07bb48`;
+die keek naar de vorm, niet naar de checklist hieronder.)
 Onbewezen en direct van belang: `window.prompt`/`confirm` in de Tauri-webview (daar hangen
 hernoemen, verplaatsen, nieuwe map, prullenbak, de waarschuwing bij onopgeslagen werk en
 "hun versie laden" aan), het focusmodel, plakken uit het klembord, `⌘⇧F` op de echte
@@ -330,13 +332,19 @@ keydown-handler in `App.tsx` naast `⌘K`; opent een concept in de vault-root. T
 
 ## Epic C: De vorm (was W10)
 
-PRD F6 en principe 7: het ontwerp is het onderscheidend vermogen. De huidige UI is
-bewust een wireframe (F6: "de eerste versie in code is een wireframe"): ongestylede
-knoppen, geen CSS behalve die van de editor. Zie [10 §4](10-analyse-oktober-2026.md#4-design-review)
-voor wat er nu ligt en wat in het ontwerp terug moet komen. Er staat al een
-Stitch-briefing klaar (artifact "Stitch-briefing Lapis").
+PRD F6 en principe 7: het ontwerp is het onderscheidend vermogen.
 
-#### ⬜ 13. Ontwerp — P2, na 7 (Jos)
+**Correctie (11-10-2026):** de analyse van oktober en deze epic gingen uit van een kale
+wireframe, maar W10 was in augustus grotendeels gebouwd op `claude/verder-gaan-h13h0z`
+(Stitch-ontwerp, `styles.css`, iconen, instellingenscherm, app-icoon, [stijlgids](10-stijlgids.md)).
+Die tien commits zijn na josbez/lapis#22 nooit gemerged en kwamen pas in v0.2.0 mee.
+De taken hieronder moeten na #7 opnieuw tegen die versie gelegd worden: wat is af, wat
+ontbreekt nog (zie [10 §4](10-analyse-oktober-2026.md#4-design-review) voor de punten die
+op de wireframe gebaseerd waren).
+
+#### ◐ 13. Ontwerp — P2, na 7 (Jos)
+
+*Grotendeels gedaan via Stitch in augustus; nog na te lopen welke schermen ontbreken.*
 
 Jos ontwerpt via Stitch/Claude Design (05 F1–F3). Minimaal: venster met sidebar en editor
 (licht en donker), lege staat zonder vault, lege staat zonder open notitie,
@@ -364,8 +372,9 @@ het toetsenbord te bedienen; DoD.
 
 **Model: Opus 5.5.** Valkuil: geen eigen smaak toevoegen boven het ontwerp van Jos.
 
-#### ⬜ 15. Instellingenscherm — P2, na 13
+#### ◐ 15. Instellingenscherm — P2, na 13
 
+*`Settings.tsx` bestaat sinds W10 (vault en startpagina); na te lopen tegen deze taak.*
 Eén scherm (F6). Wat er nu instelbaar is: de vault (andere map kiezen) en de startpagina
 (wissen). Sidebar zichtbaar is een toggle, geen instelling. Elke instelling moet zich
 verantwoorden; tel ze bij elke release (PRD §6). **Model: Sonnet 5.5.**

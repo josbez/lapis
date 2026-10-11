@@ -47,7 +47,7 @@ zijn sinds oktober 2026 vervangen door die twee.
 | W7 | Bestandsbeheer | ✅ gebouwd | PR #20 |
 | W8 | Bijlagen | ✅ gebouwd | PR #21 |
 | W9 | Vaste eerste pagina (`⌘⇧H`) | ✅ gebouwd | PR #22 |
-| W10 | De vorm | ⏳ open → backlog #13–#15 | |
+| W10 | De vorm | ◐ grotendeels gebouwd in augustus, pas in oktober gemerged (v0.2.0); rest in backlog #13–#15 | `claude/verder-gaan-h13h0z` |
 
 "Gebouwd" betekent: gemerged, en de geautomatiseerde poort (fmt, clippy, cargo test,
 eslint, tsc, vitest, vite build, isolatie-check) is groen op Linux. **Het betekent níét
