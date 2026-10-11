@@ -1,8 +1,12 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 
 export interface ContextMenuAction {
   label: string
   onSelect: () => void
+  /** W10 (Stitch-terugkoppeling): icoon vóór het label. */
+  icon?: ReactNode
+  /** W10: signaleert een destructieve actie (naar de prullenbak) in rood. */
+  danger?: boolean
 }
 
 interface ContextMenuProps {
@@ -36,18 +40,20 @@ export function ContextMenu({ x, y, actions, onClose }: ContextMenuProps) {
   }, [onClose])
 
   return (
-    <div role="menu" ref={ref} style={{ position: 'fixed', left: x, top: y }}>
+    <div role="menu" ref={ref} className="lapis-menu" style={{ position: 'fixed', left: x, top: y }}>
       {actions.map((action) => (
         <button
           key={action.label}
           type="button"
           role="menuitem"
+          className={action.danger ? 'lapis-menu-danger' : undefined}
           onClick={() => {
             onClose()
             action.onSelect()
           }}
         >
-          {action.label}
+          {action.icon && <span className="lapis-menu-icon">{action.icon}</span>}
+          <span>{action.label}</span>
         </button>
       ))}
     </div>

@@ -561,6 +561,8 @@ fn set_start_page(path: Option<String>) -> Result<(), String> {
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .manage(Session::new())
         .manage(IndexState(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![

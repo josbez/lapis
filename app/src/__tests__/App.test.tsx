@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
+import { open } from '@tauri-apps/plugin-dialog'
 import App from '../App'
 import * as ipc from '../ipc'
 import type { VaultView } from '../ipc'
@@ -7,6 +8,7 @@ import { useDraftNote, type UseDraftNoteResult } from '../useDraftNote'
 
 vi.mock('../ipc')
 vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn() }))
+const mockedOpen = vi.mocked(open)
 // W7 — alleen gemockt om onCreated rechtstreeks te kunnen aanroepen; de
 // hook zelf (debounce, ⌘S, blur, de create_note-race) is al uitputtend
 // getest in useDraftNote.test.ts. Zonder mock zou "een concept wordt bij de
@@ -68,8 +70,10 @@ describe('App', () => {
 
     render(<App />)
 
+    // W10: het vaultpad staat sinds de herziening niet meer in de toolbar
+    // (dat hoort bij Instellingen) — deze test bewijst alleen dat de boom
+    // verschijnt.
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
-    expect(screen.getByText(/\/tmp\/vault/)).toBeTruthy()
   })
 
   it('sidebar verbergen haalt de boom uit beeld en onthoudt de stand', async () => {
@@ -80,13 +84,13 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
-    fireEvent.click(screen.getByText('Sidebar verbergen'))
+    fireEvent.click(screen.getByRole('button', { name: 'Sidebar verbergen' }))
     await waitFor(() => expect(screen.queryByText(/notitie\.md/)).toBeNull())
     expect(mockedIpc.setSidebarVisible).toHaveBeenCalledWith(false)
 
     // De boom-data blijft intact — verbergen is CSS-state, geen her-fetch
     // (Spec §5.6).
-    fireEvent.click(screen.getByText('Sidebar tonen'))
+    fireEvent.click(screen.getByRole('button', { name: 'Sidebar tonen' }))
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
     expect(mockedIpc.rescanVault).not.toHaveBeenCalled()
   })
@@ -97,7 +101,7 @@ describe('App', () => {
 
     render(<App />)
 
-    await waitFor(() => expect(screen.getByText('Sidebar tonen')).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Sidebar tonen' })).toBeTruthy())
     expect(screen.queryByText(/notitie\.md/)).toBeNull()
   })
 
@@ -234,6 +238,9 @@ describe('App', () => {
 
     expect(screen.queryByRole('dialog')).toBeNull()
 
+    // De sneltoets-listener hangt in een effect dat pas na de render loopt;
+    // zonder deze flush mist de toets hem soms (flake, zie backlog "Later").
+    await act(async () => {})
     fireEvent.keyDown(window, { key: 'f', metaKey: true, shiftKey: true })
     expect(await screen.findByRole('dialog', { name: 'Zoeken in alle notities' })).toBeTruthy()
 
@@ -308,7 +315,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
-    fireEvent.click(screen.getByText('Nieuwe notitie'))
+    fireEvent.click(screen.getByRole('button', { name: 'Nieuwe notitie' }))
 
     const content = document.querySelector('.cm-content')
     expect(content?.getAttribute('contenteditable')).toBe('true')
@@ -323,7 +330,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
-    fireEvent.click(screen.getByText('Nieuwe notitie'))
+    fireEvent.click(screen.getByRole('button', { name: 'Nieuwe notitie' }))
 
     // De hook zelf (create_note-aanroep, race met verder typen) is elders
     // getest — hier bewijzen we alleen dat App.tsx de overdracht (onCreated)
@@ -334,7 +341,9 @@ describe('App', () => {
 
     expect(mockedIpc.recordNoteOpened).toHaveBeenCalledWith('Boodschappen.md')
     await waitFor(() => expect(mockedIpc.rescanVault).toHaveBeenCalled())
-    await waitFor(() => expect(screen.getByText(/Boodschappen/)).toBeTruthy())
+    // Exacte match: de broodkruimel toont intussen ook "Boodschappen.md",
+    // dit bewijst specifiek dat de kopregel in de editor zelf staat.
+    await waitFor(() => expect(screen.getByText(/^Boodschappen$/)).toBeTruthy())
     // readNote wordt hier nooit aangeroepen — de inhoud van het net
     // aangemaakte bestand is al bekend uit onCreated's argumenten.
     expect(mockedIpc.readNote).not.toHaveBeenCalled()
@@ -351,7 +360,7 @@ describe('App', () => {
     fireEvent.click(screen.getByText(/notitie\.md/))
     await waitFor(() => expect(screen.getByText(/bestaande inhoud/)).toBeTruthy())
 
-    fireEvent.click(screen.getByText('Nieuwe notitie'))
+    fireEvent.click(screen.getByRole('button', { name: 'Nieuwe notitie' }))
 
     expect(screen.queryByText(/bestaande inhoud/)).toBeNull()
   })
@@ -366,7 +375,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
-    fireEvent.click(screen.getByText('Nieuwe notitie'))
+    fireEvent.click(screen.getByRole('button', { name: 'Nieuwe notitie' }))
     fireEvent.click(screen.getByText(/notitie\.md/))
 
     await waitFor(() => expect(screen.getByText(/bestaande inhoud/)).toBeTruthy())
@@ -384,7 +393,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
-    fireEvent.click(screen.getByText('Nieuwe notitie'))
+    fireEvent.click(screen.getByRole('button', { name: 'Nieuwe notitie' }))
     const draftOptions = mockedUseDraftNote.mock.calls.at(-1)?.[0]
 
     fireEvent.click(screen.getByText(/notitie\.md/))
@@ -409,7 +418,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
-    fireEvent.click(screen.getByText('Nieuwe map'))
+    fireEvent.click(screen.getByRole('button', { name: 'Nieuwe map' }))
 
     expect(promptSpy).toHaveBeenCalled()
     await waitFor(() => expect(mockedIpc.createFolder).toHaveBeenCalledWith('', 'Projecten'))
@@ -424,7 +433,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
-    fireEvent.click(screen.getByText('Nieuwe map'))
+    fireEvent.click(screen.getByRole('button', { name: 'Nieuwe map' }))
 
     expect(mockedIpc.createFolder).not.toHaveBeenCalled()
   })
@@ -445,7 +454,7 @@ describe('App', () => {
     fireEvent.click(screen.getByText(/notitie\.md/))
     await waitFor(() => expect(mockedIpc.readNote).toHaveBeenCalledTimes(1))
 
-    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.contextMenu(within(screen.getByRole('tree')).getByText(/notitie\.md/))
     fireEvent.click(screen.getByText('Hernoemen'))
 
     await waitFor(() =>
@@ -470,7 +479,7 @@ describe('App', () => {
     fireEvent.click(screen.getByText(/notitie\.md/))
     await waitFor(() => expect(screen.getByText(/inhoud/)).toBeTruthy())
 
-    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.contextMenu(within(screen.getByRole('tree')).getByText(/notitie\.md/))
     fireEvent.click(screen.getByText('Naar prullenbak'))
 
     await waitFor(() => expect(mockedIpc.trashNote).toHaveBeenCalledWith('notitie.md'))
@@ -485,7 +494,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
-    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.contextMenu(within(screen.getByRole('tree')).getByText(/notitie\.md/))
     fireEvent.click(screen.getByText('Naar prullenbak'))
 
     expect(mockedIpc.trashNote).not.toHaveBeenCalled()
@@ -614,13 +623,13 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
-    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.contextMenu(within(screen.getByRole('tree')).getByText(/notitie\.md/))
     fireEvent.click(screen.getByText('Als startpagina instellen'))
 
     await waitFor(() => expect(mockedIpc.setStartPage).toHaveBeenCalledWith('notitie.md'))
     // Nogmaals rechtsklikken toont nu "wissen" — bewijst dat de eigen
     // React-state is bijgewerkt, niet alleen de IPC-aanroep gedaan.
-    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.contextMenu(within(screen.getByRole('tree')).getByText(/notitie\.md/))
     expect(screen.getByText('Startpagina wissen')).toBeTruthy()
   })
 
@@ -633,11 +642,101 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText(/inhoud/)).toBeTruthy())
 
-    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.contextMenu(within(screen.getByRole('tree')).getByText(/notitie\.md/))
     fireEvent.click(screen.getByText('Startpagina wissen'))
 
     await waitFor(() => expect(mockedIpc.setStartPage).toHaveBeenCalledWith(null))
-    fireEvent.contextMenu(screen.getByText(/notitie\.md/))
+    fireEvent.contextMenu(within(screen.getByRole('tree')).getByText(/notitie\.md/))
     expect(screen.getByText('Als startpagina instellen')).toBeTruthy()
+  })
+
+  // W10 — het instellingenscherm (PRD F6).
+
+  it('"Instellingen" opent het instellingenscherm met de huidige vault en startpagina', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.getStartPage.mockResolvedValue('notitie.md')
+    mockedIpc.readNote.mockResolvedValue({ content: 'inhoud', modifiedMs: 1000 })
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/inhoud/)).toBeTruthy())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Instellingen' }))
+
+    const dialog = screen.getByRole('dialog', { name: 'Instellingen' })
+    expect(within(dialog).getByText('/tmp/vault')).toBeTruthy()
+    expect(within(dialog).getByText('notitie.md')).toBeTruthy()
+  })
+
+  it('Escape sluit het instellingenscherm', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Instellingen' }))
+    expect(screen.getByRole('dialog', { name: 'Instellingen' })).toBeTruthy()
+
+    fireEvent.keyDown(window, { key: 'Escape' })
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('"Andere map kiezen" in Instellingen wisselt de vault en sluit het scherm', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedOpen.mockResolvedValue('/tmp/andere-vault')
+    const andereBoom: VaultView = {
+      rootDisplay: '/tmp/andere-vault',
+      tree: { name: 'vault', relPath: '', kind: 'dir', readable: true, children: [] },
+    }
+    mockedIpc.openVault.mockResolvedValue(andereBoom)
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Instellingen' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Andere map kiezen' }))
+
+    await waitFor(() => expect(mockedIpc.openVault).toHaveBeenCalledWith('/tmp/andere-vault'))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    // W10: het pad staat niet meer in de toolbar — heropen Instellingen om
+    // te bewijzen dat de app-state écht is bijgewerkt, niet alleen dat
+    // openVault is aangeroepen.
+    fireEvent.click(screen.getByRole('button', { name: 'Instellingen' }))
+    expect(within(screen.getByRole('dialog')).getByText('/tmp/andere-vault')).toBeTruthy()
+  })
+
+  it('"Startpagina wissen" in Instellingen roept setStartPage(null) aan', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+    mockedIpc.getStartPage.mockResolvedValue('notitie.md')
+    mockedIpc.readNote.mockResolvedValue({ content: 'inhoud', modifiedMs: 1000 })
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/inhoud/)).toBeTruthy())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Instellingen' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Wissen' }))
+
+    await waitFor(() => expect(mockedIpc.setStartPage).toHaveBeenCalledWith(null))
+  })
+
+  it('⌘K sluit een openstaand instellingenscherm en opent de quick switcher', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(true)
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Instellingen' }))
+    expect(screen.getByRole('dialog', { name: 'Instellingen' })).toBeTruthy()
+
+    fireEvent.keyDown(window, { key: 'k', metaKey: true })
+
+    expect(screen.queryByRole('dialog', { name: 'Instellingen' })).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'Snel een notitie openen' })).toBeTruthy()
   })
 })

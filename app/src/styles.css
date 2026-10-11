@@ -1,0 +1,847 @@
+/*
+ * W10 — "de vorm" (PRD F6).
+ *
+ * De wireframe (zie git-historie) is vervangen door het ontwerp dat via
+ * Stitch tot stand kwam, na drie terugkoppelrondes (zie de Stitch-briefing).
+ * Eén punt uit die rondes — een verzonnen "Drafts/Projects/Archive/Trash"-
+ * navigatielaag boven de mapboom — is bewust nooit overgenomen: Lapis kent
+ * die concepten niet, en principe 3 staat geen tweede navigatiesysteem naast
+ * de mapboom toe. De rest van het ontwerp (kleuren, typografie, spacing,
+ * vorm) is hieronder zo getrouw mogelijk overgenomen uit het aangeleverde
+ * design-tokenbestand.
+ *
+ * Licht/donker gaat uitsluitend via `prefers-color-scheme`: het PRD sluit
+ * een handmatige thema-keuze expliciet uit. Het tokenbestand gaf alleen
+ * losse aanwijzingen voor donker (basiskleuren, "vermijd puur zwart"); de
+ * volledige donkere set hieronder is daarvan mijn eigen afleiding, met
+ * dezelfde kleurverhoudingen als licht.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  color-scheme: light dark;
+
+  /* Kleuren — licht, rechtstreeks uit het design-tokenbestand. */
+  --bg: #f9f9ff;
+  --bg-elevated: #ffffff;
+  --bg-surface: #f0f3ff;
+  --bg-hover: #e7eefe;
+  --fg: #151c27;
+  --fg-muted: #43474c;
+  --fg-faint: #74777d;
+  --border: #e2e8f0;
+  --accent: #172839;
+  --accent-fg: #ffffff;
+  --danger: #ba1a1a;
+  --danger-bg: #ffdad6;
+  --radius: 0.25rem;
+
+  /* Typografie — drie families met elk hun eigen rol (Brand & Style /
+     Typography in het tokenbestand): Geist voor de chrome eromheen (sidebar,
+     toolbar, menu's, instellingen), Source Serif 4 voor lopende tekst in de
+     notitie, Hanken Grotesk voor koppen — zowel het instellingenscherm als
+     de H1/H2 ín een notitie (verderop, op `.cm-atomic-h1`/`h2`), zoals het
+     tokenbestand voorschrijft. */
+  --font-sans: 'Geist Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-serif: 'Source Serif 4', ui-serif, Georgia, serif;
+  --font-display: 'Hanken Grotesk', var(--font-sans);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Editor-theming contract van @atomic-editor/editor — elke variabele
+     hieronder heeft daar een eigen fallback, maar zonder deze mapping zou
+     de editor er anders uitzien dan de rest van de app. */
+  --atomic-editor-bg: var(--bg);
+  --atomic-editor-bg-panel: var(--bg-elevated);
+  --atomic-editor-bg-surface: var(--bg-surface);
+  --atomic-editor-fg: var(--fg);
+  --atomic-editor-fg-muted: var(--fg-muted);
+  --atomic-editor-fg-faint: var(--fg-faint);
+  --atomic-editor-border: var(--border);
+  --atomic-editor-accent: var(--accent);
+  --atomic-editor-accent-bright: #37485b;
+  --atomic-editor-accent-soft: color-mix(in srgb, var(--accent) 55%, white 45%);
+  --atomic-editor-link: var(--accent);
+  --atomic-editor-link-hover: color-mix(in srgb, var(--accent) 75%, black 25%);
+  --atomic-editor-code-bg: var(--bg-surface);
+  --atomic-editor-code-rail: color-mix(in srgb, var(--accent) 45%, var(--border) 55%);
+  --atomic-editor-selection-bg: color-mix(in srgb, var(--accent) 18%, var(--bg) 82%);
+  --atomic-editor-search-bg: color-mix(in srgb, var(--accent) 12%, var(--bg) 88%);
+  --atomic-editor-search-bg-active: color-mix(in srgb, var(--accent) 26%, var(--bg) 74%);
+  --atomic-editor-initial-reveal-bg: color-mix(in srgb, var(--accent) 28%, transparent 72%);
+  --atomic-editor-initial-reveal-bg-strong: color-mix(in srgb, var(--accent) 50%, transparent 50%);
+  --atomic-editor-measure: 720px;
+  --atomic-editor-radius: var(--radius);
+  --atomic-editor-font: var(--font-serif);
+  --atomic-editor-font-mono: var(--font-mono);
+  --atomic-editor-body-size: 1.125rem;
+  --atomic-editor-body-leading: 1.778;
+
+  /* Codeblok-syntaxkleuren — "low-contrast", geen regenboog (Components in
+     het tokenbestand). */
+  --atomic-editor-hl-comment: #74777d;
+  --atomic-editor-hl-string: #37485b;
+  --atomic-editor-hl-number: #43474c;
+  --atomic-editor-hl-keyword: #172839;
+  --atomic-editor-hl-function: #2d3e50;
+  --atomic-editor-hl-variable: var(--fg);
+  --atomic-editor-hl-property: #2d3e50;
+  --atomic-editor-hl-type: #43474c;
+  --atomic-editor-hl-tag: #37485b;
+  --atomic-editor-hl-operator: var(--fg-muted);
+  --atomic-editor-hl-regexp: #37485b;
+  --atomic-editor-hl-escape: #172839;
+  --atomic-editor-hl-invalid: var(--danger);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Donker — eigen afleiding op basis van de losse aanwijzingen in het
+       tokenbestand (§Colors: "#1A1B1E surfaces, #D1D5DB tekst, vermijd puur
+       zwart", §Layout: "#2D2E32"-randen) en de bestaande "fixed"/"container"-
+       varianten uit de kleurentabel, zodat het accent ook op een donkere
+       ondergrond leesbaar blijft. */
+    --bg: #1a1b1e;
+    --bg-elevated: #201f23;
+    --bg-surface: #201f23;
+    --bg-hover: #2a292e;
+    --fg: #d1d5db;
+    --fg-muted: #9aa0a8;
+    --fg-faint: #6b7078;
+    --border: #2d2e32;
+    --accent: #b6c8df;
+    --accent-fg: #0a1d2d;
+    --danger: #ffb4ab;
+    --danger-bg: #3a2320;
+
+    --atomic-editor-accent-bright: #d2e4fb;
+    --atomic-editor-hl-comment: #9aa0a8;
+    --atomic-editor-hl-string: #b6c8df;
+    --atomic-editor-hl-number: #d1d5db;
+    --atomic-editor-hl-keyword: #d2e4fb;
+    --atomic-editor-hl-function: #b6c8df;
+    --atomic-editor-hl-property: #b6c8df;
+    --atomic-editor-hl-type: #d1d5db;
+    --atomic-editor-hl-tag: #d2e4fb;
+    --atomic-editor-hl-escape: #d2e4fb;
+    --atomic-editor-hl-regexp: #b6c8df;
+  }
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  height: 100vh;
+}
+
+/* Koppen ín een notitie — Hanken Grotesk, net als het instellingenscherm
+   (Typography: "Headlines: Hanken Grotesk for... document titles"). H1
+   nadrukkelijk groter en verder los van zowel de lopende tekst als H2 —
+   een duidelijke titel, niet nog een tussenkopje. `.lapis-editor-host`
+   erbij: @atomic-editor/editor's eigen `.cm-line.cm-atomic-h1`-regel zet
+   al een font-size, en wint anders op specificiteit ongeacht importvolgorde. */
+.lapis-editor-host .cm-atomic-h1,
+.lapis-editor-host .cm-atomic-h2 {
+  font-family: var(--font-display);
+}
+
+.lapis-editor-host .cm-line.cm-atomic-h1 {
+  font-size: 2.1em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.lapis-editor-host .cm-line.cm-atomic-h2 {
+  font-size: 1.3em;
+  font-weight: 600;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+svg {
+  display: block;
+}
+
+/* ── Lege staat (Goal §0/V4) ─────────────────────────────────────────── */
+
+.lapis-empty-state {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+.lapis-empty-state p {
+  color: var(--fg-muted);
+  max-width: 32ch;
+  margin: 0;
+}
+
+/* ── Knoppen ─────────────────────────────────────────────────────────── */
+/* "Solide primary voor hoofdacties, ghost-knoppen met 1px rand voor
+   secundaire acties" (Components). */
+
+.lapis-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--fg);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.7rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.lapis-btn:hover {
+  background: var(--bg-hover);
+}
+
+.lapis-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.lapis-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lapis-btn:disabled:hover {
+  background: var(--bg-elevated);
+}
+
+.lapis-btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+.lapis-btn-primary:hover {
+  filter: brightness(1.1);
+  background: var(--accent);
+}
+
+/* Icoon-only toolbar-knoppen (sidebar/verversen/instellingen) — bewust
+   onopvallend, geen rand of vulling zoals .lapis-btn: dit is chrome, geen
+   actie die om aandacht vraagt. Toegankelijke naam komt van aria-label op
+   de knop zelf (er staat geen zichtbare tekst naast het icoon). */
+.lapis-toolbar-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.lapis-toolbar-btn:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.lapis-toolbar-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ── Het venster: toolbar + sidebar + hoofdinhoud ───────────────────── */
+
+.lapis-app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.lapis-toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  height: 2.6rem;
+  /* Ruimte voor de macOS-verkeerslichten (titleBarStyle: Overlay, PRD F6 —
+     geen eigen titelbalk, zoals Obsidian/Slack). De hoogte van het
+     systeemvenster-chrome varieert per macOS-versie; deze marge is ruim
+     genoeg gekozen om nooit te overlappen. */
+  padding: 0 0.6rem 0 5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.lapis-toolbar-spacer {
+  flex: 1;
+}
+
+/* Statusregel onderaan het venster (Stitch: "Laatst opgeslagen…" hoort
+   thuis in een voettekst, niet naast de toolbar-iconen). Alleen onze eigen
+   status — geen taal-/encoding-indicatoren zoals Stitch' mockup liet zien,
+   dat is code-editor-chrome die niets met een markdown-notitie te maken
+   heeft. */
+.lapis-statusbar {
+  flex: none;
+  padding: 0.3rem 0.9rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--fg-muted);
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  min-height: 1.4rem;
+}
+
+.lapis-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.lapis-sidebar {
+  flex: none;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+.lapis-sidebar-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 0;
+}
+
+/* Onderaan de mappenbalk: twee icoon-knoppen (nieuwe notitie/map) en
+   daaronder Instellingen. Terug naar losse knoppen i.p.v. de eerdere
+   "+ Nieuw"-popup (`NewItemMenu`), en Instellingen hierheen verplaatst
+   vanuit de hoofdtoolbar — beide op verzoek, na een nieuwe
+   Stitch-terugkoppelronde. */
+.lapis-sidebar-footer {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.lapis-sidebar-new-buttons {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.lapis-sidebar-new-buttons button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.lapis-sidebar-new-buttons button:first-child {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+.lapis-sidebar-new-buttons button:first-child:hover {
+  background: color-mix(in srgb, var(--accent) 88%, black 12%);
+}
+
+.lapis-sidebar-new-buttons button:last-child {
+  background: transparent;
+  color: var(--fg-muted);
+}
+
+.lapis-sidebar-new-buttons button:last-child:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.lapis-sidebar-new-buttons button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.lapis-sidebar-settings {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.5rem;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-muted);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+/* Update beschikbaar (zoals de stip op het tandwiel in Usage Meter). */
+.lapis-update-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-left: auto;
+  border-radius: 50%;
+  background: #e8833a;
+}
+
+.lapis-sidebar-settings:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.lapis-sidebar-settings:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.lapis-main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.lapis-main-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-faint);
+  padding: 2rem;
+  text-align: center;
+}
+
+.lapis-editor-host {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Broodkruimel boven de editor (Components: "breadcrumbs... label-caps"). */
+.lapis-breadcrumb {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.65rem 1.5rem 0;
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+  max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.lapis-breadcrumb-sep {
+  color: var(--fg-faint);
+}
+
+.lapis-breadcrumb-current {
+  color: var(--fg-muted);
+}
+
+/* ── De boom ─────────────────────────────────────────────────────────── */
+
+.lapis-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lapis-tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Onderliggende bestanden/mappen (Components: "indent line to visually
+   connect nested files to their parent folder") — een dunne verticale
+   geleidelijn, ingesprongen tot onder het map-icoon van de ouder, zodat de
+   boomstructuur ook zonder de wisselende achtergrondkleur van selectie
+   herkenbaar blijft. */
+.lapis-tree ul.lapis-tree-branch {
+  margin-left: 0.85rem;
+  padding-left: 0.6rem;
+  border-left: 1px solid var(--border);
+}
+
+.lapis-tree-row {
+  width: calc(100% - 0.6rem);
+  margin-inline: 0.3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0.32rem 0.5rem;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--fg);
+  cursor: pointer;
+  border-radius: var(--radius);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lapis-tree-row:hover {
+  background: var(--bg-hover);
+}
+
+/* `aria-selected` staat op de <li role="treeitem">, niet op de knop zelf
+   (correcte ARIA-plek voor treeitem) — vandaar de kindselector i.p.v. een
+   klasse-attribuutselector op `.lapis-tree-row` zelf. */
+li[aria-selected='true'] > .lapis-tree-row {
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+}
+
+.lapis-tree-icon {
+  flex: none;
+  color: var(--fg-faint);
+}
+
+li[aria-selected='true'] > .lapis-tree-row .lapis-tree-icon {
+  color: var(--accent-fg);
+}
+
+.lapis-tree-chevron {
+  flex: none;
+  color: var(--fg-faint);
+}
+
+.lapis-tree-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Contextmenu, quick switcher, zoeken, instellingen: gedeelde
+   overlay/paneel-vorm ───────────────────────────────────────────────── */
+/* "Level 2 (modals/popovers): scherpe 1px rand, geen ambient blur" —
+   bewust geen schaduw (Elevation & Depth). */
+
+.lapis-menu {
+  position: fixed;
+  z-index: 20;
+  min-width: 12rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.25rem;
+}
+
+.lapis-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0.4rem 0.6rem;
+  border-radius: calc(var(--radius) - 0.05rem);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  color: var(--fg);
+}
+
+.lapis-menu button:hover {
+  background: var(--bg-hover);
+}
+
+.lapis-menu-icon {
+  display: flex;
+  flex: none;
+  color: var(--fg-faint);
+}
+
+.lapis-menu button.lapis-menu-danger {
+  color: var(--danger);
+}
+
+.lapis-menu button.lapis-menu-danger .lapis-menu-icon {
+  color: var(--danger);
+}
+
+.lapis-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgb(0 0 0 / 0.28);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+}
+
+.lapis-dialog {
+  width: min(560px, 92vw);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.lapis-dialog input[type='text'] {
+  border: none;
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  background: transparent;
+  color: var(--fg);
+}
+
+.lapis-dialog input[type='text']:focus {
+  outline: none;
+}
+
+.lapis-dialog ul[role='listbox'] {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem;
+  overflow-y: auto;
+}
+
+.lapis-dialog li[role='option'] {
+  border-radius: var(--radius);
+}
+
+.lapis-dialog li[role='option'][aria-selected='true'] {
+  background: color-mix(in srgb, var(--accent) 10%, transparent 90%);
+}
+
+.lapis-dialog li[role='option'] button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0.5rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  color: var(--fg);
+}
+
+.lapis-dialog li[role='option'] span {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  margin-left: 0.4rem;
+}
+
+.lapis-dialog li[role='option'] p {
+  margin: 0.2rem 0 0;
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+}
+
+.lapis-dialog li[role='option'] mark {
+  background: color-mix(in srgb, var(--accent) 30%, transparent 70%);
+  color: inherit;
+  border-radius: 0.2em;
+  padding: 0 0.1em;
+}
+
+.lapis-dialog > ul[role='listbox'] > li:not([role='option']) {
+  padding: 0.6rem 0.75rem;
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+}
+
+/* ── Quick switcher (⌘K): zoekbalk met icoon/ESC-badge, resultaatrij met
+   bestandsicoon + submap-pad, en een voettekst met toetsenbordhint —
+   W10-terugkoppeling. Eigen selectorprefix (`.lapis-quickswitcher`, naast
+   de gedeelde `.lapis-dialog`) zodat dit `FullTextSearch` niet raakt. ── */
+
+.lapis-quick-searchrow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--fg-faint);
+}
+
+.lapis-quick-searchrow input[type='text'] {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  border-bottom: none;
+  padding: 0.75rem 0;
+}
+
+.lapis-kbd {
+  flex: none;
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+  border: 1px solid var(--border);
+  border-radius: 0.2rem;
+  padding: 0.05rem 0.4rem;
+  background: var(--bg-surface);
+}
+
+.lapis-quickswitcher .lapis-quick-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.lapis-quickswitcher .lapis-quick-row-icon,
+.lapis-quickswitcher .lapis-quick-row-enter {
+  display: flex;
+  flex: none;
+  margin-left: 0;
+  color: var(--fg-faint);
+}
+
+.lapis-quickswitcher .lapis-quick-row-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.lapis-quickswitcher .lapis-quick-row-name {
+  margin-left: 0;
+  font-size: 0.8125rem;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lapis-quickswitcher .lapis-quick-row-path {
+  margin-left: 0;
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+}
+
+.lapis-dialog.lapis-quickswitcher li[role='option'][aria-selected='true'] {
+  background: var(--accent);
+}
+
+.lapis-dialog.lapis-quickswitcher li[role='option'][aria-selected='true'] .lapis-quick-row-name,
+.lapis-dialog.lapis-quickswitcher li[role='option'][aria-selected='true'] .lapis-quick-row-path,
+.lapis-dialog.lapis-quickswitcher li[role='option'][aria-selected='true'] .lapis-quick-row-icon,
+.lapis-dialog.lapis-quickswitcher li[role='option'][aria-selected='true'] .lapis-quick-row-enter {
+  color: var(--accent-fg);
+}
+
+.lapis-quick-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.6875rem;
+  color: var(--fg-faint);
+}
+
+/* ── Instellingen ────────────────────────────────────────────────────── */
+
+.lapis-settings {
+  padding: 0.5rem 1.25rem 1.25rem;
+  overflow-y: auto;
+}
+
+.lapis-settings h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1rem;
+  margin: 1rem 0 0.25rem;
+}
+
+.lapis-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.lapis-settings-row:last-child {
+  border-bottom: none;
+}
+
+.lapis-settings-row-text {
+  min-width: 0;
+}
+
+.lapis-settings-row-label {
+  font-size: 0.8125rem;
+}
+
+.lapis-settings-row-value {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Conflictbalk (W3/W4, PRD §10) ──────────────────────────────────── */
+
+.lapis-conflict {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 1rem;
+  background: var(--danger-bg);
+  border-bottom: 1px solid var(--border);
+  color: var(--fg);
+  font-size: 0.8125rem;
+}
+
+.lapis-conflict p {
+  margin: 0;
+  flex: 1;
+  min-width: 20ch;
+}

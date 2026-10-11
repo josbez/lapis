@@ -1,0 +1,39 @@
+# Bouwt Lapis.dmg op een macOS-runner, als controle: bij een PR die de
+# bundeling raakt, of handmatig (Actions → DMG → Run workflow). De DMG komt
+# als artifact bij de run; er wordt niets uitgebracht.
+#
+# Uitbrengen gebeurt op de Mac van Jos, zoals bij Usage Meter: daar staat de
+# updater-sleutel (~/.tauri/lapis.key), en die gaat nooit naar GitHub.
+# Zie scripts/release.sh.
+
+name: DMG
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/dmg.yml'
+      - 'scripts/make-dmg.sh'
+      - 'release/**'
+      - 'app/src-tauri/tauri.conf.json'
+      - 'app/src-tauri/Cargo.toml'
+      - 'app/src-tauri/icons/**'
+
+jobs:
+  dmg:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: DMG bouwen (zonder updater-sleutel)
+        run: ./scripts/make-dmg.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lapis.dmg
+          path: Lapis.dmg

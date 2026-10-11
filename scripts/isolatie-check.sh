@@ -78,6 +78,9 @@ draai_checks() {
   scan "geen netwerk in de kern (spike)" \
     '\b(reqwest|ureq|hyper|curl|TcpStream|TcpListener|std::net)\b|https?://' \
     spike/vault-core/src spike/src-tauri/src
+  # Updaten (PRD §8, besluit 11-10-2026) is de enige uitzondering, en die loopt
+  # via tauri-plugin-updater met het endpoint in tauri.conf.json, niet via
+  # eigen code: deze check blijft dus ongewijzigd gelden voor de kern en de schil.
   scan "geen netwerk in de kern (app)" \
     '\b(reqwest|ureq|hyper|curl|TcpStream|TcpListener|std::net)\b|https?://' \
     app/vault-core/src app/app-state/src app/search-index/src app/src-tauri/src

@@ -2,3 +2,5 @@ node_modules/
 dist/
 target/
 Lapis.dmg
+Lapis.app.tar.gz
+latest.json

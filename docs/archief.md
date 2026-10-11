@@ -5,6 +5,16 @@ Eén regel per afgeronde taak, nieuwste bovenaan. De open taken staan in de
 
 ## Backlog (vanaf oktober 2026)
 
+- **Updaten (11-10-2026)**: `tauri-plugin-updater` + `plugin-process`; stil zoeken bij de
+  start (oranje stip bij Instellingen), zoeken en installeren in Instellingen. Uitbrengen
+  verhuisde daarbij naar de Mac (`scripts/release.sh`, sleutel in `~/.tauri/lapis.key`, zoals
+  Usage Meter); `release.yml` werd `dmg.yml`, alleen een bouwcontrole. PRD §8 aangepast op besluit
+  van Jos.
+- **W10 gemerged + v0.2.0 (11-10-2026)**: de tien W10-commits van `claude/verder-gaan-h13h0z`
+  (aug.) samengevoegd met de P0-fixes; conflict in `newNote` opgelost met beide kanten.
+  Twee P0-tests van `getByText` naar `getByRole` (de knop werd een icoon met
+  `aria-label`), en een `act()`-flush in de ⌘⇧F-test. Wijzigingen aan bestaande tests
+  (valkuil 5), hier gemeld.
 - **#22 · Release v0.1.0 (10-10-2026)**: tag gepusht door Jos; de Release-run bouwde de DMG
   en zette de release online met `Lapis.dmg`. Eerste start op de Mac is #7.
 - **Release-pipeline (10-10-2026)**, josbez/lapis#24: bundling aan (universal, ad-hoc
