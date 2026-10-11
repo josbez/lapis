@@ -1,5 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { pickFolder } from './pickFolder'
+import { currentVersion } from './updater'
+import type { UpdateState } from './useUpdater'
 
 interface SettingsProps {
   vaultRootDisplay: string
@@ -7,6 +9,9 @@ interface SettingsProps {
   startPage: string | null
   onPickVault: (picked: string) => void
   onClearStartPage: () => void
+  update?: UpdateState
+  onCheckUpdate?: () => void
+  onInstallUpdate?: () => void
   onClose: () => void
 }
 
@@ -20,15 +25,25 @@ interface SettingsProps {
  * - **Startpagina** (W9) — hier alleen tonen wat er staat en 'm kunnen
  *   wissen; instellen blijft via het rechtsklik-contextmenu op de boom
  *   (PRD F7 noemt uitdrukkelijk de bestandsboom als aanwijsplek).
+ * - **Updates** (besluit 11-10-2026) — geen instelling maar een actie: de
+ *   versie tonen, zoeken, en een gevonden update installeren.
  */
 export function Settings({
   vaultRootDisplay,
   startPage,
   onPickVault,
   onClearStartPage,
+  update = { kind: 'idle' },
+  onCheckUpdate = () => {},
+  onInstallUpdate = () => {},
   onClose,
 }: SettingsProps) {
   const ref = useRef<HTMLDivElement | null>(null)
+  const [version, setVersion] = useState<string | null>(null)
+
+  useEffect(() => {
+    currentVersion().then(setVersion, () => setVersion(null))
+  }, [])
 
   useEffect(() => {
     const onPointerDown = (e: PointerEvent) => {
@@ -81,8 +96,49 @@ export function Settings({
               Wissen
             </button>
           </div>
+
+          <h2>Updates</h2>
+          <div className="lapis-settings-row">
+            <div className="lapis-settings-row-text">
+              <div className="lapis-settings-row-label">Versie {version ?? '…'}</div>
+              <div className="lapis-settings-row-value" role="status">
+                {updateText(update)}
+              </div>
+            </div>
+            {update.kind === 'available' ? (
+              <button type="button" className="lapis-btn" onClick={onInstallUpdate}>
+                Installeren en herstarten
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="lapis-btn"
+                onClick={onCheckUpdate}
+                disabled={update.kind === 'checking' || update.kind === 'installing'}
+              >
+                Zoek naar updates
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
   )
+}
+
+function updateText(update: UpdateState): string {
+  switch (update.kind) {
+    case 'idle':
+      return 'Zoekt bij het starten'
+    case 'checking':
+      return 'Zoeken…'
+    case 'upToDate':
+      return 'Je hebt de nieuwste versie'
+    case 'available':
+      return `Versie ${update.version} is beschikbaar`
+    case 'installing':
+      return `Versie ${update.version} installeren…`
+    case 'error':
+      return `Zoeken mislukt: ${update.message}`
+  }
 }

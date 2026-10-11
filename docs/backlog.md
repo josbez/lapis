@@ -105,6 +105,9 @@ ontwerpt een app die niemand kan gebruiken.
   noteren.
 - **Een bug eerst reproduceren in een test**, dan pas de fix. Een taak zonder reproductie
   heet "onbewezen" tot er een is.
+- **Updaten:** sinds v0.2.0 via `tauri-plugin-updater` (PRD §8, besluit 11-10-2026). Een
+  release zonder `latest.json` laat iedereen stil op de oude versie; `release.yml` weigert
+  daarom een tag zonder de signing-secrets.
 - **Uitbrengen:** versie gelijk in `app/package.json`, `app/src-tauri/Cargo.toml` en
   `tauri.conf.json`, dan een `v*`-tag; `release.yml` bouwt de DMG en maakt de release.
   Een tag pushen kan alleen Jos: cloud-sessies mogen uitsluitend naar hun eigen branch.

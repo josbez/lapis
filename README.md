@@ -16,11 +16,18 @@ Vereist macOS 11 of nieuwer (Apple Silicon en Intel).
 4. Open alleen een **kopie** van je vault, onder git: `git init && git add -A && git commit -m vangnet`
    (zie de waarschuwing hieronder — de Mac-doorloop is nog niet gedaan).
 
-Updaten: nieuwe DMG downloaden en stap 2–3 herhalen. Lapis checkt zelf nooit op updates (geen netwerk).
+Updaten (vanaf v0.2.0): Lapis zoekt bij het starten naar een nieuwe versie; is er een, dan
+staat er een oranje stip bij **Instellingen** → **Installeren en herstarten**. Zelf zoeken kan
+daar ook. Updates zijn gesigneerd; een update zonder geldige handtekening wordt geweigerd.
+Dit is het enige netwerkverkeer van Lapis (PRD §8).
 
 Uitbrengen: versie gelijk zetten in `app/package.json`, `app/src-tauri/Cargo.toml` en
 `app/src-tauri/tauri.conf.json`, dan `git tag vX.Y.Z && git push origin vX.Y.Z`;
-[release.yml](.github/workflows/release.yml) bouwt de DMG en zet de release online.
+[release.yml](.github/workflows/release.yml) bouwt de DMG en de gesigneerde update
+(`Lapis.app.tar.gz` + `latest.json`) en zet de release online. Daarvoor moeten de secrets
+`TAURI_SIGNING_PRIVATE_KEY` en `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in de repo staan. **Raak
+je die sleutel kwijt, dan kan geen enkele geïnstalleerde Lapis nog updaten**; bewaar hem
+buiten de repo, met een back-up.
 
 ## Status
 

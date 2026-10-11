@@ -8,6 +8,7 @@ import { NoteDraft } from './NoteDraft'
 import { NoteEditor } from './NoteEditor'
 import { QuickSwitcher, flattenFiles } from './QuickSwitcher'
 import { Settings } from './Settings'
+import { useUpdater } from './useUpdater'
 import { Tree, type TreeActions } from './Tree'
 import { createRequestGate } from './requestGate'
 import {
@@ -55,6 +56,7 @@ export default function App() {
   const [fullTextSearchOpen, setFullTextSearchOpen] = useState(false)
   // W10: het instellingenscherm (PRD F6) — één scherm, geen tabs.
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const updater = useUpdater()
   // W7: `null` zolang er geen concept openstaat, anders de map waarin het
   // straks aangemaakt wordt (leeg voor de vault-root).
   const [draftDir, setDraftDir] = useState<string | null>(null)
@@ -464,6 +466,9 @@ export default function App() {
               >
                 <IconSettings />
                 <span>Instellingen</span>
+                {updater.state.kind === 'available' && (
+                  <span className="lapis-update-dot" aria-label="Update beschikbaar" />
+                )}
               </button>
             </div>
           </nav>
@@ -510,6 +515,9 @@ export default function App() {
           startPage={startPage}
           onPickVault={pickFolder}
           onClearStartPage={clearStartPage}
+          update={updater.state}
+          onCheckUpdate={() => void updater.check()}
+          onInstallUpdate={() => void updater.install()}
           onClose={() => setSettingsOpen(false)}
         />
       )}

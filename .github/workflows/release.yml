@@ -52,7 +52,22 @@ jobs:
             [ "$v" = "$tag" ] || { echo "::error::tag $GITHUB_REF_NAME, maar versie in de app is $v"; exit 1; }
           done
 
+      # Zonder sleutel geen update: een release zonder latest.json laat elke
+      # geïnstalleerde Lapis op de vorige versie staan, zonder foutmelding.
+      - name: Updater-sleutel controleren
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          [ -n "$KEY" ] || { echo "::error::secret TAURI_SIGNING_PRIVATE_KEY ontbreekt"; exit 1; }
+          if grep -q VERVANG_DOOR app/src-tauri/tauri.conf.json; then
+            echo "::error::de publieke updater-sleutel in tauri.conf.json is nog een placeholder"; exit 1
+          fi
+
       - name: DMG bouwen
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ startsWith(github.ref, 'refs/tags/') && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: ./scripts/make-dmg.sh
 
       - uses: actions/upload-artifact@v4
@@ -64,4 +79,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" Lapis.dmg --title "Lapis $GITHUB_REF_NAME" --generate-notes
+        run: |
+          gh release create "$GITHUB_REF_NAME" Lapis.dmg Lapis.app.tar.gz latest.json \
+            --title "Lapis $GITHUB_REF_NAME" --generate-notes

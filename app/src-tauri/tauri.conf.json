@@ -42,5 +42,13 @@
       "signingIdentity": "-",
       "minimumSystemVersion": "11.0"
     }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "VERVANG_DOOR_PUBLIEKE_SLEUTEL_VAN_JOS",
+      "endpoints": [
+        "https://github.com/josbez/lapis/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

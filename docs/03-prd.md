@@ -307,8 +307,11 @@ Lapis het en verdwijnt jouw tekst nooit zonder dat je hebt gekozen.
 
 - **Compatibiliteit:** een vault moet tegelijk in Lapis, Obsidian, Finder en Claude Code
   bruikbaar zijn. Lapis schrijft geen configuratie, cache of metadata in de vault.
-- **Privacy:** geen netwerkverkeer, geen telemetrie, geen crash-reporting, geen
-  update-check in v1. Lapis werkt volledig offline.
+- **Privacy:** geen netwerkverkeer, geen telemetrie, geen crash-reporting. Lapis werkt
+  volledig offline. **Eén uitzondering (besluit Jos, 11-10-2026): updaten.** Lapis zoekt
+  stil bij het starten en op verzoek in Instellingen naar een nieuwe versie op de
+  GitHub-releases, en installeert die alleen na een klik en met een geldige handtekening.
+  Er gaat niets over je notities of je gebruik mee; een mislukte zoektocht blijft stil.
 - **Toegankelijkheid:** volledig met het toetsenbord bedienbaar; respecteert de
   systeeminstellingen voor tekstgrootte en verminderde beweging.
 - **Formaten:** UTF-8, LF-regeleindes, YAML-frontmatter — precies zoals Obsidian schrijft.

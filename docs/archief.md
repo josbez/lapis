@@ -5,6 +5,10 @@ Eén regel per afgeronde taak, nieuwste bovenaan. De open taken staan in de
 
 ## Backlog (vanaf oktober 2026)
 
+- **Updaten (11-10-2026)**: `tauri-plugin-updater` + `plugin-process`; stil zoeken bij de
+  start (oranje stip bij Instellingen), zoeken en installeren in Instellingen; release.yml
+  publiceert `Lapis.app.tar.gz` + `latest.json`, gesigneerd. PRD §8 aangepast op besluit
+  van Jos.
 - **W10 gemerged + v0.2.0 (11-10-2026)**: de tien W10-commits van `claude/verder-gaan-h13h0z`
   (aug.) samengevoegd met de P0-fixes; conflict in `newNote` opgelost met beide kanten.
   Twee P0-tests van `getByText` naar `getByRole` (de knop werd een icoon met

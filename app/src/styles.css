@@ -410,6 +410,15 @@ svg {
   cursor: pointer;
 }
 
+/* Update beschikbaar (zoals de stip op het tandwiel in Usage Meter). */
+.lapis-update-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-left: auto;
+  border-radius: 50%;
+  background: #e8833a;
+}
+
 .lapis-sidebar-settings:hover {
   background: var(--bg-hover);
   color: var(--fg);

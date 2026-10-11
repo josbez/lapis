@@ -1,7 +1,14 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Wat Lapis mag: een map kiezen. Alle bestands-I/O loopt via eigen commands in Rust (vault-core, app-state), niet via de fs-plugin.",
-  "windows": ["main"],
-  "permissions": ["core:default", "dialog:allow-open"]
+  "description": "Wat Lapis mag: een map kiezen, en updaten (zoeken, installeren, herstarten). Alle bestands-I/O loopt via eigen commands in Rust (vault-core, app-state), niet via de fs-plugin.",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "dialog:allow-open",
+    "updater:default",
+    "process:allow-restart"
+  ]
 }
