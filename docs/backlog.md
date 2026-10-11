@@ -27,6 +27,8 @@ analyse die de P0- en P1-taken hieronder opleverde: [10 – Analyse oktober 2026
 | P3 | 18 | Bestandsnaam uit kopregel kan langer dan 255 bytes worden | A | — | Haiku 5.5 |
 | P3 | 19 | Atomair schrijven: rechten, Finder-tags, `F_FULLFSYNC` | A | besluit Jos | Opus 5.5 |
 | P3 | 20 | Bijlage niet atomair geschreven; één rare submap breekt de hele scan | A | — | Sonnet 5.5 |
+| P2 | 23 | Conflictbalk ligt over de eerste regels van de notitie | C | — | Sonnet 5.5 |
+| P2 | 24 | Opslagbevestiging: rustiger vorm (besluit Jos) | C | — | Haiku 5.5 |
 | P3 | 21 | `spike/` opruimen, CI niet meer dubbel | D | 7 | Haiku 5.5 |
 
 Afhankelijkheden: `7 ─► 11`, `7 ─► 13 ─► 14`, `13 ─► 15`, `7 ─► 21`.
@@ -189,6 +191,16 @@ vault.
 5. Bevindingen als nieuwe taken in deze backlog.
 
 **Acceptatie:** checklist doorlopen; `git diff` verklaard; nieuwe taken toegevoegd.
+
+**Stand (11-10-2026, v0.2.0, testvault onder git):**
+- ✅ Installeren uit de DMG en starten (Gatekeeper, ad-hoc-handtekening, universal build).
+- ✅ Notitie bewerken: géén conflictbalk; `git diff` toont precies de getypte regels, verder
+  byte-voor-byte gelijk (fix #1 bewezen op de Mac).
+- ✅ Wijziging van buiten terwijl Lapis op de achtergrond staat → zichtbaar bij terugkeer.
+- ✅ Wijziging van buiten tijdens het typen → conflictbalk (#23: hij bedekt de tekst).
+- ⬜ De drie conflictknoppen · afbeeldingen en plakken · nieuwe notitie (en `⌘Tab` weg) ·
+  hernoemen/verplaatsen/nieuwe map/prullenbak · `⌘K`, `⌘⇧F`, `⌘⇧H` · startpagina ·
+  "Zoek naar updates".
 
 #### ⬜ 8. Hernoemen/verplaatsen/prullenbak van de open notitie verliest getypte tekst — P1
 
@@ -363,8 +375,8 @@ verplaatsen en nieuwe map, en het instellingenscherm. Uitkomst: design tokens
   `prefers-reduced-motion`, systeemtekstgrootte (PRD §8).
 - `window.prompt`/`confirm` vervangen door eigen dialogen (ook als #7 aantoont dat ze werken:
   ze zijn niet te stylen en blokkeren de UI-thread).
-- Statusregel: niets tonen bij succes ("opgeslagen 14:03:22" na elke autosave is precies
-  de ruis die P2 noemt); alleen fouten en het conflict.
+- Statusregel: *vervallen voor succes, zie #24* — Jos wil wél een bevestiging na opslaan
+  (besluit 11-10-2026); fouten en het conflict blijven er ook in.
 - Toolbar met vier tekstknoppen en het volle vaultpad weg; F6 zegt "geen statusbalk, geen
   breadcrumbs".
 - Contextmenu met het toetsenbord (menutoets/`⇧F10`, pijltjes), binnen het venster
@@ -384,6 +396,24 @@ Eén scherm (F6). Wat er nu instelbaar is: de vault (andere map kiezen) en de st
 verantwoorden; tel ze bij elke release (PRD §6). **Model: Sonnet 5.5.**
 
 ---
+
+#### ⬜ 23. Conflictbalk ligt over de eerste regels van de notitie — P2
+
+Gezien in #7 (v0.2.0): de balk "Dit bestand is buiten Lapis gewijzigd…" staat over de editor
+heen en bedekt de bovenste regel(s) in plaats van de tekst omlaag te duwen. De balk hoort in
+de normale flow boven de editor (of de editor krijgt ruimte), zodat er nooit tekst onder
+verdwijnt. **Acceptatie:** met de balk zichtbaar is de eerste regel volledig leesbaar, ook
+na scrollen; DoD. **Model: Sonnet 5.5.**
+
+#### ⬜ 24. Opslagbevestiging: rustiger vorm — P2 (besluit Jos)
+
+Jos wil een bevestiging na opslaan ("dit is juist een fijne bevestiging", 11-10-2026), dus
+#14's "niets tonen bij succes" vervalt. Wel de vorm: "opgeslagen 16:58:07" verandert na elke
+pauze van een halve seconde en beweegt dus voortdurend onderin tijdens het schrijven.
+**Briefing:** alleen "Opgeslagen" zonder tijd, en na ±2 s rustig vervagen (respecteer
+`prefers-reduced-motion`: dan direct weg zonder animatie). Fouten en het conflict blijven
+staan tot ze opgelost zijn. **Acceptatie:** Jos beoordeelt na een week gebruik; DoD.
+**Model: Haiku 5.5.**
 
 ## Epic D: Onderhoud
 
