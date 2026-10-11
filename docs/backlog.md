@@ -27,7 +27,6 @@ analyse die de P0- en P1-taken hieronder opleverde: [10 – Analyse oktober 2026
 | P3 | 18 | Bestandsnaam uit kopregel kan langer dan 255 bytes worden | A | — | Haiku 5.5 |
 | P3 | 19 | Atomair schrijven: rechten, Finder-tags, `F_FULLFSYNC` | A | besluit Jos | Opus 5.5 |
 | P3 | 20 | Bijlage niet atomair geschreven; één rare submap breekt de hele scan | A | — | Sonnet 5.5 |
-| P2 | 23 | Conflictbalk ligt over de eerste regels van de notitie | C | — | Sonnet 5.5 |
 | P2 | 24 | Opslagbevestiging: rustiger vorm (besluit Jos) | C | — | Haiku 5.5 |
 | P3 | 21 | `spike/` opruimen, CI niet meer dubbel | D | 7 | Haiku 5.5 |
 
@@ -197,7 +196,7 @@ vault.
 - ✅ Notitie bewerken: géén conflictbalk; `git diff` toont precies de getypte regels, verder
   byte-voor-byte gelijk (fix #1 bewezen op de Mac).
 - ✅ Wijziging van buiten terwijl Lapis op de achtergrond staat → zichtbaar bij terugkeer.
-- ✅ Wijziging van buiten tijdens het typen → conflictbalk (#23: hij bedekt de tekst).
+- ✅ Wijziging van buiten tijdens het typen → conflictbalk (zwevend boven de tekst, bewust zo).
 - ⬜ De drie conflictknoppen · afbeeldingen en plakken · nieuwe notitie (en `⌘Tab` weg) ·
   hernoemen/verplaatsen/nieuwe map/prullenbak · `⌘K`, `⌘⇧F`, `⌘⇧H` · startpagina ·
   "Zoek naar updates".
@@ -396,14 +395,6 @@ Eén scherm (F6). Wat er nu instelbaar is: de vault (andere map kiezen) en de st
 verantwoorden; tel ze bij elke release (PRD §6). **Model: Sonnet 5.5.**
 
 ---
-
-#### ⬜ 23. Conflictbalk ligt over de eerste regels van de notitie — P2
-
-Gezien in #7 (v0.2.0): de balk "Dit bestand is buiten Lapis gewijzigd…" staat over de editor
-heen en bedekt de bovenste regel(s) in plaats van de tekst omlaag te duwen. De balk hoort in
-de normale flow boven de editor (of de editor krijgt ruimte), zodat er nooit tekst onder
-verdwijnt. **Acceptatie:** met de balk zichtbaar is de eerste regel volledig leesbaar, ook
-na scrollen; DoD. **Model: Sonnet 5.5.**
 
 #### ⬜ 24. Opslagbevestiging: rustiger vorm — P2 (besluit Jos)
 
