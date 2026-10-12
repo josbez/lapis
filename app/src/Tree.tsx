@@ -51,9 +51,27 @@ interface MenuState {
   node: TreeNode
 }
 
+/** De mappen boven een notitie, van buiten naar binnen ("a", "a/b"). */
+function ancestorDirs(relPath: string | null): string[] {
+  if (relPath === null) return []
+  const parts = relPath.split('/').slice(0, -1)
+  return parts.map((_, i) => parts.slice(0, i + 1).join('/'))
+}
+
 export function Tree({ root, selectedPath, startPage, onSelectFile, actions }: TreeProps) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [menu, setMenu] = useState<MenuState | null>(null)
+
+  // Een notitie die elders geopend wordt (zoeken, quick switcher,
+  // startpagina) moet in de boom te zien zijn: klap de mappen erboven open.
+  // Alleen openen, nooit dichtklappen wat de gebruiker zelf opende. Tijdens
+  // het renderen bijgewerkt bij een nieuwe `selectedPath`, niet in een effect.
+  const [revealedPath, setRevealedPath] = useState<string | null>(null)
+  if (selectedPath !== revealedPath) {
+    setRevealedPath(selectedPath)
+    const missing = ancestorDirs(selectedPath).filter((dir) => !expanded.has(dir))
+    if (missing.length > 0) setExpanded(new Set([...expanded, ...missing]))
+  }
 
   const toggle = (relPath: string) => {
     setExpanded((prev) => {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useAsk } from './AskDialog'
 import { readNote, writeNote, writeNoteAsCopy, type NoteContent } from './ipc'
 
 /**
@@ -60,6 +61,7 @@ export function useNoteEditor({
   onStatus,
   onCopySaved,
 }: UseNoteEditorOptions): UseNoteEditorResult {
+  const ask = useAsk()
   const [generation, setGeneration] = useState(0)
   const [baseline, setBaseline] = useState<NoteContent>(initial)
   const [conflict, setConflict] = useState<ConflictState | null>(null)
@@ -217,17 +219,23 @@ export function useNoteEditor({
   }, [doSave])
 
   const loadTheirs = useCallback(() => {
-    if (!window.confirm('Jouw wijzigingen worden overschreven met de versie op schijf. Doorgaan?')) {
-      return
-    }
-    void readNote(relPath).then((fresh) => {
-      setBaseline(fresh)
-      currentRef.current = fresh.content
-      setConflict(null)
-      setGeneration((g) => g + 1)
-      onStatus('hun versie geladen')
-    })
-  }, [relPath, onStatus])
+    void ask
+      .confirm({
+        title: 'Hun versie laden',
+        message: 'Jouw wijzigingen worden overschreven met de versie op schijf. Doorgaan?',
+        confirmLabel: 'Hun versie laden',
+      })
+      .then((ok) => {
+        if (!ok) return
+        return readNote(relPath).then((fresh) => {
+          setBaseline(fresh)
+          currentRef.current = fresh.content
+          setConflict(null)
+          setGeneration((g) => g + 1)
+          onStatus('hun versie geladen')
+        })
+      })
+  }, [ask, relPath, onStatus])
 
   const keepBoth = useCallback(() => {
     const mine = conflictRef.current?.mine

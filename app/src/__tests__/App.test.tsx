@@ -413,14 +413,16 @@ describe('App', () => {
     mockedIpc.getSidebarVisible.mockResolvedValue(true)
     mockedIpc.createFolder.mockResolvedValue('Projecten')
     mockedIpc.rescanVault.mockResolvedValue(eenBoom)
-    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('Projecten')
-
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
     fireEvent.click(screen.getByRole('button', { name: 'Nieuwe map' }))
 
-    expect(promptSpy).toHaveBeenCalled()
+    // Eigen dialoog (AskDialog), geen window.prompt.
+    const dialog = screen.getByRole('dialog', { name: 'Nieuwe map' })
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Projecten' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Map maken' }))
+
     await waitFor(() => expect(mockedIpc.createFolder).toHaveBeenCalledWith('', 'Projecten'))
     await waitFor(() => expect(mockedIpc.rescanVault).toHaveBeenCalled())
   })
@@ -428,13 +430,16 @@ describe('App', () => {
   it('"Nieuwe map" annuleren maakt niets aan', async () => {
     mockedIpc.restoreVault.mockResolvedValue(eenBoom)
     mockedIpc.getSidebarVisible.mockResolvedValue(true)
-    vi.spyOn(window, 'prompt').mockReturnValue(null)
-
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
     fireEvent.click(screen.getByRole('button', { name: 'Nieuwe map' }))
+    const dialog = screen.getByRole('dialog', { name: 'Nieuwe map' })
+    // Zonder naam kan het niet; annuleren sluit de dialoog.
+    expect((within(dialog).getByRole('button', { name: 'Map maken' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Annuleren' }))
 
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Nieuwe map' })).toBeNull())
     expect(mockedIpc.createFolder).not.toHaveBeenCalled()
   })
 
@@ -446,8 +451,6 @@ describe('App', () => {
       .mockResolvedValueOnce({ content: 'inhoud', modifiedMs: 1000 })
     mockedIpc.moveNote.mockResolvedValue(undefined)
     mockedIpc.rescanVault.mockResolvedValue(eenBoom)
-    vi.spyOn(window, 'prompt').mockReturnValue('Boodschappen')
-
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
@@ -456,6 +459,12 @@ describe('App', () => {
 
     fireEvent.contextMenu(within(screen.getByRole('tree')).getByText(/notitie\.md/))
     fireEvent.click(screen.getByText('Hernoemen'))
+
+    const dialog = screen.getByRole('dialog', { name: 'Hernoemen' })
+    const field = within(dialog).getByRole('textbox') as HTMLInputElement
+    expect(field.value).toBe('notitie.md')
+    fireEvent.change(field, { target: { value: 'Boodschappen' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Hernoemen' }))
 
     await waitFor(() =>
       expect(mockedIpc.moveNote).toHaveBeenCalledWith('notitie.md', 'Boodschappen.md'),
@@ -471,8 +480,6 @@ describe('App', () => {
     mockedIpc.readNote.mockResolvedValue({ content: 'inhoud', modifiedMs: 1000 })
     mockedIpc.trashNote.mockResolvedValue(undefined)
     mockedIpc.rescanVault.mockResolvedValue(eenBoom)
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
-
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
@@ -481,22 +488,26 @@ describe('App', () => {
 
     fireEvent.contextMenu(within(screen.getByRole('tree')).getByText(/notitie\.md/))
     fireEvent.click(screen.getByText('Naar prullenbak'))
+    const dialog = screen.getByRole('alertdialog', { name: 'Naar prullenbak' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Naar prullenbak' }))
 
     await waitFor(() => expect(mockedIpc.trashNote).toHaveBeenCalledWith('notitie.md'))
     await waitFor(() => expect(screen.getByText('Kies een notitie in de boom.')).toBeTruthy())
   })
 
-  it('"Naar prullenbak" annuleren via confirm() verwijdert niets', async () => {
+  it('"Naar prullenbak" annuleren in de dialoog verwijdert niets', async () => {
     mockedIpc.restoreVault.mockResolvedValue(eenBoom)
     mockedIpc.getSidebarVisible.mockResolvedValue(true)
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
 
     render(<App />)
     await waitFor(() => expect(screen.getByText(/notitie\.md/)).toBeTruthy())
 
     fireEvent.contextMenu(within(screen.getByRole('tree')).getByText(/notitie\.md/))
     fireEvent.click(screen.getByText('Naar prullenbak'))
+    const dialog = screen.getByRole('alertdialog', { name: 'Naar prullenbak' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Annuleren' }))
 
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
     expect(mockedIpc.trashNote).not.toHaveBeenCalled()
   })
 
@@ -666,6 +677,18 @@ describe('App', () => {
     const dialog = screen.getByRole('dialog', { name: 'Instellingen' })
     expect(within(dialog).getByText('/tmp/vault')).toBeTruthy()
     expect(within(dialog).getByText('notitie.md')).toBeTruthy()
+  })
+
+  it('⌘, opent Instellingen, ook als de sidebar verborgen is', async () => {
+    mockedIpc.restoreVault.mockResolvedValue(eenBoom)
+    mockedIpc.getSidebarVisible.mockResolvedValue(false)
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Sidebar tonen' })).toBeTruthy())
+
+    fireEvent.keyDown(window, { key: ',', metaKey: true })
+
+    expect(screen.getByRole('dialog', { name: 'Instellingen' })).toBeTruthy()
   })
 
   it('Escape sluit het instellingenscherm', async () => {

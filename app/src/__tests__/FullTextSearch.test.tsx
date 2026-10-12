@@ -46,6 +46,27 @@ describe('FullTextSearch', () => {
     expect(mark?.textContent).toBe('koffie')
   })
 
+  it('toont het fragment als leesbare tekst, zonder markdown-tekens', async () => {
+    mockedIpc.searchNotes.mockResolvedValue([
+      {
+        path: 'a.md',
+        title: 'A',
+        snippet: '# Boodschappen\n- [x] **verse** <mark>koffie</mark> uit `bonen`\n> zie [winkel](https://x.nl) en [[Lijst|lijstje]]…',
+      },
+    ])
+    const onOpen = vi.fn()
+
+    render(<FullTextSearch onOpen={onOpen} onClose={() => {}} />)
+    fireEvent.change(screen.getByPlaceholderText('Zoek in alle notities…'), {
+      target: { value: 'koffie' },
+    })
+    await waitFor(() => expect(screen.getByRole('option')).toBeTruthy())
+
+    const fragment = screen.getByRole('option').querySelector('p')
+    expect(fragment?.textContent).toBe('Boodschappen verse koffie uit bonen zie winkel en lijstje…')
+    expect(fragment?.querySelector('mark')?.textContent).toBe('koffie')
+  })
+
   it('toont een lege-staat-bericht als niets matcht', async () => {
     mockedIpc.searchNotes.mockResolvedValue([])
 

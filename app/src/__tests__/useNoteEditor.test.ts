@@ -204,12 +204,14 @@ describe('useNoteEditor', () => {
     await flushViaBlur()
     await waitFor(() => expect(result.current.conflict).not.toBeNull())
 
-    act(() => result.current.loadTheirs())
+    // De vraag is asynchroon (eigen dialoog in de app); hier, zonder
+    // AskProvider, valt hij terug op window.confirm.
+    await act(async () => result.current.loadTheirs())
     expect(mockedIpc.readNote).not.toHaveBeenCalled()
     expect(result.current.conflict).not.toBeNull()
 
     confirmSpy.mockReturnValue(true)
-    act(() => result.current.loadTheirs())
+    await act(async () => result.current.loadTheirs())
 
     expect(mockedIpc.readNote).toHaveBeenCalledWith('a.md')
     await waitFor(() => expect(result.current.markdownSource).toBe('externe inhoud'))

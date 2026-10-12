@@ -1,6 +1,10 @@
 interface BreadcrumbProps {
-  /** Het vault-relatieve pad van de open notitie, bijv. "Dagboek/2026-08-14.md". */
-  relPath: string
+  /**
+   * Het vault-relatieve pad van de open notitie, bijv. "Dagboek/2026-08-14.md".
+   * `null` bij een nieuwe notitie die nog geen bestand is: de regel blijft
+   * leeg maar even hoog, zodat de tekst niet verspringt na het opslaan.
+   */
+  relPath: string | null
 }
 
 /**
@@ -10,6 +14,9 @@ interface BreadcrumbProps {
  * bestaat (07 §4.3, geen aannames over mapstructuur).
  */
 export function Breadcrumb({ relPath }: BreadcrumbProps) {
+  if (relPath === null) {
+    return <div className="lapis-breadcrumb" aria-hidden="true" />
+  }
   const segments = relPath.split('/')
   const last = segments.length - 1
 

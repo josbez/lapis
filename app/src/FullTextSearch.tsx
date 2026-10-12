@@ -22,13 +22,34 @@ function firstMarkedText(snippet: string): string | null {
 }
 
 /**
+ * Maakt van een FTS5-snippet (ruwe markdown) leesbare tekst: geen
+ * taakvakjes, opsommingstekens, kopjes, citaattekens, `**`, backticks of
+ * linksyntax, en alles op één regel (design system: FullTextSearch). De
+ * `<mark>`-tags blijven staan; die bevatten geen markdown-tekens.
+ */
+function readableSnippet(snippet: string): string {
+  return (
+    snippet
+      // Regelbegin: kopje, citaat, taak, opsomming of genummerde lijst.
+      .replace(/(^…?|\n)[ \t]*(?:#{1,6}[ \t]+|>[ \t]?|[-*+][ \t]+\[[ xX]\][ \t]+|[-*+][ \t]+|\d+[.)][ \t]+)+/g, '$1')
+      // Afbeeldingen en links: alleen de tekst; wikilinks: de alias of het doel.
+      .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(/\[\[([^\]|]*\|)?([^\]]*)\]\]/g, '$2')
+      // Nadruk, doorhalen, markeren en code.
+      .replace(/\*\*|__|~~|==|`+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+  )
+}
+
+/**
  * Splitst een FTS5-snippet op `<mark>…</mark>` in tekstdelen voor veilige
  * weergave zonder `dangerouslySetInnerHTML` — de snippet is afgeleid van de
  * eigen notitie-inhoud van de gebruiker, en die mag nooit als HTML geparsed
  * worden (bijvoorbeeld een codeblok met letterlijke `<script>`-tekst).
  */
 function renderSnippet(snippet: string) {
-  return snippet.split(/(<mark>.*?<\/mark>)/).map((part, i) => {
+  return readableSnippet(snippet).split(/(<mark>.*?<\/mark>)/).map((part, i) => {
     const match = /^<mark>(.*)<\/mark>$/.exec(part)
     return match ? <mark key={i}>{match[1]}</mark> : <span key={i}>{part}</span>
   })
