@@ -81,7 +81,8 @@ herkenbare titel, geen extra tussenkopje.
 ## Vorm & ruimte
 
 - **Radius:** één token, `--radius: 0.25rem`, overal — knoppen, menu's,
-  dialogen, selectiehighlight in de boom.
+  dialogen, selectiehighlight in de boom, toetsen (`kbd`), zoekmarkering
+  (`mark`) en de taakvakjes in de editor.
 - **Randen in plaats van schaduw:** geen `box-shadow` in de hele app. Menu's
   en dialogen ("Level 2" in Stitch' taal) krijgen een scherpe 1px rand
   (`--border`), geen ambient blur.
@@ -92,13 +93,15 @@ herkenbare titel, geen extra tussenkopje.
 ## Componenten
 
 **Toolbar** (`.lapis-toolbar`) — één balk, vaste hoogte `2.6rem`, boven de
-hele app. Links alleen de sidebar-toggle; een spacer duwt de rest naar
-rechts: verversen, een verdeellijn, instellingen. Er staat geen vaultpad
+hele app. Links alleen de sidebar-toggle; een spacer duwt verversen naar
+rechts. Instellingen staat onderaan de sidebar, niet in de toolbar. Er staat geen vaultpad
 meer in de toolbar (verwijderd na macOS-feedback: overbodig, de sidebar
 toont de context al). `data-tauri-drag-region` staat op de hele balk zodat
 het venster ook zonder eigen titelbalk versleepbaar blijft
 (`titleBarStyle: Overlay` in `tauri.conf.json`, zoals Obsidian/Slack); de
 linkerpadding (`5rem`) reserveert ruimte voor de macOS-verkeerslichten.
+Ook bij de eerste start (nog geen map gekozen) staat er een lege toolbar als
+sleepgebied, met de statusregel onderaan.
 
 **Toolbar-knoppen** (`.lapis-toolbar-btn`) — icoon-only, `1.9rem` vierkant,
 geen rand of vulling in rust, subtiele achtergrond bij hover. Bewust
@@ -114,20 +117,24 @@ kan wisselen zonder dat call-sites hoeven te veranderen.
 
 **Sidebar** (`.lapis-sidebar`) — vaste breedte, eigen achtergrondtint
 (`--bg-surface`) om hem als apart functioneel gebied te onderscheiden van de
-editor. Onderaan: `NewItemMenu`, één "+ Nieuw"-knop die een klein popup-menu
-opent met "Nieuwe notitie" / "Nieuwe map" (vervangt de eerdere twee
-permanent zichtbare knoppen naast elkaar).
+editor. Onderaan: `NewItemButtons`, twee icoonknoppen naast elkaar ("Nieuwe
+notitie", "Nieuwe map"), en daaronder "Instellingen" (ook via `⌘,`), met
+een stip zodra er een update klaarstaat.
 
 **Mapboom** (`.lapis-tree`) — hoge informatiedichtheid, chevron voor
 in-/uitklappen, `--accent`-getinte achtergrond bij selectie. Onderliggende
 niveaus (`.lapis-tree-branch`) krijgen een dunne verticale geleidelijn
 (`border-left: 1px solid var(--border)`), ingesprongen tot onder het
 ouder-icoon, zodat de hiërarchie ook zonder de selectiekleur direct
-afleesbaar is.
+afleesbaar is. Wordt een notitie elders geopend (zoeken, quick switcher,
+startpagina), dan klappen de mappen erboven vanzelf open; dichtklappen doet
+alleen de gebruiker.
 
 **Breadcrumb** (`.lapis-breadcrumb`) — boven de editor, alleen zichtbaar bij
 een geopende notitie. Toont het vault-relatieve pad in `label-caps`-stijl
-(hoofdletters, brede letterspatiëring).
+(hoofdletters, brede letterspatiëring). Bij een nieuwe notitie die nog geen
+bestand is, blijft de regel leeg maar even hoog, zodat de tekst niet
+verspringt na het opslaan.
 
 **Statusregel** (`.lapis-statusbar`) — een volle-breedte voettekst onderaan
 het venster, los van de toolbar. Toont alleen de eigen opslagstatus van
@@ -142,6 +149,17 @@ dialoog (bijv. "Beide bewaren" in de conflictbalk).
 **Menu's & dialogen** (`.lapis-menu`, `.lapis-dialog`) — gedeelde vorm:
 witte/elevated achtergrond, 1px rand, `--radius`, geen schaduw. Destructieve
 items (`.lapis-menu-danger`, "Naar prullenbak") krijgen `--danger`-tekst.
+
+**Vraagdialoog** (`AskDialog.tsx`, `.lapis-ask`) — de eigen dialoog voor een
+naam (hernoemen, verplaatsen, nieuwe map) of een ja/nee-vraag (naar
+prullenbak, hun versie laden), nooit `window.prompt`/`window.confirm`.
+Dezelfde vorm als de andere dialogen; de actieknop zegt wat er gebeurt
+("Hernoemen", "Naar prullenbak"), nooit "OK", met "Annuleren" ernaast. Enter
+bevestigt, Escape of een klik naast de dialoog annuleert.
+
+**Zoeken in alle notities** (`FullTextSearch.tsx`) — het fragment onder een treffer
+is leesbare tekst: markdown-tekens (taakvakjes, `#`, `**`, backticks,
+linksyntax) en regeleinden worden eruit gehaald, de markering blijft.
 
 **Instellingen** (`.lapis-settings`) — rijen met label + waarde,
 gescheiden door dunne onderrand; sectietitels in `--font-display`.
@@ -159,12 +177,12 @@ aanleverde:
    markdown-notitie te maken heeft.
 3. **Vaultpad niet in de toolbar.** Na macOS-feedback verwijderd: de sidebar
    toont de context al, het pad voegde niets toe.
-4. **Nieuwe notitie/map als popup-trigger, niet als twee knoppen naast
-   elkaar.** Latere Stitch-iteratie stelde dit zelf voor; overgenomen.
-5. **Alleen de sidebar-toggle links in de toolbar; verversen en
-   instellingen rechts**, in plaats van verspreid over beide kanten —
-   idem, latere Stitch-iteratie, overgenomen (met correctie van de
-   uitlijning die in dat screenshot zelf niet klopte).
+4. **Nieuwe notitie/map als twee icoonknoppen onderaan de sidebar.** Een
+   tussenversie had één "+ Nieuw"-popup; na een latere terugkoppelronde
+   expliciet terug naar losse knoppen.
+5. **Alleen de sidebar-toggle links in de toolbar en verversen rechts;
+   instellingen onderaan de sidebar**, in plaats van verspreid over de
+   toolbar.
 6. **Iconen via `lucide-react`** in plaats van het eigen handgetekende setje
    uit de eerste implementatieronde — visueel gelijk aan Stitch' eigen
    stijl, maar nu een onderhouden bibliotheek in plaats van negen losse

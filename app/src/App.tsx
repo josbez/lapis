@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AskProvider, useAsk } from './AskDialog'
 import { Breadcrumb } from './Breadcrumb'
 import { EmptyState } from './EmptyState'
 import { FullTextSearch } from './FullTextSearch'
@@ -41,6 +42,15 @@ const MAX_RECENT_PATHS = 20
  * is.
  */
 export default function App() {
+  return (
+    <AskProvider>
+      <LapisApp />
+    </AskProvider>
+  )
+}
+
+function LapisApp() {
+  const ask = useAsk()
   const [view, setView] = useState<VaultView | null>(null)
   const [sidebarVisible, setSidebarVisibleState] = useState(true)
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
@@ -278,21 +288,24 @@ export default function App() {
       const dir = slash === -1 ? '' : relPath.slice(0, slash)
       const currentName = slash === -1 ? relPath : relPath.slice(slash + 1)
 
-      const input = window.prompt('Nieuwe naam:', currentName)
-      if (input === null) return
-      const name = input.trim()
-      if (name === '' || name === currentName) return
-      const withExt = name.toLowerCase().endsWith('.md') ? name : `${name}.md`
-      const newRelPath = dir === '' ? withExt : `${dir}/${withExt}`
-
-      void moveNote(relPath, newRelPath)
-        .then(() => {
+      void ask
+        .name({ title: 'Hernoemen', label: 'Nieuwe naam:', defaultValue: currentName, confirmLabel: 'Hernoemen' })
+        .then((input) => {
+          if (input === null) return
+          const name = input.trim()
+          if (name === '' || name === currentName) return
+          const withExt = name.toLowerCase().endsWith('.md') ? name : `${name}.md`
+          const newRelPath = dir === '' ? withExt : `${dir}/${withExt}`
+          return moveNote(relPath, newRelPath).then(() => newRelPath)
+        })
+        .then((newRelPath) => {
+          if (newRelPath === undefined) return
           refresh()
           if (selectedPath === relPath) openNote(newRelPath)
         })
         .catch((e: unknown) => setStatus(`hernoemen mislukt: ${e}`))
     },
-    [refresh, selectedPath, openNote],
+    [ask, refresh, selectedPath, openNote],
   )
 
   /**
@@ -304,31 +317,38 @@ export default function App() {
   const moveFile = useCallback(
     (relPath: string) => {
       const name = relPath.slice(relPath.lastIndexOf('/') + 1)
-      const input = window.prompt(
-        'Verplaatsen naar (pad vanaf de vault-root, leeg voor de hoofdmap):',
-        '',
-      )
-      if (input === null) return
-      const dir = input.trim().replace(/^\/+|\/+$/g, '')
-      const newRelPath = dir === '' ? name : `${dir}/${name}`
-      if (newRelPath === relPath) return
-
-      void moveNote(relPath, newRelPath)
-        .then(() => {
+      void ask
+        .name({
+          title: 'Verplaatsen',
+          label: 'Verplaatsen naar (pad vanaf de vault-root, leeg voor de hoofdmap):',
+          confirmLabel: 'Verplaatsen',
+          allowEmpty: true,
+        })
+        .then((input) => {
+          if (input === null) return
+          const dir = input.trim().replace(/^\/+|\/+$/g, '')
+          const newRelPath = dir === '' ? name : `${dir}/${name}`
+          if (newRelPath === relPath) return
+          return moveNote(relPath, newRelPath).then(() => newRelPath)
+        })
+        .then((newRelPath) => {
+          if (newRelPath === undefined) return
           refresh()
           if (selectedPath === relPath) openNote(newRelPath)
         })
         .catch((e: unknown) => setStatus(`verplaatsen mislukt: ${e}`))
     },
-    [refresh, selectedPath, openNote],
+    [ask, refresh, selectedPath, openNote],
   )
 
   /** Naar de prullenbak (W7, PRD C7) — nooit permanent. */
   const trashFile = useCallback(
     (relPath: string) => {
-      if (!window.confirm(`"${relPath}" naar de prullenbak?`)) return
-      void trashNote(relPath)
-        .then(() => {
+      void ask
+        .confirm({ title: 'Naar prullenbak', message: `"${relPath}" naar de prullenbak?`, confirmLabel: 'Naar prullenbak' })
+        .then((ok) => (ok ? trashNote(relPath).then(() => true) : false))
+        .then((trashed) => {
+          if (!trashed) return
           refresh()
           if (selectedPath === relPath) {
             setSelectedPath(null)
@@ -337,19 +357,21 @@ export default function App() {
         })
         .catch((e: unknown) => setStatus(`naar de prullenbak verplaatsen mislukt: ${e}`))
     },
-    [refresh, selectedPath],
+    [ask, refresh, selectedPath],
   )
 
   /** "Nieuwe map" (W7). `dir` is leeg voor de vault-root. */
   const newFolder = useCallback(
     (dir: string = '') => {
-      const input = window.prompt('Naam van de nieuwe map:')
-      if (input === null || input.trim() === '') return
-      void createFolder(dir, input.trim())
-        .then(() => refresh())
+      void ask
+        .name({ title: 'Nieuwe map', label: 'Naam van de nieuwe map:', confirmLabel: 'Map maken' })
+        .then((input) => {
+          if (input === null || input.trim() === '') return
+          return createFolder(dir, input.trim()).then(() => refresh())
+        })
         .catch((e: unknown) => setStatus(`nieuwe map aanmaken mislukt: ${e}`))
     },
-    [refresh],
+    [ask, refresh],
   )
 
   const treeActions: TreeActions = useMemo(
@@ -377,12 +399,20 @@ export default function App() {
 
   // ⌘K: de quick switcher (W5). ⌘⇧F: volledige tekst zoeken (W6). ⌘⇧H: naar
   // de vaste eerste pagina (W9) — doet niets zonder ingestelde startpagina.
+  // ⌘,: Instellingen.
   // Werken ook terwijl er in een notitie getypt wordt — CodeMirror bindt
   // geen van drieën zelf, dus dit komt gewoon door.
   useEffect(() => {
     if (!view) return
     const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'k') {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === ',') {
+        // ⌘, zoals in elke Mac-app — ook de enige weg naar Instellingen
+        // als de sidebar (met de knop onderaan) verborgen is.
+        e.preventDefault()
+        setQuickSwitcherOpen(false)
+        setFullTextSearchOpen(false)
+        setSettingsOpen(true)
+      } else if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setFullTextSearchOpen(false)
         setSettingsOpen(false)
@@ -409,12 +439,20 @@ export default function App() {
     return null
   }
 
+  // Eerste start: dezelfde lege toolbar (sleepgebied voor het venster) en
+  // statusregel als in de app, zodat "map openen mislukt" ook hier te zien is.
   if (!view) {
     return (
-      <EmptyState
-        onPick={pickFolder}
-        message="Nog geen map gekozen. Kies de map die je als vault wilt gebruiken."
-      />
+      <div className="lapis-app">
+        <div className="lapis-toolbar" data-tauri-drag-region="" />
+        <EmptyState
+          onPick={pickFolder}
+          message="Nog geen map gekozen. Kies de map die je als vault wilt gebruiken."
+        />
+        <div className="lapis-statusbar">
+          <span>{status}</span>
+        </div>
+      </div>
     )
   }
 
@@ -475,7 +513,10 @@ export default function App() {
         )}
         <main className="lapis-main">
           {draftDir !== null ? (
-            <NoteDraft dir={draftDir} onCreated={handleDraftCreated} onStatus={setStatus} />
+            <>
+              <Breadcrumb relPath={null} />
+              <NoteDraft dir={draftDir} onCreated={handleDraftCreated} onStatus={setStatus} />
+            </>
           ) : selectedPath === null ? (
             <p className="lapis-main-placeholder">Kies een notitie in de boom.</p>
           ) : noteContent !== null ? (

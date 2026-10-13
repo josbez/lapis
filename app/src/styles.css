@@ -185,7 +185,7 @@ svg {
 /* ── Lege staat (Goal §0/V4) ─────────────────────────────────────────── */
 
 .lapis-empty-state {
-  height: 100vh;
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -473,6 +473,11 @@ svg {
   width: 100%;
 }
 
+/* Nieuwe notitie zonder bestand: lege regel van dezelfde hoogte. */
+.lapis-breadcrumb:empty::before {
+  content: '\a0';
+}
+
 .lapis-breadcrumb-sep {
   color: var(--fg-faint);
 }
@@ -684,7 +689,7 @@ li[aria-selected='true'] > .lapis-tree-row .lapis-tree-icon {
 .lapis-dialog li[role='option'] mark {
   background: color-mix(in srgb, var(--accent) 30%, transparent 70%);
   color: inherit;
-  border-radius: 0.2em;
+  border-radius: var(--radius);
   padding: 0 0.1em;
 }
 
@@ -722,9 +727,39 @@ li[aria-selected='true'] > .lapis-tree-row .lapis-tree-icon {
   font-size: 0.6875rem;
   color: var(--fg-muted);
   border: 1px solid var(--border);
-  border-radius: 0.2rem;
+  border-radius: var(--radius);
   padding: 0.05rem 0.4rem;
   background: var(--bg-surface);
+}
+
+/* ── AskDialog (design system): een naam of een vraag, in plaats van
+   window.prompt/window.confirm. Dezelfde dialoogvorm als de quick switcher,
+   de actieknop zegt wat er gebeurt. ── */
+
+.lapis-dialog.lapis-ask {
+  width: min(460px, 92vw);
+}
+
+.lapis-ask-question {
+  margin: 0;
+  padding: 1rem 1rem 0.35rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--fg);
+}
+
+.lapis-dialog.lapis-ask input[type='text'] {
+  margin: 0 1rem;
+  padding: 0.5rem 0 0.6rem;
+}
+
+.lapis-ask-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border);
 }
 
 .lapis-quickswitcher .lapis-quick-row {
@@ -845,4 +880,15 @@ li[aria-selected='true'] > .lapis-tree-row .lapis-tree-icon {
   margin: 0;
   flex: 1;
   min-width: 20ch;
+}
+
+/* Takenlijst in de editor: het vinkje volgt accent-fg (de bibliotheek tekent
+   het altijd wit, wat in donker op het lichte accent te weinig contrast
+   heeft) en het vakje heeft de ene radius van het design system. */
+.cm-editor .cm-atomic-task-checkbox {
+  border-radius: var(--radius);
+}
+
+.cm-editor .cm-atomic-task-checkbox::after {
+  border-color: var(--accent-fg);
 }

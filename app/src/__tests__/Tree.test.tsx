@@ -40,6 +40,28 @@ describe('Tree', () => {
     expect(screen.queryByText(/binnen\.md/)).toBeNull()
   })
 
+  it('klapt de mappen open naar een notitie die elders geopend wordt', () => {
+    const root = dir('vault', '', [
+      dir('Projecten', 'Projecten', [dir('Lapis', 'Projecten/Lapis', [file('Ideeën.md', 'Projecten/Lapis/Ideeën.md')])]),
+    ])
+    const { rerender } = render(
+      <Tree root={root} selectedPath={null} startPage={null} onSelectFile={() => {}} actions={actionsStub()} />,
+    )
+    expect(screen.queryByText(/Ideeën\.md/)).toBeNull()
+
+    // Bijvoorbeeld geopend via zoeken of de quick switcher.
+    rerender(
+      <Tree
+        root={root}
+        selectedPath="Projecten/Lapis/Ideeën.md"
+        startPage={null}
+        onSelectFile={() => {}}
+        actions={actionsStub()}
+      />,
+    )
+    expect(screen.getByText(/Ideeën\.md/)).toBeTruthy()
+  })
+
   it('klikken op een map klapt uit, nogmaals klikken klapt in', () => {
     const root = dir('vault', '', [dir('sub', 'sub', [file('binnen.md', 'sub/binnen.md')])])
     render(<Tree root={root} selectedPath={null} startPage={null} onSelectFile={() => {}} actions={actionsStub()} />)
